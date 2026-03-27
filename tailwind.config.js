@@ -7,34 +7,42 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 背景色
-        'bg-primary': '#0A0A0A',
-        'bg-secondary': '#0F0F0F',
-        'bg-tertiary': '#1F1F1F',
+        // 背景色 - Modern Tech
+        'bg-primary': 'var(--color-bg-primary)',
+        'bg-secondary': 'var(--color-bg-secondary)',
+        'bg-tertiary': 'var(--color-bg-tertiary)',
         
         // 文字色
-        'text-primary': '#FAFAFA',
-        'text-secondary': '#6B7280',
-        'text-tertiary': '#4B5563',
-        
-        // 强调色
-        accent: {
-          DEFAULT: '#10B981',
-          hover: '#059669',
-        },
-        warning: '#F59E0B',
-        info: '#06B6D4',
-        error: '#EF4444',
+        'text-primary': 'var(--color-text-primary)',
+        'text-secondary': 'var(--color-text-secondary)',
+        'text-tertiary': 'var(--color-text-tertiary)',
+        'text-muted': 'var(--color-text-muted)',
         
         // 边框色
-        border: '#2a2a2a',
+        'border-primary': 'var(--color-border)',
+        'border-light': 'var(--color-border-light)',
+        
+        // 品牌色
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+        },
+        secondary: 'var(--color-secondary)',
+        
+        // 语义色
+        success: 'var(--color-success)',
+        warning: 'var(--color-warning)',
+        error: 'var(--color-error)',
+        info: 'var(--color-info)',
       },
       fontFamily: {
-        mono: [
-          'JetBrains Mono',
-          'IBM Plex Mono',
-          'ui-monospace',
-          'monospace',
+        heading: [
+          'Space Grotesk',
+          'sans-serif',
+        ],
+        body: [
+          'DM Sans',
+          'sans-serif',
         ],
       },
       spacing: {
@@ -47,7 +55,21 @@ export default {
         '8': '32px',
       },
       borderRadius: {
-        none: '0',
+        'sm': '8px',
+        'md': '12px',
+        'lg': '16px',
+      },
+      boxShadow: {
+        'glow': '0 0 20px rgba(59, 130, 246, 0.3)',
+      },
+      animation: {
+        'scale-in': 'scaleIn 200ms ease',
+      },
+      keyframes: {
+        scaleIn: {
+          '0%': { transform: 'scale(0.98)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
       },
     },
   },

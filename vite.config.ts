@@ -24,11 +24,11 @@ export default defineConfig({
     },
     sourcemap: process.env.NODE_ENV === 'development' ? 'inline' : false,
   },
-  // server: {
-  //   port: 5173,
-  //   strictPort: true,
-  //   hmr: {
-  //     port: 5173,
-  //   },
-  // },
+  server: {
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      port: 5173,
+    },
+  },
 })

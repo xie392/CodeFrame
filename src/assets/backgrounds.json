@@ -1,0 +1,88 @@
+{
+  "solidColors": [
+    { "id": "white", "name": "白色", "value": "#ffffff", "isPro": false },
+    { "id": "light-gray", "name": "浅灰", "value": "#f3f4f6", "isPro": false },
+    { "id": "dark-gray", "name": "深灰", "value": "#1f2937", "isPro": false },
+    { "id": "black", "name": "黑色", "value": "#0A0F1C", "isPro": false },
+    { "id": "charcoal", "name": "炭黑", "value": "#1a1a2e", "isPro": true },
+    { "id": "slate", "name": "板岩", "value": "#1E293B", "isPro": true },
+    { "id": "navy", "name": "海军蓝", "value": "#0f172a", "isPro": true },
+    { "id": "cream", "name": "奶油白", "value": "#fef7ed", "isPro": true },
+    { "id": "rose", "name": "玫瑰红", "value": "#fff1f2", "isPro": true },
+    { "id": "cyan", "name": "青色", "value": "#ecfeff", "isPro": true },
+    { "id": "mint", "name": "薄荷绿", "value": "#f0fdf4", "isPro": true }
+  ],
+  
+  "gradients": [
+    {
+      "id": "ocean",
+      "name": "海洋",
+      "value": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      "isPro": false
+    },
+    {
+      "id": "sunset",
+      "name": "日落",
+      "value": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+      "isPro": false
+    },
+    {
+      "id": "aurora",
+      "name": "极光",
+      "value": "linear-gradient(135deg, #00c6fb 0%, #005bea 100%)",
+      "isPro": false
+    },
+    {
+      "id": "forest",
+      "name": "森林",
+      "value": "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+      "isPro": true
+    },
+    {
+      "id": "galaxy",
+      "name": "星系",
+      "value": "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+      "isPro": true
+    },
+    {
+      "id": "peach",
+      "name": "蜜桃",
+      "value": "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+      "isPro": true
+    },
+    {
+      "id": "lavender",
+      "name": "薰衣草",
+      "value": "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)",
+      "isPro": true
+    },
+    {
+      "id": "cherry",
+      "name": "樱桃",
+      "value": "linear-gradient(135deg, #eb3349 0%, #f45c43 100%)",
+      "isPro": true
+    },
+    {
+      "id": "midnight",
+      "name": "午夜",
+      "value": "linear-gradient(135deg, #232526 0%, #414345 100%)",
+      "isPro": true
+    },
+    {
+      "id": "tropical",
+      "name": "热带",
+      "value": "linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%)",
+      "isPro": true
+    }
+  ],
+  
+  "sizePresets": [
+    { "id": "twitter-post", "name": "Twitter Post", "width": 1200, "height": 675 },
+    { "id": "twitter-header", "name": "Twitter Header", "width": 1500, "height": 500 },
+    { "id": "linkedin-post", "name": "LinkedIn Post", "width": 1200, "height": 627 },
+    { "id": "instagram-square", "name": "Instagram Square", "width": 1080, "height": 1080 },
+    { "id": "instagram-story", "name": "Instagram Story", "width": 1080, "height": 1920 },
+    { "id": "youtube-thumbnail", "name": "YouTube Thumbnail", "width": 1280, "height": 720 },
+    { "id": "open-graph", "name": "Open Graph", "width": 1200, "height": 630 }
+  ]
+}

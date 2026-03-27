@@ -1,0 +1,76 @@
+{
+  "devices": [
+    {
+      "id": "macbook-pro",
+      "name": "MacBook Pro",
+      "type": "laptop",
+      "isPro": false,
+      "frameUrl": "/devices/macbook-pro.svg",
+      "aspectRatio": 1.6,
+      "padding": { "top": 40, "right": 40, "bottom": 60, "left": 40 }
+    },
+    {
+      "id": "browser",
+      "name": "Browser Window",
+      "type": "browser",
+      "isPro": false,
+      "frameUrl": "/devices/browser.svg",
+      "aspectRatio": 1.78,
+      "padding": { "top": 36, "right": 0, "bottom": 0, "left": 0 }
+    },
+    {
+      "id": "none",
+      "name": "无边框",
+      "type": "none",
+      "isPro": false,
+      "frameUrl": "",
+      "aspectRatio": 1.78,
+      "padding": { "top": 0, "right": 0, "bottom": 0, "left": 0 }
+    },
+    {
+      "id": "macbook-air",
+      "name": "MacBook Air",
+      "type": "laptop",
+      "isPro": true,
+      "frameUrl": "/devices/macbook-air.svg",
+      "aspectRatio": 1.6,
+      "padding": { "top": 35, "right": 35, "bottom": 55, "left": 35 }
+    },
+    {
+      "id": "imac",
+      "name": "iMac",
+      "type": "desktop",
+      "isPro": true,
+      "frameUrl": "/devices/imac.svg",
+      "aspectRatio": 1.78,
+      "padding": { "top": 50, "right": 50, "bottom": 80, "left": 50 }
+    },
+    {
+      "id": "iphone-15",
+      "name": "iPhone 15",
+      "type": "phone",
+      "isPro": true,
+      "frameUrl": "/devices/iphone-15.svg",
+      "aspectRatio": 0.462,
+      "padding": { "top": 60, "right": 20, "bottom": 60, "left": 20 }
+    },
+    {
+      "id": "iphone-15-pro",
+      "name": "iPhone 15 Pro",
+      "type": "phone",
+      "isPro": true,
+      "frameUrl": "/devices/iphone-15-pro.svg",
+      "aspectRatio": 0.462,
+      "padding": { "top": 60, "right": 20, "bottom": 60, "left": 20 }
+    },
+    {
+      "id": "ipad-pro",
+      "name": "iPad Pro",
+      "type": "tablet",
+      "isPro": true,
+      "frameUrl": "/devices/ipad-pro.svg",
+      "aspectRatio": 0.75,
+      "padding": { "top": 40, "right": 30, "bottom": 40, "left": 30 }
+    }
+  ]
+}

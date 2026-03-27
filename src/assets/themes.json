@@ -1,0 +1,229 @@
+{
+  "themes": [
+    {
+      "id": "github-light",
+      "name": "GitHub Light",
+      "type": "light",
+      "isPro": false,
+      "colors": {
+        "background": "#ffffff",
+        "text": "#24292e",
+        "keyword": "#d73a49",
+        "string": "#032f62",
+        "comment": "#6a737d",
+        "function": "#6f42c1",
+        "number": "#005cc5"
+      }
+    },
+    {
+      "id": "github-dark",
+      "name": "GitHub Dark",
+      "type": "dark",
+      "isPro": false,
+      "colors": {
+        "background": "#0d1117",
+        "text": "#c9d1d9",
+        "keyword": "#ff7b72",
+        "string": "#a5d6ff",
+        "comment": "#8b949e",
+        "function": "#d2a8ff",
+        "number": "#79c0ff"
+      }
+    },
+    {
+      "id": "one-dark-pro",
+      "name": "One Dark Pro",
+      "type": "dark",
+      "isPro": false,
+      "colors": {
+        "background": "#282c34",
+        "text": "#abb2bf",
+        "keyword": "#c678dd",
+        "string": "#98c379",
+        "comment": "#5c6370",
+        "function": "#61afef",
+        "number": "#d19a66"
+      }
+    },
+    {
+      "id": "dracula",
+      "name": "Dracula",
+      "type": "dark",
+      "isPro": false,
+      "colors": {
+        "background": "#282a36",
+        "text": "#f8f8f2",
+        "keyword": "#ff79c6",
+        "string": "#f1fa8c",
+        "comment": "#6272a4",
+        "function": "#50fa7b",
+        "number": "#bd93f9"
+      }
+    },
+    {
+      "id": "monokai",
+      "name": "Monokai",
+      "type": "dark",
+      "isPro": false,
+      "colors": {
+        "background": "#272822",
+        "text": "#f8f8f2",
+        "keyword": "#f92672",
+        "string": "#e6db74",
+        "comment": "#75715e",
+        "function": "#a6e22e",
+        "number": "#ae81ff"
+      }
+    },
+    {
+      "id": "nord",
+      "name": "Nord",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#2e3440",
+        "text": "#d8dee9",
+        "keyword": "#81a1c1",
+        "string": "#a3be8c",
+        "comment": "#616e88",
+        "function": "#88c0d0",
+        "number": "#b48ead"
+      }
+    },
+    {
+      "id": "material-oceanic",
+      "name": "Material Oceanic",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#263238",
+        "text": "#eeffff",
+        "keyword": "#c792ea",
+        "string": "#c3e88d",
+        "comment": "#546e7a",
+        "function": "#82aaff",
+        "number": "#f78c6c"
+      }
+    },
+    {
+      "id": "tokyo-night",
+      "name": "Tokyo Night",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#1a1b26",
+        "text": "#c0caf5",
+        "keyword": "#bb9af7",
+        "string": "#9ece6a",
+        "comment": "#565f89",
+        "function": "#7aa2f7",
+        "number": "#ff9e64"
+      }
+    },
+    {
+      "id": "catppuccin",
+      "name": "Catppuccin",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#1e1e2e",
+        "text": "#cdd6f4",
+        "keyword": "#cba6f7",
+        "string": "#a6e3a1",
+        "comment": "#6c7086",
+        "function": "#89b4fa",
+        "number": "#fab387"
+      }
+    },
+    {
+      "id": "gruvbox",
+      "name": "Gruvbox",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#282828",
+        "text": "#ebdbb2",
+        "keyword": "#fb4934",
+        "string": "#b8bb26",
+        "comment": "#928374",
+        "function": "#fabd2f",
+        "number": "#d3869b"
+      }
+    },
+    {
+      "id": "solarized-dark",
+      "name": "Solarized Dark",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#002b36",
+        "text": "#839496",
+        "keyword": "#859900",
+        "string": "#2aa198",
+        "comment": "#586e75",
+        "function": "#268bd2",
+        "number": "#d33682"
+      }
+    },
+    {
+      "id": "ayu-mirage",
+      "name": "Ayu Mirage",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#1f2430",
+        "text": "#cbccc6",
+        "keyword": "#ffa759",
+        "string": "#bae67e",
+        "comment": "#5c6773",
+        "function": "#5ccfe6",
+        "number": "#ffcc66"
+      }
+    },
+    {
+      "id": "vscode-dark-plus",
+      "name": "VS Code Dark+",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#1e1e1e",
+        "text": "#d4d4d4",
+        "keyword": "#569cd6",
+        "string": "#ce9178",
+        "comment": "#6a9955",
+        "function": "#dcdcaa",
+        "number": "#b5cea8"
+      }
+    },
+    {
+      "id": "night-owl",
+      "name": "Night Owl",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#011627",
+        "text": "#d6deeb",
+        "keyword": "#c792ea",
+        "string": "#addb67",
+        "comment": "#637777",
+        "function": "#82aaff",
+        "number": "#f78c6c"
+      }
+    },
+    {
+      "id": "synthwave-84",
+      "name": "Synthwave 84",
+      "type": "dark",
+      "isPro": true,
+      "colors": {
+        "background": "#262335",
+        "text": "#e0d9f5",
+        "keyword": "#fede5d",
+        "string": "#72f1b8",
+        "comment": "#495495",
+        "function": "#ff7edb",
+        "number": "#f97e72"
+      }
+    }
+  ]
+}

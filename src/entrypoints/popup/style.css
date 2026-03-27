@@ -1,0 +1,6 @@
+@import '~/styles/global.css';
+
+/* Popup 特定样式 */
+body {
+  background-color: transparent;
+}

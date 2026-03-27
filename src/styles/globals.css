@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables - Terminal Minimal Theme */
+:root {
+  /* 背景色 */
+  --color-bg-primary: #0A0A0A;
+  --color-bg-secondary: #0F0F0F;
+  --color-bg-tertiary: #1F1F1F;
+  
+  /* 文字色 */
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary: #4B5563;
+  
+  /* 强调色 */
+  --color-accent: #10B981;
+  --color-accent-hover: #059669;
+  --color-warning: #F59E0B;
+  --color-info: #06B6D4;
+  --color-error: #EF4444;
+  
+  /* 边框色 */
+  --color-border: #2a2a2a;
+  
+  /* 字体 */
+  --font-primary: 'JetBrains Mono', ui-monospace, monospace;
+  --font-secondary: 'IBM Plex Mono', ui-monospace, monospace;
+  
+  /* 间距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+
+/* 基础样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+/* 选中文本样式 */
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-bg-primary);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* 自定义组件类 */
+@layer components {
+  /* 按钮基础样式 */
+  .btn {
+    @apply px-4 h-10 flex items-center justify-center gap-2 text-sm font-medium transition-colors;
+  }
+  
+  .btn-primary {
+    @apply bg-[#10B981] text-[#0A0A0A] hover:bg-[#059669];
+  }
+  
+  .btn-secondary {
+    @apply bg-[#0F0F0F] text-[#FAFAFA] hover:bg-[#1F1F1F];
+  }
+  
+  /* 输入框样式 */
+  .input {
+    @apply w-full h-9 px-3 bg-[#0F0F0F] border border-[#2a2a2a] text-sm text-[#FAFAFA] focus:border-[#10B981] focus:outline-none;
+  }
+}

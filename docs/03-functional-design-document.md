@@ -65,13 +65,13 @@
 | 层级 | 技术选型 | 说明 |
 |------|----------|------|
 | **构建工具** | Vite + CRXJS | 原生支持 Chrome 扩展 HMR |
-| **UI 框架** | React 18 + TypeScript | 类型安全，生态成熟 |
-| **样式方案** | TailwindCSS + CSS Variables | 快速开发 + 主题切换 |
+| **UI 框架** | React 19 + TypeScript + shadcn ui | 类型安全，生态成熟 |
+| **样式方案** | TailwindCSS4 + CSS Variables | 快速开发 + 主题切换 |
 | **代码高亮** | Shiki | VS Code 同款引擎，高亮精准 |
-| **DOM 转图片** | html-to-image | 现代实现，SVG/CORS 支持完善 |
+| **DOM 转图片** | snapdom | 现代实现，SVG/CORS 支持完善 |
 | **Canvas 操作** | Konva.js | 高性能 Canvas 框架 |
 | **状态管理** | Zustand | 轻量级，适合 Chrome 扩展 |
-| **存储方案** | chrome.storage + IndexedDB | 小数据用 Storage，大文件用 IndexedDB |
+| **存储方案** | chrome.storage + IndexedDB（找一个好用的库） | 小数据用 Storage，大文件用 IndexedDB |
 
 ---
 

@@ -16,7 +16,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // 监听右键菜单点击
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener((info, _tab) => {
   if (info.menuItemId === 'codeframe-screenshot') {
     console.log('[CodeFrame] Context menu clicked');
     // TODO: 触发截图
@@ -24,7 +24,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 // 监听消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
   console.log('[CodeFrame] Message received:', message.type);
   
   switch (message.type) {

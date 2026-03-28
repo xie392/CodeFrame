@@ -1,82 +1,97 @@
+/* Google Fonts - Space Grotesk + DM Sans */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Google Fonts - Space Grotesk + DM Sans */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
-/* CSS Variables - Modern Tech Style */
+/*
+ * shadcn/ui CSS Variables (HSL)
+ * 项目为纯暗色模式，颜色值取自项目设计系统
+ */
 :root {
-  /* 背景色 */
+  --radius: 0.75rem;
+
+  /* 基础色 — 映射自项目 #0F172A (bg-primary) */
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  /* 卡片 — 映射自项目 #1E293B (bg-secondary) */
+  --card: 215.3 27.9% 16.9%;
+  --card-foreground: 210 40% 98%;
+
+  /* 弹出层 */
+  --popover: 215.3 27.9% 16.9%;
+  --popover-foreground: 210 40% 98%;
+
+  /* 主色 — 映射自项目 #3B82F6 (blue-500) */
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 210 40% 98%;
+
+  /* 次色 — 映射自项目 #334155 (border-primary) */
+  --secondary: 215.3 25% 27.1%;
+  --secondary-foreground: 210 40% 98%;
+
+  /* 静音色 — 映射自项目 #1E293B + #94A3B8 */
+  --muted: 215.3 27.9% 16.9%;
+  --muted-foreground: 217.9 10.6% 64.9%;
+
+  /* 强调色 */
+  --accent: 215.3 25% 27.1%;
+  --accent-foreground: 210 40% 98%;
+
+  /* 危险色 — 映射自项目 #EF4444 (red-500) */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  /* 边框 / 输入 / 焦点环 */
+  --border: 215.3 25% 27.1%;
+  --input: 215.3 25% 27.1%;
+  --ring: 217.2 91.2% 59.8%;
+
+  /* 项目自定义变量（保留向后兼容） */
   --color-bg-primary: #0F172A;
   --color-bg-secondary: #1E293B;
   --color-bg-tertiary: #334155;
   --color-bg-surface: rgba(255, 255, 255, 0.05);
-  
-  /* 文字色 */
   --color-text-primary: #F1F5F9;
   --color-text-secondary: #CBD5E1;
   --color-text-tertiary: #94A3B8;
   --color-text-muted: #64748B;
-  
-  /* 强调色 */
   --color-primary: #3B82F6;
   --color-primary-hover: #2563EB;
   --color-secondary: #60A5FA;
-  
-  /* 语义色 */
   --color-success: #22C55E;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
   --color-info: #06B6D4;
-  
-  /* 边框色 */
   --color-border: #334155;
   --color-border-light: rgba(255, 255, 255, 0.1);
-  
-  /* 字体 */
   --font-heading: 'Space Grotesk', sans-serif;
   --font-body: 'DM Sans', sans-serif;
-  
-  /* 间距 */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  
-  /* 圆角 */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  
-  /* 阴影 */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
 
 /* 基础样式重置 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 html {
   font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  font-family: var(--font-body);
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  line-height: 1.5;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 /* 选中文本样式 */
@@ -110,67 +125,4 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--color-border-light);
-}
-
-/* 自定义组件类 */
-@layer components {
-  /* 卡片基础样式 */
-  .card {
-    background: var(--color-bg-surface);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-md);
-    transition: all 200ms ease;
-  }
-  
-  .card:hover {
-    transform: scale(1.02);
-    box-shadow: var(--shadow-lg);
-  }
-  
-  /* 按钮基础样式 */
-  .btn {
-    font-family: var(--font-heading);
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    transition: all 200ms ease;
-    cursor: pointer;
-  }
-  
-  .btn-primary {
-    background-color: var(--color-primary);
-    color: white;
-  }
-  
-  .btn-primary:hover {
-    background-color: var(--color-primary-hover);
-    box-shadow: var(--shadow-glow);
-  }
-  
-  .btn-secondary {
-    background: var(--color-bg-surface);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--color-border-light);
-    color: var(--color-text-primary);
-  }
-  
-  .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  /* 输入框样式 */
-  .input {
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
-    transition: all 200ms ease;
-  }
-  
-  .input:focus {
-    border-color: var(--color-primary);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  }
 }

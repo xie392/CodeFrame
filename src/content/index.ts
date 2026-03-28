@@ -4,7 +4,7 @@
 console.log('[CodeFrame] Content script loaded');
 
 // 监听来自 background 的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
   console.log('[CodeFrame] Content received message:', message.type);
 
   switch (message.type) {

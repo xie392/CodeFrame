@@ -4,6 +4,9 @@
 export type MessageType =
   | 'CAPTURE_REQUEST'
   | 'CAPTURE_RESULT'
+  | 'CAPTURE_REGION'
+  | 'CANCEL_CAPTURE'
+  | 'START_CAPTURE'
   | 'EDIT_IMAGE'
   | 'GENERATE_CODE'
   | 'EXPORT_IMAGE'
@@ -39,3 +42,6 @@ export interface CaptureResultPayload {
   imageData?: string;
   error?: string;
 }
+
+// 区域截图选区坐标（复用 RegionRect）
+export type { RegionRect as CaptureRegionPayload } from './types';

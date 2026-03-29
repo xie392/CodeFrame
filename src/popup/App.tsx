@@ -30,6 +30,20 @@ function handleVisibleCapture(): void {
   setTimeout(() => window.close(), 100);
 }
 
+function handleRegionCapture(): void {
+  const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
+    mode: 'region',
+  });
+  chrome.runtime.sendMessage(message, (_response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[CodeFrame] 消息发送失败:', chrome.runtime.lastError.message);
+      return;
+    }
+    // 等待 Background 确认后再关闭 Popup
+    window.close();
+  });
+}
+
 interface ActionBtnProps {
   icon: React.ReactNode
   label: string
@@ -115,7 +129,7 @@ const App: React.FC = () => {
         <ActionBtn
           icon={<Scissors size={26} style={{ color: 'var(--color-accent-teal)' }} />}
           label="选择区域"
-          onClick={() => console.log('region capture')}
+          onClick={handleRegionCapture}
         />
         <ActionBtn
           icon={<FileText size={26} style={{ color: 'var(--color-accent-orange)' }} />}
@@ -162,7 +176,7 @@ const App: React.FC = () => {
           className="text-[9px] leading-none font-body"
           style={{ color: 'var(--color-footer-text)' }}
         >
-          // alt+shift+s capture . alt+shift+c code
+          // alt+shift+s visible . alt+shift+r region . alt+shift+c code
         </span>
       </footer>
     </div>

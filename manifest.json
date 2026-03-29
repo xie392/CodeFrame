@@ -51,6 +51,12 @@
         "default": "Alt+Shift+S"
       },
       "description": "截取可视区域"
+    },
+    "capture-region": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "选择区域截图"
     }
   }
 }

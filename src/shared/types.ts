@@ -19,6 +19,16 @@ export interface CaptureResult {
   success: boolean;
   imageData?: string; // base64
   error?: string;
+  region?: RegionRect;
+}
+
+// 区域选区坐标（CSS 像素 + 设备像素比）
+export interface RegionRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  dpr: number;
 }
 
 // 用户设置

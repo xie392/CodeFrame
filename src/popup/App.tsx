@@ -1,137 +1,172 @@
-import React, { useState } from 'react';
+import React from 'react'
 import {
-  Scissors,
   Eye,
+  Scissors,
   FileText,
-  Monitor,
   Timer,
-  Moon,
+  Monitor,
+  ImagePlus,
+  Code,
+  ChevronRight,
   Settings,
-} from 'lucide-react';
+} from 'lucide-react'
+import { createMessage } from '@shared/messages'
+import type { CaptureRequestPayload } from '@shared/messages'
 
-type TabType = 'screenshot' | 'code' | 'local';
+/* eslint-disable no-console */
 
-interface ActionButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
+function handleVisibleCapture(): void {
+  const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
+    mode: 'visible',
+  });
+  chrome.runtime.sendMessage(message, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[CodeFrame] 消息发送失败:', chrome.runtime.lastError.message);
+      return;
+    }
+    console.log('[CodeFrame] 截图响应:', response);
+  });
+  // 延迟关闭确保消息已派发到 Service Worker
+  setTimeout(() => window.close(), 100);
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({ icon, label, onClick }) => (
-  <button
-    onClick={onClick}
-    className="card w-[100px] h-[80px] flex flex-col items-center justify-center gap-2 cursor-pointer"
-  >
-    <span className="text-primary">{icon}</span>
-    <span className="text-xs text-text-secondary font-medium font-body">
+interface ActionBtnProps {
+  icon: React.ReactNode
+  label: string
+  onClick?: () => void
+}
+
+const ActionBtn: React.FC<ActionBtnProps> = ({ icon, label, onClick }) => (
+  <button onClick={onClick} className="action-btn">
+    {icon}
+    <span className="text-[12px] leading-none text-foreground font-body">
       {label}
     </span>
   </button>
-);
+)
+
+interface FeatureItemProps {
+  icon: React.ReactNode
+  label: string
+  onClick?: () => void
+}
+
+const FeatureItem: React.FC<FeatureItemProps> = ({
+  icon,
+  label,
+  onClick,
+}) => (
+  <button onClick={onClick} className="feature-item">
+    <div className="flex items-center gap-3">
+      {icon}
+      <span className="text-[13px] leading-none text-foreground font-body">
+        {label}
+      </span>
+    </div>
+    <ChevronRight
+      size={16}
+      className="text-foreground/25"
+    />
+  </button>
+)
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('screenshot');
-
-  const tabs: { id: TabType; label: string }[] = [
-    { id: 'screenshot', label: 'Screenshot' },
-    { id: 'code', label: 'Code' },
-    { id: 'local', label: 'Local' },
-  ];
-
   return (
-    <div className="w-[360px] h-[500px] bg-bg-primary text-text-primary font-body flex flex-col">
+    <div className="popup-container w-[363px] flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between h-14 px-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-white font-heading font-bold text-sm">CF</span>
+      <header className="flex items-center justify-between h-[47px] px-4 shrink-0">
+        <div className="flex items-center gap-[10px]">
+          <div
+            className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center"
+            style={{ backgroundColor: 'var(--color-accent-orange)' }}
+          >
+            <span
+              className="text-[13px] font-bold leading-none"
+              style={{ color: 'var(--color-logo-text)' }}
+            >
+              CF
+            </span>
           </div>
-          <span className="text-lg font-heading font-semibold">CodeFrame</span>
+          <span className="text-[16px] font-semibold leading-none text-foreground font-heading">
+            CodeFrame
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-all duration-200 cursor-pointer">
-            <Moon size={16} />
-          </button>
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-all duration-200 cursor-pointer">
-            <Settings size={16} />
+        <div className="flex items-center">
+          <button
+            aria-label="设置"
+            className="w-[32px] h-[32px] rounded-[8px] flex items-center justify-center cursor-pointer transition-colors duration-200 hover:brightness-125"
+            style={{ backgroundColor: 'var(--color-header-btn)' }}
+          >
+            <Settings
+              size={15}
+              style={{ color: 'var(--color-icon-muted)' }}
+            />
           </button>
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <nav className="flex items-center gap-1 px-4 py-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`btn px-4 py-2 text-sm ${
-              activeTab === tab.id
-                ? 'btn-primary'
-                : 'btn-secondary text-text-tertiary'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      {/* ActionRow */}
+      <div className="flex items-center justify-center gap-2 px-3 py-3">
+        <ActionBtn
+          icon={<Eye size={26} style={{ color: 'var(--color-accent-orange)' }} />}
+          label="可视截图"
+          onClick={handleVisibleCapture}
+        />
+        <ActionBtn
+          icon={<Scissors size={26} style={{ color: 'var(--color-accent-teal)' }} />}
+          label="选择区域"
+          onClick={() => console.log('region capture')}
+        />
+        <ActionBtn
+          icon={<FileText size={26} style={{ color: 'var(--color-accent-orange)' }} />}
+          label="整页截图"
+          onClick={() => console.log('fullpage capture')}
+        />
+        <ActionBtn
+          icon={<Code size={26} style={{ color: 'var(--color-accent-teal)' }} />}
+          label="代码编辑器"
+          onClick={() => console.log('code editor')}
+        />
+      </div>
 
-      {/* Content Area */}
-      <main className="flex-1 p-4 flex flex-col gap-3">
-        {/* First Row - 3 buttons */}
-        <div className="flex gap-3">
-          <ActionButton
-            icon={<Scissors size={20} />}
-            label="Region"
-            onClick={() => console.log('region capture')}
-          />
-          <ActionButton
-            icon={<Eye size={20} />}
-            label="Visible"
-            onClick={() => console.log('visible capture')}
-          />
-          <ActionButton
-            icon={<FileText size={20} />}
-            label="Full Page"
-            onClick={() => console.log('fullpage capture')}
-          />
-        </div>
+      {/* FeatureList */}
+      <div className="feature-list px-3 py-2 flex flex-col gap-1">
+        <FeatureItem
+          icon={<Timer size={18} style={{ color: 'var(--color-accent-orange)' }} />}
+          label="延时截取可视区域"
+          onClick={() => console.log('delayed capture')}
+        />
+        <FeatureItem
+          icon={<Monitor size={18} style={{ color: 'var(--color-accent-teal)' }} />}
+          label="全屏截图"
+          onClick={() => console.log('desktop capture')}
+        />
+        <FeatureItem
+          icon={<ImagePlus size={18} style={{ color: 'var(--color-accent-orange)' }} />}
+          label="编辑本地或粘贴图片"
+          onClick={() => console.log('local image')}
+        />
+        <FeatureItem
+          icon={<Code size={18} style={{ color: 'var(--color-accent-teal)' }} />}
+          label="代码编辑器"
+          onClick={() => console.log('code editor')}
+        />
+      </div>
 
-        {/* Second Row - 2 buttons */}
-        <div className="flex gap-3">
-          <ActionButton
-            icon={<Monitor size={20} />}
-            label="Desktop"
-            onClick={() => console.log('desktop capture')}
-          />
-          <ActionButton
-            icon={<Timer size={20} />}
-            label="Delayed"
-            onClick={() => console.log('delayed capture')}
-          />
-        </div>
-
-        {/* Quick Actions */}
-        <div className="mt-4 p-4 card">
-          <p className="text-xs text-text-muted font-body">
-            Quick tip: Use keyboard shortcuts for faster access
-          </p>
-          <div className="flex gap-2 mt-2">
-            <span className="text-xs px-2 py-1 rounded bg-bg-secondary text-text-secondary font-heading">
-              ⌘ ⇧ S
-            </span>
-            <span className="text-xs text-text-tertiary">Capture</span>
-          </div>
-        </div>
-      </main>
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Footer */}
-      <footer className="flex items-center justify-center h-10 border-t border-border-light">
-        <span className="text-xs text-text-muted font-body">
-          Made with ❤️ for developers
+      <footer className="flex items-center justify-center h-[35px] shrink-0">
+        <span
+          className="text-[9px] leading-none font-body"
+          style={{ color: 'var(--color-footer-text)' }}
+        >
+          // alt+shift+s capture . alt+shift+c code
         </span>
       </footer>
     </div>
-  );
-};
+  )
+}
 
-export default App;
+export default App

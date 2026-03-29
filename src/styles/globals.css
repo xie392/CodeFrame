@@ -1,74 +1,61 @@
-/* Google Fonts - Space Grotesk + DM Sans */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
  * shadcn/ui CSS Variables (HSL)
- * 项目为纯暗色模式，颜色值取自项目设计系统
+ * 仅亮色主题
  */
+
 :root {
-  --radius: 0.75rem;
+  --radius: 1rem;
 
-  /* 基础色 — 映射自项目 #0F172A (bg-primary) */
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
+  --background: 220 20% 97%;
+  --foreground: 0 0% 9%;
 
-  /* 卡片 — 映射自项目 #1E293B (bg-secondary) */
-  --card: 215.3 27.9% 16.9%;
-  --card-foreground: 210 40% 98%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
 
-  /* 弹出层 */
-  --popover: 215.3 27.9% 16.9%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
 
-  /* 主色 — 映射自项目 #3B82F6 (blue-500) */
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 18 100% 60%;
+  --primary-foreground: 0 0% 100%;
 
-  /* 次色 — 映射自项目 #334155 (border-primary) */
-  --secondary: 215.3 25% 27.1%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 9%;
 
-  /* 静音色 — 映射自项目 #1E293B + #94A3B8 */
-  --muted: 215.3 27.9% 16.9%;
-  --muted-foreground: 217.9 10.6% 64.9%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;
 
-  /* 强调色 */
-  --accent: 215.3 25% 27.1%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 9%;
 
-  /* 危险色 — 映射自项目 #EF4444 (red-500) */
   --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  /* 边框 / 输入 / 焦点环 */
-  --border: 215.3 25% 27.1%;
-  --input: 215.3 25% 27.1%;
-  --ring: 217.2 91.2% 59.8%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 18 100% 60%;
 
-  /* 项目自定义变量（保留向后兼容） */
-  --color-bg-primary: #0F172A;
-  --color-bg-secondary: #1E293B;
-  --color-bg-tertiary: #334155;
-  --color-bg-surface: rgba(255, 255, 255, 0.05);
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #CBD5E1;
-  --color-text-tertiary: #94A3B8;
-  --color-text-muted: #64748B;
-  --color-primary: #3B82F6;
-  --color-primary-hover: #2563EB;
-  --color-secondary: #60A5FA;
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
-  --color-info: #06B6D4;
-  --color-border: #334155;
-  --color-border-light: rgba(255, 255, 255, 0.1);
-  --font-heading: 'Space Grotesk', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+  /* 玻璃效果 */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.8);
+  --glass-blur: 12px;
+
+  /* 设计稿专属颜色 */
+  --color-accent-orange: #ff6b35;
+  --color-accent-teal: #00b892;
+  --color-header-btn: #f0f0f0;
+  --color-icon-muted: #888888;
+  --color-footer-text: #999999;
+  --color-logo-text: #0d0d0d;
+  --color-arrow: rgba(0, 0, 0, 0.2);
+
+  /* 字体 */
+  --font-heading: 'Oswald', sans-serif;
+  --font-body: 'JetBrains Mono', monospace;
 }
 
 /* 基础样式重置 */
@@ -96,33 +83,99 @@ html {
 
 /* 选中文本样式 */
 ::selection {
-  background-color: var(--color-primary);
+  background-color: #ff6b35;
   color: white;
 }
 
 /* 滚动条样式 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-primary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-bg-tertiary);
-  border-radius: 4px;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* 玻璃效果 */
-.glass {
-  background: var(--color-bg-surface);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--color-border-light);
+/* ===== 设计稿玻璃拟态工具类 ===== */
+
+/* Popup 主容器渐变背景 */
+.popup-container {
+  background: linear-gradient(180deg, #f6f7fa 0%, #e4e5e7 50%, #e5e8f3 100%);
+}
+
+/* ActionRow 操作按钮 */
+.action-btn {
+  width: 78px;
+  height: 96px;
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    var(--glass-hover) 0%,
+    var(--glass-bg) 100%
+  );
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 200ms ease, transform 200ms ease;
+}
+
+.action-btn:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  transform: translateY(-1px);
+}
+
+/* FeatureList 容器 */
+.feature-list {
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* FeatureList 列表项 */
+.feature-item {
+  height: 48px;
+  border-radius: 12px;
+  background: var(--glass-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  cursor: pointer;
+  transition: background 200ms ease;
+  width: 100%;
+  border: none;
+}
+
+.feature-item:hover {
+  background: var(--glass-hover);
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
 }

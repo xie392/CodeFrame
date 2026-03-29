@@ -35,4 +35,5 @@ export const STORAGE_KEYS = {
   SETTINGS: 'codeframe_settings',
   RECENT_CODES: 'codeframe_recent_codes',
   CUSTOM_THEMES: 'codeframe_custom_themes',
+  CAPTURE_RESULT: 'codeframe_capture_result',
 } as const;

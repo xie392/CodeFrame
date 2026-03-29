@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: "class",
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -44,12 +43,12 @@ export default {
       },
       fontFamily: {
         heading: [
-          'Space Grotesk',
+          'Oswald',
           'sans-serif',
         ],
         body: [
-          'DM Sans',
-          'sans-serif',
+          'JetBrains Mono',
+          'monospace',
         ],
       },
       borderRadius: {

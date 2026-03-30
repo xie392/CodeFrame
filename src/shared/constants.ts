@@ -58,3 +58,18 @@ export const REGION_CAPTURE = {
   LABEL_MIN_WIDTH: 100,      // 显示标注的最小选区宽度
   LABEL_MIN_HEIGHT: 40,      // 显示标注的最小选区高度
 } as const;
+
+// 延时截图配置
+export const DELAYED_CAPTURE = {
+  RING_SIZE: 80,             // 进度环尺寸（px）
+  RING_STROKE_WIDTH: 4,      // 进度环宽度（px）
+  RING_COLOR: '#10B981',     // 进度环颜色（强调色）
+  RING_WARN_COLOR: '#F59E0B', // 最后 1 秒警告色
+  RING_TRACK_COLOR: 'rgba(255, 255, 255, 0.15)', // 进度环底色
+  OVERLAY_BG: 'rgba(0, 0, 0, 0.6)', // 覆盖层背景
+  COUNTDOWN_FONT_SIZE: 36,   // 秒数字体大小
+  COUNTDOWN_COLOR: '#FAFAFA', // 秒数文字颜色
+  HINT_TEXT: '取消 (Esc)',   // 取消提示文字
+  HINT_FONT_SIZE: 12,        // 提示文字大小
+  HINT_COLOR: '#6B7280',     // 提示文字颜色
+} as const;

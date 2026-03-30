@@ -3,7 +3,7 @@
 
 import { handleCaptureRequest, handleRegionCapture } from './handlers/capture';
 import { handleFullPageCapture } from './handlers/fullpage';
-import type { CaptureRequestPayload } from '@shared/messages';
+import type { CaptureRequestPayload, StartDelayedCapturePayload } from '@shared/messages';
 import type { CaptureResult, RegionRect } from '@shared/types';
 
 console.log('[CodeFrame] Service Worker started');
@@ -58,13 +58,45 @@ async function startRegionCapture(): Promise<void> {
   });
 }
 
+// 受限页面 URL 前缀
+const RESTRICTED_URL_PREFIXES = [
+  'chrome://',
+  'chrome-extension://',
+  'about:',
+  'devtools://',
+  'edge://',
+  'brave://',
+] as const;
+
+function isRestrictedUrl(url?: string): boolean {
+  if (!url) return true;
+  return RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
+
+// 向 Content Script 发送 START_DELAYED_CAPTURE 消息
+async function startDelayedCapture(delay: number): Promise<CaptureResult> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) {
+    return { success: false, error: '无法获取当前标签页' };
+  }
+  if (isRestrictedUrl(tab.url)) {
+    return { success: false, error: '受限页面不支持截图' };
+  }
+  await chrome.tabs.sendMessage(tab.id, {
+    type: 'START_DELAYED_CAPTURE',
+    payload: { delay } as StartDelayedCapturePayload,
+    timestamp: Date.now(),
+  });
+  return { success: true };
+}
+
 // 监听消息
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   console.log('[CodeFrame] Message received:', message.type);
 
   switch (message.type) {
     case 'CAPTURE_REQUEST': {
-      const { mode } = message.payload as CaptureRequestPayload;
+      const { mode, delay } = message.payload as CaptureRequestPayload;
       if (mode === 'visible') {
         handleCaptureRequest()
           .then(sendResponse)
@@ -88,6 +120,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           .then(sendResponse)
           .catch((err: unknown) => {
             const errorMsg = err instanceof Error ? err.message : '整页截图失败';
+            sendResponse({ success: false, error: errorMsg } as CaptureResult);
+          });
+        return true;
+      }
+      if (mode === 'delayed') {
+        const delaySeconds = delay ?? 3;
+        startDelayedCapture(delaySeconds)
+          .then(sendResponse)
+          .catch((err: unknown) => {
+            const errorMsg = err instanceof Error ? err.message : '启动延时截图失败';
             sendResponse({ success: false, error: errorMsg } as CaptureResult);
           });
         return true;
@@ -118,6 +160,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'CANCEL_CAPTURE':
       sendResponse({ success: true });
       return false;
+
+    case 'CAPTURE_DELAYED_READY':
+      // 倒计时结束，执行截图（不需要响应）
+      handleCaptureRequest()
+        .then((result) => {
+          console.log('[CodeFrame] Delayed capture completed:', result.success);
+        })
+        .catch((err: unknown) => {
+          console.error('[CodeFrame] Delayed capture failed:', err);
+        });
+      return false;
+
+    case 'CANCEL_DELAYED_CAPTURE':
+      // 用户取消延时截图
+      console.log('[CodeFrame] Delayed capture cancelled by user');
+      sendResponse({ success: true });
+      return false;
+
     default:
       break;
   }

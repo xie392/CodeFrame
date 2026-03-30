@@ -15,6 +15,8 @@ import type { CaptureRequestPayload } from '@shared/messages'
 
 /* eslint-disable no-console */
 
+const DEFAULT_DELAY = 3 // 默认延时秒数
+
 function handleVisibleCapture(): void {
   const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
     mode: 'visible',
@@ -26,7 +28,6 @@ function handleVisibleCapture(): void {
     }
     console.log('[CodeFrame] 截图响应:', response);
   });
-  // 延迟关闭确保消息已派发到 Service Worker
   setTimeout(() => window.close(), 100);
 }
 
@@ -39,7 +40,6 @@ function handleRegionCapture(): void {
       console.error('[CodeFrame] 消息发送失败:', chrome.runtime.lastError.message);
       return;
     }
-    // 等待 Background 确认后再关闭 Popup
     window.close();
   });
 }
@@ -49,7 +49,6 @@ function handleFullPageCapture(): void {
     mode: 'fullpage',
   });
 
-  // 显示加载状态，不立即关闭 popup
   const button = document.activeElement as HTMLButtonElement;
 
   chrome.runtime.sendMessage(message, (response) => {
@@ -63,23 +62,34 @@ function handleFullPageCapture(): void {
     console.log('[CodeFrame] 整页截图响应:', response);
 
     if (response && response.success) {
-      // 成功后再关闭 popup
       window.close();
     } else {
-      // 失败时显示错误，不关闭 popup
       const errorMsg = response?.error || '整页截图失败';
       alert('截图失败: ' + errorMsg);
-      // 恢复按钮状态
       if (button) {
         button.disabled = false;
       }
     }
   });
 
-  // 禁用按钮防止重复点击
   if (button) {
     button.disabled = true;
   }
+}
+
+function handleDelayedCapture(): void {
+  const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
+    mode: 'delayed',
+    delay: DEFAULT_DELAY,
+  });
+  chrome.runtime.sendMessage(message, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[CodeFrame] 消息发送失败:', chrome.runtime.lastError.message);
+      return;
+    }
+    console.log('[CodeFrame] 延时截图响应:', response);
+  });
+  setTimeout(() => window.close(), 100);
 }
 
 interface ActionBtnProps {
@@ -100,12 +110,14 @@ const ActionBtn: React.FC<ActionBtnProps> = ({ icon, label, onClick }) => (
 interface FeatureItemProps {
   icon: React.ReactNode
   label: string
+  suffix?: string // 右侧额外文字，如 "3s"
   onClick?: () => void
 }
 
 const FeatureItem: React.FC<FeatureItemProps> = ({
   icon,
   label,
+  suffix,
   onClick,
 }) => (
   <button onClick={onClick} className="feature-item">
@@ -115,10 +127,14 @@ const FeatureItem: React.FC<FeatureItemProps> = ({
         {label}
       </span>
     </div>
-    <ChevronRight
-      size={16}
-      className="text-foreground/25"
-    />
+    <div className="flex items-center gap-1">
+      {suffix && (
+        <span className="text-[12px] leading-none text-foreground/50 font-body">
+          {suffix}
+        </span>
+      )}
+      <ChevronRight size={16} className="text-foreground/25" />
+    </div>
   </button>
 )
 
@@ -181,7 +197,8 @@ const App: React.FC = () => {
         <FeatureItem
           icon={<Timer size={18} style={{ color: 'var(--color-accent-orange)' }} />}
           label="延时截取可视区域"
-          onClick={() => console.log('delayed capture')}
+          suffix={`${DEFAULT_DELAY}s`}
+          onClick={handleDelayedCapture}
         />
         <FeatureItem
           icon={<Monitor size={18} style={{ color: 'var(--color-accent-teal)' }} />}
@@ -210,7 +227,6 @@ const App: React.FC = () => {
           style={{ color: 'var(--color-footer-text)' }}
         >
           快捷键: Alt+Shift+S 可视截图, R 选择区域, C 代码编辑器
-          {/* // alt+shift+s visible . alt+shift+r region . alt+shift+c code */}
         </span>
       </footer>
     </div>

@@ -9,6 +9,9 @@ export type MessageType =
   | 'START_CAPTURE'
   | 'CAPTURE_FULLPAGE_START'
   | 'CAPTURE_FULLPAGE_RESULT'
+  | 'START_DELAYED_CAPTURE'
+  | 'CAPTURE_DELAYED_READY'
+  | 'CANCEL_DELAYED_CAPTURE'
   | 'EDIT_IMAGE'
   | 'GENERATE_CODE'
   | 'EXPORT_IMAGE'
@@ -43,6 +46,11 @@ export interface CaptureResultPayload {
   success: boolean;
   imageData?: string;
   error?: string;
+}
+
+// 延时截图启动消息
+export interface StartDelayedCapturePayload {
+  delay: number; // 延时秒数
 }
 
 // 区域截图选区坐标（复用 RegionRect）

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Eye,
   Scissors,
@@ -9,6 +9,7 @@ import {
   Code,
   ChevronRight,
   Settings,
+  AlertCircle,
 } from 'lucide-react'
 import { createMessage } from '@shared/messages'
 import type { CaptureRequestPayload } from '@shared/messages'
@@ -16,6 +17,21 @@ import type { CaptureRequestPayload } from '@shared/messages'
 /* eslint-disable no-console */
 
 const DEFAULT_DELAY = 3 // 默认延时秒数
+
+// 受限页面 URL 前缀
+const RESTRICTED_URL_PREFIXES = [
+  'chrome://',
+  'chrome-extension://',
+  'about:',
+  'devtools://',
+  'edge://',
+  'brave://',
+] as const;
+
+function isRestrictedUrl(url?: string): boolean {
+  if (!url) return true;
+  return RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
 
 function handleVisibleCapture(): void {
   const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
@@ -96,10 +112,16 @@ interface ActionBtnProps {
   icon: React.ReactNode
   label: string
   onClick?: () => void
+  disabled?: boolean
 }
 
-const ActionBtn: React.FC<ActionBtnProps> = ({ icon, label, onClick }) => (
-  <button onClick={onClick} className="action-btn flex-1">
+const ActionBtn: React.FC<ActionBtnProps> = ({ icon, label, onClick, disabled }) => (
+  <button
+    onClick={onClick}
+    className="action-btn flex-1"
+    disabled={disabled}
+    style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+  >
     {icon}
     <span className="text-[12px] leading-none text-foreground font-body">
       {label}
@@ -110,8 +132,9 @@ const ActionBtn: React.FC<ActionBtnProps> = ({ icon, label, onClick }) => (
 interface FeatureItemProps {
   icon: React.ReactNode
   label: string
-  suffix?: string // 右侧额外文字，如 "3s"
+  suffix?: string
   onClick?: () => void
+  disabled?: boolean
 }
 
 const FeatureItem: React.FC<FeatureItemProps> = ({
@@ -119,8 +142,14 @@ const FeatureItem: React.FC<FeatureItemProps> = ({
   label,
   suffix,
   onClick,
+  disabled,
 }) => (
-  <button onClick={onClick} className="feature-item">
+  <button
+    onClick={onClick}
+    className="feature-item"
+    disabled={disabled}
+    style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+  >
     <div className="flex items-center gap-3">
       {icon}
       <span className="text-[13px] leading-none text-foreground font-body">
@@ -139,6 +168,16 @@ const FeatureItem: React.FC<FeatureItemProps> = ({
 )
 
 const App: React.FC = () => {
+  const [isRestricted, setIsRestricted] = useState(false)
+
+  useEffect(() => {
+    // 检测当前页面是否为受限页面
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const url = tabs[0]?.url
+      setIsRestricted(isRestrictedUrl(url))
+    })
+  }, [])
+
   return (
     <div className="popup-container w-[363px] flex flex-col overflow-hidden">
       {/* Header */}
@@ -173,22 +212,37 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {/* 受限页面提示 */}
+      {isRestricted && (
+        <div className="px-3 py-2">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+            <AlertCircle size={14} className="text-amber-600" />
+            <span className="text-[11px] text-amber-700 font-body">
+              当前页面不支持截图（浏览器限制）
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ActionRow */}
       <div className="flex items-center justify-center gap-2 px-3 py-3">
         <ActionBtn
           icon={<Eye size={26} style={{ color: 'var(--color-accent-orange)' }} />}
           label="可视截图"
           onClick={handleVisibleCapture}
+          disabled={isRestricted}
         />
         <ActionBtn
           icon={<Scissors size={26} style={{ color: 'var(--color-accent-teal)' }} />}
           label="选择区域"
           onClick={handleRegionCapture}
+          disabled={isRestricted}
         />
         <ActionBtn
           icon={<FileText size={26} style={{ color: 'var(--color-accent-orange)' }} />}
           label="整页截图"
           onClick={handleFullPageCapture}
+          disabled={isRestricted}
         />
       </div>
 
@@ -199,6 +253,7 @@ const App: React.FC = () => {
           label="延时截取可视区域"
           suffix={`${DEFAULT_DELAY}s`}
           onClick={handleDelayedCapture}
+          disabled={isRestricted}
         />
         <FeatureItem
           icon={<Monitor size={18} style={{ color: 'var(--color-accent-teal)' }} />}

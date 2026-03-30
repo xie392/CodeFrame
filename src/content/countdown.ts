@@ -144,13 +144,15 @@ export function startDelayedCapture(delay: number): void {
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
       cleanup();
       onCancel();
     }
   };
 
   const cleanup = (): void => {
-    document.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keydown', onKeyDown, true);
   };
 
   // 保存清理函数引用
@@ -170,8 +172,8 @@ export function startDelayedCapture(delay: number): void {
     }
   }, 1000);
 
-  // 监听 Escape 取消
-  document.addEventListener('keydown', onKeyDown);
+  // 监听 Escape 取消（使用 capture 确保优先处理）
+  window.addEventListener('keydown', onKeyDown, true);
 }
 
 export function isCountdownActive(): boolean {

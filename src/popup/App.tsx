@@ -89,7 +89,7 @@ interface ActionBtnProps {
 }
 
 const ActionBtn: React.FC<ActionBtnProps> = ({ icon, label, onClick }) => (
-  <button onClick={onClick} className="action-btn">
+  <button onClick={onClick} className="action-btn flex-1">
     {icon}
     <span className="text-[12px] leading-none text-foreground font-body">
       {label}
@@ -173,11 +173,6 @@ const App: React.FC = () => {
           icon={<FileText size={26} style={{ color: 'var(--color-accent-orange)' }} />}
           label="整页截图"
           onClick={handleFullPageCapture}
-        />
-        <ActionBtn
-          icon={<Code size={26} style={{ color: 'var(--color-accent-teal)' }} />}
-          label="代码编辑器"
-          onClick={() => console.log('code editor')}
         />
       </div>
 

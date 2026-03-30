@@ -31,7 +31,8 @@
     "activeTab",
     "storage",
     "contextMenus",
-    "clipboardWrite"
+    "clipboardWrite",
+    "scripting"
   ],
   "optional_permissions": [
     "desktopCapture"
@@ -57,6 +58,12 @@
         "default": "Alt+Shift+R"
       },
       "description": "选择区域截图"
+    },
+    "capture-fullpage": {
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
+      "description": "整页截图"
     }
   }
 }

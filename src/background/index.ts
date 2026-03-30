@@ -2,6 +2,7 @@
 // Chrome Extension Manifest V3
 
 import { handleCaptureRequest, handleRegionCapture } from './handlers/capture';
+import { handleFullPageCapture } from './handlers/fullpage';
 import type { CaptureRequestPayload } from '@shared/messages';
 import type { CaptureResult, RegionRect } from '@shared/types';
 
@@ -82,6 +83,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           });
         return true;
       }
+      if (mode === 'fullpage') {
+        handleFullPageCapture()
+          .then(sendResponse)
+          .catch((err: unknown) => {
+            const errorMsg = err instanceof Error ? err.message : '整页截图失败';
+            sendResponse({ success: false, error: errorMsg } as CaptureResult);
+          });
+        return true;
+      }
       sendResponse({ success: false, error: `不支持的截图模式: ${mode}` } as CaptureResult);
       return false;
     }
@@ -104,6 +114,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
       return true;
     }
+
     case 'CANCEL_CAPTURE':
       sendResponse({ success: true });
       return false;
@@ -124,6 +135,11 @@ chrome.commands.onCommand.addListener((command) => {
   if (command === 'capture-region') {
     startRegionCapture().catch((err) => {
       console.error('[CodeFrame] Command region capture failed:', err);
+    });
+  }
+  if (command === 'capture-fullpage') {
+    handleFullPageCapture().catch((err: unknown) => {
+      console.error('[CodeFrame] Command fullpage capture failed:', err);
     });
   }
 });

@@ -11,3 +11,5 @@ export function onExecute(): void {
     return false;
   });
 }
+
+onExecute();

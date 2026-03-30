@@ -168,3 +168,83 @@
 - **那么** 遮罩必须跟随滚动保持全屏覆盖
 - **且** 已绘制的选区必须保持相对于视口的位置
 
+### 需求：整页截图捕获
+
+系统必须支持自动滚动页面并拼接生成完整的长截图，捕获整个网页内容（包括可视区域外的滚动内容）。
+
+#### 场景：Popup 按钮触发整页截图
+
+- **当** 用户在 Popup 中点击「整页截图」按钮
+- **那么** Popup 必须向 Background Service Worker 发送 `CAPTURE_REQUEST` 消息，payload 包含 `mode: 'fullpage'`
+- **且** Popup 必须在发送消息后立即关闭（`window.close()`）
+- **且** Background Service Worker 必须向当前活动标签页的 Content Script 发送 `CAPTURE_FULLPAGE_START` 消息
+
+#### 场景：快捷键触发整页截图
+
+- **当** 用户按下 `Alt+Shift+F` 快捷键
+- **那么** Background Service Worker 必须触发整页截图流程
+- **且** 流程必须与按钮触发一致
+
+#### 场景：进入整页截图模式
+
+- **当** Content Script 收到 `CAPTURE_FULLPAGE_START` 消息
+- **那么** 必须计算页面完整尺寸（`document.documentElement.scrollWidth/scrollHeight`）
+- **且** 必须计算分段截图策略（每段高度 = 可视区域高度 - 重叠区 100px）
+- **且** 必须在页面底部显示进度提示「整页截图中...（1/N）」
+
+#### 场景：分段截图流程
+
+- **当** 整页截图模式已启动
+- **那么** Content Script 必须按以下流程执行：
+  1. 滚动页面到指定位置（从顶部开始，每次向下滚动 `viewportHeight - 100px`）
+  2. 等待 150ms 确保页面渲染稳定
+  3. 向 Background 发送 `CAPTURE_FULLPAGE_SCROLL` 消息，包含当前滚动位置
+  4. Background 调用 `chrome.tabs.captureVisibleTab()` 捕获当前可视区域
+  5. 保存截图片段数据，返回成功确认给 Content Script
+  6. Content Script 继续下一段，直到覆盖整个页面高度
+
+#### 场景：图像拼接
+
+- **当** 所有分段截图已完成
+- **那么** Background 必须使用 `OffscreenCanvas` 拼接所有片段
+- **且** 画布尺寸必须为 `fullWidth x fullHeight`（按 DPR 缩放）
+  - `fullWidth = scrollWidth * dpr`
+  - `fullHeight = scrollHeight * dpr`
+- **且** 每个片段必须按以下坐标绘制：
+  - `dx = 0`
+  - `dy = scrollY * dpr`（当前片段的滚动位置）
+- **且** 最后一段不足 viewportHeight 时，必须裁剪片段底部以适应剩余高度
+
+#### 场景：固定元素处理
+
+- **当** 页面包含固定定位元素（如 header、footer）
+- **那么** 拼接时必须使用 100px 重叠区进行去重
+- **且** 相邻片段的重叠区域必须通过像素比对或透明度混合消除重复内容
+- **注意**：当前版本采用简单叠加策略，固定元素可能重复出现
+
+#### 场景：截图完成
+
+- **当** 图像拼接成功完成
+- **那么** 完整截图的 base64 imageData 必须写入 `chrome.storage.local`
+- **且** 写入数据必须包含 `success: true`、`imageData`（base64 string）、`timestamp`、`mode: 'fullpage'`、`originalSize`（原始页面尺寸）
+- **且** 必须自动打开 Editor 页面
+
+#### 场景：截图失败
+
+- **当** 整页截图过程中发生错误（如页面被关闭、权限被拒绝）
+- **那么** 必须将错误信息写入 `chrome.storage.local`
+- **且** 数据必须包含 `success: false`、`error`（错误描述 string）、`timestamp`
+
+#### 场景：取消整页截图
+
+- **当** 用户在截图过程中按下 `Escape` 键
+- **那么** Content Script 必须停止截图流程
+- **且** 必须向 Background 发送 `CANCEL_CAPTURE` 消息
+- **且** 必须隐藏进度提示
+
+#### 场景：受限页面处理
+
+- **当** 当前标签页为受限页面（chrome://、chrome-extension://、about:、devtools://）
+- **那么** 系统禁止尝试截图
+- **且** 必须在 `storage` 中写入错误结果 `error` 包含「受限页面不支持截图」提示
+

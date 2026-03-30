@@ -14,6 +14,47 @@ export interface CaptureOptions {
   format?: ExportFormat;
 }
 
+// 整页截图进度
+export interface FullPageCaptureProgress {
+  status: 'capturing' | 'stitching' | 'complete' | 'error';
+  totalSegments: number;
+  currentSegment: number;
+  error?: string;
+}
+
+// 整页截图片段
+export interface FullPageCaptureSlice {
+  imageData: string; // base64
+  y: number; // 在完整页面中的 Y 坐标
+  height: number; // 片段高度
+}
+
+// 整页截图结果
+export interface FullPageCaptureResult {
+  success: boolean;
+  slices?: FullPageCaptureSlice[];
+  fullWidth?: number;
+  fullHeight?: number;
+  viewportHeight?: number;
+  error?: string;
+}
+
+// 页面尺寸信息
+export interface PageDimensions {
+  scrollWidth: number;
+  scrollHeight: number;
+  clientWidth: number;
+  clientHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+// 截图片段（用于整页截图）
+export interface CaptureFragment {
+  imageData: string; // base64
+  scrollY: number;
+}
+
 // 截图结果
 export interface CaptureResult {
   success: boolean;

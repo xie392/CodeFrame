@@ -38,6 +38,13 @@ export const STORAGE_KEYS = {
   CAPTURE_RESULT: 'codeframe_capture_result',
 } as const;
 
+// 整页截图配置
+export const FULLPAGE_CAPTURE = {
+  OVERLAP_HEIGHT: 100, // 每段截图重叠区域高度（像素），用于处理固定定位元素
+  MAX_HEIGHT: 20000, // 最大支持截图高度（像素）
+  SCROLL_DELAY: 500, // 每次截图间隔（毫秒），Chrome 限制 captureVisibleTab 每秒最多 2-3 次
+} as const;
+
 // 区域截图配置
 export const REGION_CAPTURE = {
   MIN_SELECTION_SIZE: 10,    // 最小选区尺寸（CSS 像素）

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Capture Page</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: transparent; }
+  </style>
+</head>
+<body>
+<script>
+// CodeFrame - 隐藏标签页截图页面
+// 接收 streamId，通过 getUserMedia 捕获桌面媒体流，返回截图数据
+
+console.log('[CapturePage] Page loaded');
+
+chrome.runtime.onMessage.addListener(function(message, _sender, sendResponse) {
+  if (message.type !== 'CAPTURE_DESKTOP_STREAM') return false;
+
+  console.log('[CapturePage] Received capture request, streamId:', message.payload.streamId);
+
+  captureStream(message.payload.streamId)
+    .then(function(result) {
+      console.log('[CapturePage] Capture completed, sending result');
+      sendResponse(result);
+    })
+    .catch(function(err) {
+      var errorMsg = err instanceof Error ? err.message : '捕获流失败';
+      console.error('[CapturePage] Capture error:', errorMsg);
+      sendResponse({ success: false, error: errorMsg });
+    });
+
+  return true; // 异步响应
+});
+
+async function captureStream(streamId) {
+  console.log('[CapturePage] Starting getUserMedia with streamId:', streamId);
+
+  var stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      mandatory: {
+        chromeMediaSource: 'desktop',
+        chromeMediaSourceId: String(streamId),
+      },
+    },
+  });
+  console.log('[CapturePage] Stream obtained, tracks:', stream.getTracks().length);
+
+  var video = document.createElement('video');
+  video.srcObject = stream;
+  video.muted = true;
+  video.autoplay = true;
+  video.playsInline = true;
+
+  // 等待视频元数据加载
+  await new Promise(function(resolve, reject) {
+    video.onloadedmetadata = function() {
+      console.log('[CapturePage] Video metadata:', video.videoWidth, 'x', video.videoHeight);
+      resolve();
+    };
+    video.onerror = function() {
+      reject(new Error('视频加载失败: ' + (video.error ? video.error.message : 'unknown')));
+    };
+  });
+
+  // 等待至少一帧（使用 setTimeout 替代 requestAnimationFrame，因为标签页可能不可见）
+  await new Promise(function(resolve, reject) {
+    video.play().then(function() {
+      // 等待足够时间让视频渲染一帧
+      setTimeout(resolve, 500);
+    }).catch(function() {
+      // play() 失败时直接等待
+      setTimeout(resolve, 1000);
+    });
+  });
+
+  // 创建 canvas 并绘制视频帧
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    stream.getTracks().forEach(function(t) { t.stop(); });
+    video.srcObject = null;
+    video.remove();
+    throw new Error('无法获取 Canvas 上下文');
+  }
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  console.log('[CapturePage] Canvas drawn, exporting...');
+
+  // 停止所有媒体流
+  stream.getTracks().forEach(function(t) { t.stop(); });
+  video.srcObject = null;
+
+  var dataUrl = canvas.toDataURL('image/png');
+  console.log('[CapturePage] Export completed, length:', dataUrl.length);
+
+  video.remove();
+  canvas.remove();
+
+  return { success: true, imageData: dataUrl };
+}
+</script>
+</body>
+</html>

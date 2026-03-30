@@ -3,6 +3,7 @@
 
 import { handleCaptureRequest, handleRegionCapture } from './handlers/capture';
 import { handleFullPageCapture } from './handlers/fullpage';
+import { handleDesktopCapture } from './handlers/desktop-capture';
 import type { CaptureRequestPayload, StartDelayedCapturePayload } from '@shared/messages';
 import type { CaptureResult, RegionRect } from '@shared/types';
 
@@ -134,6 +135,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           });
         return true;
       }
+      if (mode === 'desktop') {
+        handleDesktopCapture()
+          .then(sendResponse)
+          .catch((err: unknown) => {
+            const errorMsg = err instanceof Error ? err.message : '桌面截图失败';
+            sendResponse({ success: false, error: errorMsg } as CaptureResult);
+          });
+        return true;
+      }
       sendResponse({ success: false, error: `不支持的截图模式: ${mode}` } as CaptureResult);
       return false;
     }
@@ -179,6 +189,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return false;
 
     default:
+      console.log('[CodeFrame] Unknown message type:', message.type);
       break;
   }
 
@@ -200,6 +211,11 @@ chrome.commands.onCommand.addListener((command) => {
   if (command === 'capture-fullpage') {
     handleFullPageCapture().catch((err: unknown) => {
       console.error('[CodeFrame] Command fullpage capture failed:', err);
+    });
+  }
+  if (command === 'capture-desktop') {
+    handleDesktopCapture().catch((err: unknown) => {
+      console.error('[CodeFrame] Command desktop capture failed:', err);
     });
   }
 });

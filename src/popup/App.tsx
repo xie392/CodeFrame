@@ -108,6 +108,24 @@ function handleDelayedCapture(): void {
   setTimeout(() => window.close(), 100);
 }
 
+function handleDesktopCapture(): void {
+  const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
+    mode: 'desktop',
+  });
+  chrome.runtime.sendMessage(message, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[CodeFrame] 消息发送失败:', chrome.runtime.lastError.message);
+      return;
+    }
+    if (response && response.success) {
+      window.close();
+    } else {
+      const errorMsg = response?.error || '桌面截图失败';
+      alert('截图失败: ' + errorMsg);
+    }
+  });
+}
+
 interface ActionBtnProps {
   icon: React.ReactNode
   label: string
@@ -257,8 +275,9 @@ const App: React.FC = () => {
         />
         <FeatureItem
           icon={<Monitor size={18} style={{ color: 'var(--color-accent-teal)' }} />}
-          label="全屏截图"
-          onClick={() => console.log('desktop capture')}
+          label="桌面截图"
+          onClick={handleDesktopCapture}
+          // 桌面截图功能暂时禁用，见桌面截图实现总结文档
         />
         <FeatureItem
           icon={<ImagePlus size={18} style={{ color: 'var(--color-accent-orange)' }} />}

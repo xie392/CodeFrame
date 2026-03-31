@@ -60,3 +60,58 @@
 
 1. **`reasons: ['USER_MEDIA']` 无效**：Chrome Offscreen API 的有效 reasons 为 `CLIPBOARD`、`AUDIO_PLAYBACK`、`DISPLAY_MEDIA`、`DOM_SCRAPING`、`TESTING` 等，不含 `USER_MEDIA`
 2. **构建系统不处理 offscreen.html 的脚本**：`@crxjs/vite-plugin` 不编译 `web_accessible_resources` 中 HTML 文件引用的 TypeScript 模块，`<script type="module" src="./offscreen.ts">` 导致浏览器加载 TypeScript 原文而无法执行
+
+---
+
+## 问题修复（第 8 轮）
+
+### Bug：点击桌面截图按钮报错"用户取消了截图选择"
+
+- **根因**：`chrome.desktopCapture.chooseDesktopMedia()` 在 Manifest V3 Service Worker 中调用时缺少 `targetTab` 参数。没有 `targetTab`，媒体选择器对话框无法正确关联到浏览器窗口，导致回调立即以空字符串触发，被代码误判为"用户取消"
+- **修复方案**：
+  - `handleDesktopCapture()` 新增可选参数 `targetTab?: chrome.tabs.Tab`
+  - `background/index.ts` 在 Popup 消息处理和快捷键处理中，先通过 `chrome.tabs.query()` 获取当前活动标签页，再传入 `handleDesktopCapture()`
+  - `chooseDesktopMedia()` 调用时传入 `targetTab` 确保选择器对话框出现在正确的窗口中
+
+---
+
+## 问题修复（第 9 轮）
+
+### Bug：选择媒体源后报错"Could not establish connection. Receiving end does not exist"
+
+- **根因**：`capture-page.html` 使用内联 `<script>` 标签，但 Manifest V3 的 CSP 策略 `script-src 'self'` 禁止内联脚本执行。JavaScript 从未运行，消息监听器从未注册，`chrome.tabs.sendMessage()` 找不到接收端
+- **修复方案**：
+  - 将内联 JS 提取为独立文件 `src/background/capture-page.js`
+  - `capture-page.html` 改用 `<script src="capture-page.js"></script>` 引用外部脚本
+  - `manifest.json` 的 `web_accessible_resources` 添加 `src/background/capture-page.js`
+- **后续发现**：外部 JS 文件方案在 Vite dev 模式下仍不可靠（`@crxjs/vite-plugin` 不处理 `web_accessible_resources` 中 HTML 的脚本引用），改用 `executeScript` 方案（见第 10 轮）
+
+---
+
+## 问题修复（第 10 轮）
+
+### Bug："Could not establish connection" 持续报错 + 选择器弹窗出现两次
+
+- **根因 1（通信失败）**：`tabs.sendMessage` → `capture-page.js` 的消息传递链路不可靠。Vite dev 模式下 `@crxjs/vite-plugin` 不保证 `web_accessible_resources` 中 HTML 引用的脚本能正确加载
+- **根因 2（弹窗两次）**：Service Worker 热重载或 `chooseDesktopMedia` 回调时序导致选择器被触发两次
+- **修复方案**：
+  - 添加 `isCapturing` 防重复保护
+  - 改用 `chrome.scripting.executeScript({ func, args })` 注入截图逻辑
+
+- **后续发现**：`executeScript` 无法注入 `chrome-extension://` 页面（Chrome API 硬性限制），见第 11 轮
+
+---
+
+## 问题修复（第 11 轮）
+
+### Bug：executeScript 无法注入 chrome-extension:// 页面
+
+- **根因**：`chrome.scripting.executeScript` 只能注入到普通网页（http/https），不能注入到 `chrome-extension://` 扩展页面。报错 "Cannot access contents of url ... Extension manifest must request permission to access this host"
+- **最终方案：完全移除隐藏标签页，直接在目标标签页执行截图**
+  - 删除 `capture-page.html` 和 `capture-page.js`
+  - `manifest.json` 的 `web_accessible_resources` 移除 `capture-page.html`
+  - 截图逻辑 `captureDesktopStream(streamId)` 定义在 `desktop-capture.ts` 中
+  - 通过 `chrome.scripting.executeScript({ target: { tabId: targetTab.id }, func, args })` 直接注入到用户当前浏览的标签页执行
+  - `getUserMedia()` + `chromeMediaSource: 'desktop'` 在内容脚本上下文中可正常工作（streamId 已由 `chooseDesktopMedia()` 授权）
+  - 保留 `isCapturing` 防重复保护
+- **优势**：架构最简洁，无隐藏标签页、无消息传递、无额外 HTML/JS 文件

@@ -1,53 +1,93 @@
 // CodeFrame - 桌面截图处理器
-// 使用隐藏标签页进行媒体流捕获（Offscreen Document 不支持 getUserMedia + chromeMediaSource）
+// 直接在目标标签页通过 executeScript 注入截图函数，无需隐藏标签页和消息传递
 
 import { STORAGE_KEYS } from '@shared/constants';
 import type { CaptureResult } from '@shared/types';
 
-const CAPTURE_PAGE_PATH = 'src/background/capture-page.html';
-const TAB_READY_TIMEOUT_MS = 10000;
+let isCapturing = false;
 
 function openEditor(): void {
   chrome.tabs.create({ url: chrome.runtime.getURL('src/editor/index.html') });
 }
 
-// 等待标签页加载完成
-function waitForTabLoad(tabId: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error('标签页加载超时'));
-    }, TAB_READY_TIMEOUT_MS);
+// 注入到目标标签页的截图函数（自包含，不能引用外部变量）
+function captureDesktopStream(streamId: string): Promise<{
+  success: boolean;
+  imageData?: string;
+  error?: string;
+}> {
+  return (async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: String(streamId),
+        },
+      } as any,
+    });
 
-    function listener(updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) {
-      if (updatedTabId === tabId && changeInfo.status === 'complete') {
-        clearTimeout(timeout);
-        chrome.tabs.onUpdated.removeListener(listener);
-        // 额外等待确保脚本执行完成
-        setTimeout(resolve, 300);
-      }
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error('视频加载失败'));
+    });
+
+    await new Promise<void>((resolve) => {
+      video.play()
+        .then(() => setTimeout(resolve, 500))
+        .catch(() => setTimeout(resolve, 1000));
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      stream.getTracks().forEach((t) => t.stop());
+      video.srcObject = null;
+      video.remove();
+      throw new Error('无法获取 Canvas 上下文');
     }
 
-    chrome.tabs.onUpdated.addListener(listener);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    stream.getTracks().forEach((t) => t.stop());
+    video.srcObject = null;
 
-    // 检查标签页是否已经加载完成
-    chrome.tabs.get(tabId).then((tab) => {
-      if (tab.status === 'complete') {
-        clearTimeout(timeout);
-        chrome.tabs.onUpdated.removeListener(listener);
-        setTimeout(resolve, 300);
-      }
-    });
-  });
+    const dataUrl = canvas.toDataURL('image/png');
+    video.remove();
+    canvas.remove();
+
+    return { success: true, imageData: dataUrl };
+  })().catch((err) => ({
+    success: false,
+    error: err instanceof Error ? err.message : '捕获流失败',
+  }));
 }
 
 // 桌面截图主函数
-export async function handleDesktopCapture(): Promise<CaptureResult> {
-  let captureTabId: number | null = null;
+export async function handleDesktopCapture(
+  targetTab?: chrome.tabs.Tab,
+): Promise<CaptureResult> {
+  if (isCapturing) {
+    return { success: false, error: '截图正在进行中' };
+  }
+  isCapturing = true;
 
   try {
     if (!chrome.desktopCapture) {
       return { success: false, error: 'desktopCapture 权限未授予' };
+    }
+
+    const tabId = targetTab?.id;
+    if (!tabId) {
+      return { success: false, error: '无法获取目标标签页' };
     }
 
     // 1. 显示媒体源选择器（30 秒超时）
@@ -56,13 +96,17 @@ export async function handleDesktopCapture(): Promise<CaptureResult> {
         reject(new Error('选择超时，请重试'));
       }, 30000);
 
-      chrome.desktopCapture.chooseDesktopMedia(
-        ['screen', 'window', 'tab'],
-        (id: string) => {
-          clearTimeout(timeout);
-          resolve(id ?? '');
-        },
-      );
+      const sources: string[] = ['screen', 'window', 'tab'];
+      const callback = (id: string) => {
+        clearTimeout(timeout);
+        resolve(id ?? '');
+      };
+
+      if (targetTab) {
+        chrome.desktopCapture.chooseDesktopMedia(sources, targetTab, callback);
+      } else {
+        chrome.desktopCapture.chooseDesktopMedia(sources, callback);
+      }
     });
 
     // 用户取消选择（空字符串或未定义）
@@ -72,34 +116,15 @@ export async function handleDesktopCapture(): Promise<CaptureResult> {
 
     console.log('[DesktopCapture] StreamId obtained:', streamId.substring(0, 8) + '...');
 
-    // 2. 创建隐藏标签页用于截图
-    const tab = await chrome.tabs.create({
-      url: chrome.runtime.getURL(CAPTURE_PAGE_PATH),
-      active: false,
-    });
-    captureTabId = tab.id!;
-    console.log('[DesktopCapture] Capture tab created:', captureTabId);
-
-    // 3. 等待标签页加载完成
-    await waitForTabLoad(captureTabId);
-
-    // 4. 向标签页发送截图请求
-    console.log('[DesktopCapture] Sending capture request to tab');
-    const result = await chrome.tabs.sendMessage(captureTabId, {
-      type: 'CAPTURE_DESKTOP_STREAM',
-      payload: { streamId },
+    // 2. 直接在目标标签页注入并执行截图逻辑
+    console.log('[DesktopCapture] Injecting capture script into tab:', tabId);
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: captureDesktopStream,
+      args: [streamId],
     });
 
-    // 5. 关闭截图标签页
-    try {
-      if (captureTabId) {
-        await chrome.tabs.remove(captureTabId);
-        captureTabId = null;
-      }
-    } catch {
-      // 标签页可能已关闭
-    }
-
+    const result = results?.[0]?.result;
     console.log('[DesktopCapture] Capture result:', result?.success ? 'success' : 'failed');
 
     if (result?.success && result.imageData) {
@@ -119,16 +144,8 @@ export async function handleDesktopCapture(): Promise<CaptureResult> {
   } catch (error) {
     const message = error instanceof Error ? error.message : '桌面截图失败';
     console.error('[DesktopCapture] Error:', message);
-
-    // 确保关闭截图标签页
-    if (captureTabId) {
-      try {
-        await chrome.tabs.remove(captureTabId);
-      } catch {
-        // 忽略
-      }
-    }
-
     return { success: false, error: message };
+  } finally {
+    isCapturing = false;
   }
 }

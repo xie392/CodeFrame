@@ -136,12 +136,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return true;
       }
       if (mode === 'desktop') {
-        handleDesktopCapture()
-          .then(sendResponse)
-          .catch((err: unknown) => {
-            const errorMsg = err instanceof Error ? err.message : '桌面截图失败';
-            sendResponse({ success: false, error: errorMsg } as CaptureResult);
-          });
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const activeTab = tabs[0];
+          handleDesktopCapture(activeTab)
+            .then(sendResponse)
+            .catch((err: unknown) => {
+              const errorMsg = err instanceof Error ? err.message : '桌面截图失败';
+              sendResponse({ success: false, error: errorMsg } as CaptureResult);
+            });
+        });
         return true;
       }
       sendResponse({ success: false, error: `不支持的截图模式: ${mode}` } as CaptureResult);
@@ -214,8 +217,10 @@ chrome.commands.onCommand.addListener((command) => {
     });
   }
   if (command === 'capture-desktop') {
-    handleDesktopCapture().catch((err: unknown) => {
-      console.error('[CodeFrame] Command desktop capture failed:', err);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      handleDesktopCapture(tabs[0]).catch((err: unknown) => {
+        console.error('[CodeFrame] Command desktop capture failed:', err);
+      });
     });
   }
 });

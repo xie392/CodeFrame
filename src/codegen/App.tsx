@@ -511,13 +511,13 @@ const App: React.FC = () => {
 
   // ---- 自适应高度 ----
   useEffect(() => {
-    if (isEditing && !manualResized.current) {
+    if (!manualResized.current) {
       setWinSize((p) => ({
         ...p,
         height: calcAutoHeight(code, showHeader, fontSize),
       }));
     }
-  }, [code, isEditing, showHeader, fontSize]);
+  }, [code, showHeader, fontSize]);
 
   // ---- 背景样式 ----
   const getBackgroundCss = (): string => {

@@ -36,53 +36,41 @@ LeftPanel 必须为宽 360px 的毛玻璃效果面板，包含代码输入区域
 
 CodeWindow 编辑模式必须使用 `@uiw/react-codemirror`（CodeMirror 6）提供代码编辑体验，编辑器必须具有语法高亮、行号、括号匹配和自动缩进功能。
 
-#### 场景：进入编辑模式
-
-- **当** 用户点击代码窗口的预览区域
-- **那么** 预览区域必须切换为 CodeMirror 编辑器模式
-- **且** 编辑器必须使用 JetBrains Mono 字体（字号 13px，行高 20px）
-- **且** 编辑器必须显示行号
-- **且** 编辑器必须支持括号匹配和自动缩进
-- **且** 编辑器背景必须透明，由 CodeWindow 容器提供背景色
-
 #### 场景：编辑器主题同步
 
 - **当** 用户在编辑模式下且选中了某个主题
-- **那么** 编辑器必须使用对应的 CodeMirror 主题：
-  - VS Code Dark+ → `vscodeDark`
-  - One Dark → `vscodeDark`（近似暗色主题）
-  - Solarized Dark → `vscodeDark`（近似暗色主题）
-  - Light → `vscodeLight`
+- **那么** 编辑器必须使用对应的 CodeMirror 原生主题：
+  - VS Code Dark+ → `@uiw/codemirror-theme-vscode` 的 `vscodeDark`
+  - One Dark → `@uiw/codemirror-theme-one-dark` 的 `oneDark`
+  - Dracula → `@uiw/codemirror-theme-dracula` 的 `draculaInit` 或对应导出
+  - Nord → `@uiw/codemirror-theme-nord` 的对应导出
+  - 其他主题 → 对应的 `@uiw/codemirror-theme-*` 包导出
 - **且** 切换主题时编辑器必须立即更新
-
-#### 场景：编辑器交互
-
-- **当** 用户在编辑器中输入代码
-- **当** 用户编辑完毕（点击编辑区域外或按 Escape）
-- **那么** 编辑模式必须退出
-- **且** 预览区域必须显示 Shiki 高亮后的最新代码
-- **且** 窗口高度必须根据最新代码行数自适应调整
+- **且** gutter 背景色必须与编辑器内容区背景色保持一致，不得出现色差
 
 ### 需求：主题选择区域
 
-ThemeSection 必须提供代码展示区域主题选择功能，用户切换主题后右侧整个代码展示区域（窗口样式 + 语法高亮配色）必须实时统一更新。
+ThemeSection 必须提供代码展示区域主题选择功能，用户通过下拉选择器选择主题后，右侧代码窗口的编辑器主题（ gutter、光标、选中态、滚动条等 UI 元素）和代码窗口容器样式（背景色、标题栏背景色）必须实时统一更新。
 
-#### 场景：主题色块显示
+#### 场景：主题选择器显示
 
 - **当** 用户查看主题选择区域
 - **那么** 必须显示 `theme` 标签文字（颜色 #3D3D3D，字号 11px）
-- **且** 必须显示 4 个主题色块（40×40px，圆角 8px）
-- **且** 4 个色块颜色必须分别为：#1E1E1E（VS Code Dark+）、#282C34（One Dark）、#002B36（Solarized Dark）、#FAFAFA（Light）
-- **且** 当前选中项必须有 2px #FF6B35 橙色边框指示
+- **且** 必须显示一个 Select 下拉选择器
+- **且** 下拉选择器必须显示当前选中主题的名称
+- **且** 下拉选项列表中每个选项必须包含主题名称
+- **且** 下拉选择器宽度必须为 fill_container
 
 #### 场景：主题切换生效
 
-- **当** 用户点击某个主题色块
-- **那么** 该色块必须显示选中状态（2px #FF6B35 橙色边框）
-- **且** 右侧 PreviewArea 的代码窗口整体视觉风格必须切换为对应主题（VS Code Dark+ → `dark-plus`、One Dark → `one-dark-pro`、Solarized Dark → `solarized-dark`、Light → `github-light`）
+- **当** 用户通过下拉选择器选择某个主题
+- **那么** 下拉选择器必须显示新选中主题的名称
+- **且** 编辑器必须使用对应的 CodeMirror 原生主题（而非共用 vscodeDark/vscodeLight）
 - **且** 代码窗口背景色必须从主题配置中读取（如 VS Code Dark+ 为 #1E1E1E、Light 为 #FFFFFF）
 - **且** 代码窗口标题栏背景色必须从主题配置中读取（如 VS Code Dark+ 为 #252526、Light 为 #F0F0F0）
-- **且** Shiki 语法高亮配色必须使用对应的 Shiki 主题渲染
+- **且** 编辑器 gutter（行号区域）背景色必须与编辑器背景色一致
+- **且** 编辑器 gutter 前景色必须与主题配色方案一致
+- **且** 编辑器光标、选中态、滚动条等 UI 元素必须使用主题对应的原生样式
 
 ### 需求：背景色选择区域
 

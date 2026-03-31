@@ -17,10 +17,6 @@ import {
 import { useDrag } from '@use-gesture/react';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-import {
-  vscodeDark,
-  vscodeLight,
-} from '@uiw/codemirror-theme-vscode';
 import { EditorView } from '@codemirror/view';
 import {
   Tooltip,
@@ -35,7 +31,6 @@ import {
 } from '@shared/components/ui/popover';
 import {
   THEMES,
-  createThemeExtension,
   type ThemeConfig,
 } from './config/themes';
 import {
@@ -92,10 +87,6 @@ function isUniformPadding(p: Padding): boolean {
 
 function hasAnyPadding(p: Padding): boolean {
   return p.top > 0 || p.right > 0 || p.bottom > 0 || p.left > 0;
-}
-
-function getEditorBaseTheme(isDark: boolean) {
-  return isDark ? vscodeDark : vscodeLight;
 }
 
 function calcAutoHeight(
@@ -221,7 +212,7 @@ const SliderControl: React.FC<{
 const App: React.FC = () => {
   // ---- 主题 & 背景 & 样式 ----
   const [code, setCode] = useState(DEFAULT_CODE);
-  const [selectedTheme, setSelectedTheme] = useState('vs-dark');
+  const [selectedTheme, setSelectedTheme] = useState('vscode-dark');
   const [selectedBg, setSelectedBg] = useState('indigo');
   const [customBgColor, setCustomBgColor] = useState('#6366F1');
   const [showLineNumbers, setShowLineNumbers] = useState(true);
@@ -402,29 +393,18 @@ const App: React.FC = () => {
   useEffect(() => { exitEditRef.current = exitEdit; }, [exitEdit]);
 
   // ---- 编辑器配置 ----
-  const editorBaseTheme = useMemo(
+  // 字体和行高覆盖（与主题无关的排版配置）
+  const editorStyleOverrides = useMemo(
     () =>
       EditorView.theme({
         '&': {
           fontSize: `${fontSize}px`,
           fontFamily: selectedFontConfig.family,
-          backgroundColor: currentTheme.windowBg,
-          color: currentTheme.textColor,
-        },
-        '.cm-scroller': {
-          backgroundColor: currentTheme.windowBg,
-          color: currentTheme.textColor,
         },
         '.cm-content': {
           padding: '20px 20px 20px 8px',
           lineHeight: `${fontSize + 7}px`,
-          color: currentTheme.textColor,
           fontFamily: selectedFontConfig.family,
-        },
-        '.cm-gutters': {
-          backgroundColor: 'transparent',
-          border: 'none',
-          color: currentTheme.textColor,
         },
         '.cm-lineNumbers': {
           width: '32px',
@@ -442,40 +422,18 @@ const App: React.FC = () => {
         '.cm-editor [contenteditable=false] .cm-content': {
           caretColor: 'transparent',
         },
-        '.cm-cursor': {
-          borderColor: currentTheme.textColor,
-        },
-        '.cm-selectionBackground': {
-          backgroundColor: currentTheme.isDark
-            ? 'rgba(255,255,255,0.1)'
-            : 'rgba(0,0,0,0.1)',
-        },
-        '&.cm-focused .cm-selectionBackground': {
-          backgroundColor: currentTheme.isDark
-            ? 'rgba(255,255,255,0.15)'
-            : 'rgba(0,0,0,0.15)',
-        },
       }),
-    [fontSize, selectedFontConfig.family, currentTheme],
+    [fontSize, selectedFontConfig.family],
   );
-
-  // 语法高亮扩展（随主题变化）
-  const syntaxExtension = useMemo(() => {
-    if (!currentTheme.syntax) return [];
-    return [createThemeExtension(currentTheme.syntax)];
-  }, [currentTheme]);
 
   const cmExtensions = useMemo(
     () => [
       javascript(),
-      editorBaseTheme,
-      ...syntaxExtension,
+      editorStyleOverrides,
       EditorView.contentAttributes.of({ tabindex: '0' }),
     ],
-    [editorBaseTheme, syntaxExtension],
+    [editorStyleOverrides],
   );
-
-  const editorTheme = getEditorBaseTheme(currentTheme.isDark);
 
   // ---- 自适应高度 ----
   useEffect(() => {
@@ -545,29 +503,22 @@ const App: React.FC = () => {
         {/* Theme Selector */}
         <div className="flex flex-col gap-2 shrink-0">
           <SectionLabel>theme</SectionLabel>
-          <TooltipProvider delayDuration={300}>
-            <div className="w-full flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              {THEMES.map((theme) => (
-                <Tooltip key={theme.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="w-8 h-8 shrink-0"
-                      style={{
-                        backgroundColor: theme.color,
-                        borderRadius: '6px',
-                        border:
-                          selectedTheme === theme.id
-                            ? '2px solid #FF6B35'
-                            : '2px solid rgba(0,0,0,0.08)',
-                      }}
-                      onClick={() => setSelectedTheme(theme.id)}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>{theme.label}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </TooltipProvider>
+          <select
+            value={selectedTheme}
+            onChange={(e) => setSelectedTheme(e.target.value)}
+            className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
+            style={{
+              backgroundColor: '#FAFAFA',
+              borderColor: 'rgba(0,0,0,0.1)',
+              color: '#333',
+            }}
+          >
+            {THEMES.map((theme) => (
+              <option key={theme.id} value={theme.id}>
+                {theme.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Background Selector */}
@@ -1077,7 +1028,7 @@ const App: React.FC = () => {
                   if (codeWindowRef.current?.contains(document.activeElement)) return;
                   exitEdit();
                 }}
-                theme={editorTheme}
+                theme={currentTheme.editorTheme}
                 extensions={cmExtensions}
                 editable={isEditing}
                 readOnly={!isEditing}

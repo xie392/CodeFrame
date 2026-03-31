@@ -72,6 +72,10 @@ const DEFAULT_PADDING = {
 
 const MAX_PADDING_VALUE = 120;
 
+const DEFAULT_OUTER_BORDER_RADIUS = 16;
+const DEFAULT_INNER_BORDER_RADIUS = 12;
+const MAX_BORDER_RADIUS = 30;
+
 // 字体列表
 const FONT_OPTIONS = [
   { id: 'jetbrains', label: 'JetBrains Mono', family: "'JetBrains Mono', monospace" },
@@ -224,7 +228,10 @@ const App: React.FC = () => {
   const [padding, setPadding] = useState<Padding>({ ...DEFAULT_PADDING });
 
   // 窗口视觉
-  const [borderRadius, setBorderRadius] = useState(12);
+  const [borderRadiusState, setBorderRadiusState] = useState({
+    outer: DEFAULT_OUTER_BORDER_RADIUS,
+    inner: DEFAULT_INNER_BORDER_RADIUS,
+  });
   const [shadowEnabled, setShadowEnabled] = useState(true);
   const [shadowIntensity, setShadowIntensity] = useState(50);
   const [showHeader, setShowHeader] = useState(true);
@@ -244,6 +251,10 @@ const App: React.FC = () => {
     THEMES.find((t) => t.id === selectedTheme) ?? THEMES[0];
   const selectedBgConfig: BackdropConfig | undefined =
     BACKGROUNDS.find((b) => b.id === selectedBg);
+  const {
+    outer: outerBorderRadius,
+    inner: innerBorderRadius,
+  } = borderRadiusState;
   const selectedFontConfig = FONT_OPTIONS.find(
     (f) => f.id === selectedFont,
   ) ?? FONT_OPTIONS[0];
@@ -777,12 +788,115 @@ const App: React.FC = () => {
               onChange={setShadowIntensity}
             />
           )}
+        </div>
+
+        {/* Border Radius Controls */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <div className="flex items-center justify-between">
+            <SectionLabel>border_radius</SectionLabel>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-black/5 transition-colors"
+                  style={{
+                    color:
+                      outerBorderRadius === innerBorderRadius
+                        ? '#999'
+                        : '#FF6B35',
+                  }}
+                >
+                  <Settings2 size={12} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="end"
+                sideOffset={8}
+                className="w-auto !p-3 !rounded-lg"
+                style={{
+                  backgroundColor: '#fff',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+              >
+                <div className="flex flex-col gap-3 w-[180px]">
+                  <div className="flex flex-col gap-1">
+                    <span
+                      className="text-[9px] leading-none"
+                      style={{ color: '#999' }}
+                    >
+                      outer
+                    </span>
+                    <SliderControl
+                      min={0}
+                      max={MAX_BORDER_RADIUS}
+                      value={outerBorderRadius}
+                      displayValue={`${outerBorderRadius}px`}
+                      onChange={(v) =>
+                        setBorderRadiusState((s) => ({ ...s, outer: v }))
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span
+                      className="text-[9px] leading-none"
+                      style={{ color: '#999' }}
+                    >
+                      inner
+                    </span>
+                    <SliderControl
+                      min={0}
+                      max={MAX_BORDER_RADIUS}
+                      value={innerBorderRadius}
+                      displayValue={`${innerBorderRadius}px`}
+                      onChange={(v) =>
+                        setBorderRadiusState((s) => ({ ...s, inner: v }))
+                      }
+                    />
+                  </div>
+                  {outerBorderRadius !== innerBorderRadius && (
+                    <button
+                      className="w-full pt-2 text-[10px] text-center hover:bg-black/5 rounded transition-colors"
+                      style={{
+                        color: '#999',
+                        borderTop: '1px solid rgba(0,0,0,0.06)',
+                      }}
+                      onClick={() => {
+                        const avg = Math.round(
+                          (outerBorderRadius + innerBorderRadius) / 2,
+                        );
+                        setBorderRadiusState({ outer: avg, inner: avg });
+                      }}
+                    >
+                      统一为{' '}
+                      {Math.round(
+                        (outerBorderRadius + innerBorderRadius) / 2,
+                      )}
+                      px
+                    </button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
           <SliderControl
             min={0}
-            max={20}
-            value={borderRadius}
-            displayValue={`${borderRadius}px`}
-            onChange={setBorderRadius}
+            max={MAX_BORDER_RADIUS}
+            value={
+              outerBorderRadius === innerBorderRadius
+                ? innerBorderRadius
+                : Math.round(
+                    (outerBorderRadius + innerBorderRadius) / 2,
+                  )
+            }
+            displayValue={
+              outerBorderRadius === innerBorderRadius
+                ? `${innerBorderRadius}px`
+                : '···'
+            }
+            onChange={(v) =>
+              setBorderRadiusState({ outer: v, inner: v })
+            }
           />
         </div>
 
@@ -918,7 +1032,7 @@ const App: React.FC = () => {
                 width: winSize.width + padding.left + padding.right,
                 height: winSize.height + padding.top + padding.bottom,
                 background: getBackgroundCss(),
-                borderRadius: `${borderRadius + 4}px`,
+                borderRadius: `${outerBorderRadius}px`,
               }}
             />
           )}
@@ -939,7 +1053,7 @@ const App: React.FC = () => {
               width: winSize.width,
               height: winSize.height,
               backgroundColor: currentTheme.windowBg,
-              borderRadius: `${borderRadius}px`,
+              borderRadius: `${innerBorderRadius}px`,
               boxShadow: windowShadow,
               userSelect: isEditing ? 'auto' : 'none',
             }}
@@ -951,7 +1065,7 @@ const App: React.FC = () => {
                 style={{
                   backgroundColor: currentTheme.headerBg,
                   cursor: 'grab',
-                  borderRadius: `${borderRadius}px ${borderRadius}px 0 0`,
+                  borderRadius: `${innerBorderRadius}px ${innerBorderRadius}px 0 0`,
                 }}
                 {...bindWinDrag()}
               >
@@ -984,8 +1098,8 @@ const App: React.FC = () => {
               className="w-full flex-1 overflow-hidden relative"
               style={{
                 borderRadius: showHeader
-                  ? '0 0 ' + `${borderRadius}px ${borderRadius}px`
-                  : `${borderRadius}px`,
+                  ? '0 0 ' + `${innerBorderRadius}px ${innerBorderRadius}px`
+                  : `${innerBorderRadius}px`,
               }}
             >
               <CodeMirror
@@ -1051,7 +1165,7 @@ const App: React.FC = () => {
               style={{
                 borderRight: '2px solid rgba(128,128,128,0.3)',
                 borderBottom: '2px solid rgba(128,128,128,0.3)',
-                borderRadius: `0 0 ${borderRadius}px 0`,
+                borderRadius: `0 0 ${innerBorderRadius}px 0`,
               }}
               {...bindResize()}
             />

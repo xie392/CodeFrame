@@ -164,7 +164,10 @@ export interface BeautifyOptions {
     bottom: number;
     left: number;
   };
-  borderRadius: number;
+  borderRadius: {
+    outer: number;
+    inner: number;
+  };
   shadowEnabled: boolean;
   highlightLines: number[];
 }

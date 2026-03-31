@@ -1094,29 +1094,6 @@ const App: React.FC = () => {
                   cursor: isEditing ? 'text' : 'default',
                 }}
               />
-
-              {/* Watermark Overlay */}
-              {watermarkEnabled && watermarkText && !isEditing && (
-                <div
-                  className="absolute inset-0 overflow-hidden pointer-events-none select-none"
-                  style={{ opacity: watermarkOpacity / 100 }}
-                >
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='${
-                        currentTheme.isDark
-                          ? 'rgba(255,255,255,0.12)'
-                          : 'rgba(0,0,0,0.08)'
-                      }' font-size='14' font-family='${selectedFontConfig.family}'%3E${encodeURIComponent(watermarkText)}%3C/text%3E%3C/svg%3E")`,
-                      backgroundRepeat: 'repeat',
-                      backgroundSize: '200px 120px',
-                      transform: 'rotate(-15deg)',
-                      transformOrigin: 'center center',
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             {/* Resize Handle */}
@@ -1129,6 +1106,24 @@ const App: React.FC = () => {
               }}
               {...bindResize()}
             />
+
+            {/* Watermark */}
+            {watermarkEnabled && watermarkText && (
+              <div
+                className="absolute bottom-3 right-4 pointer-events-none select-none"
+                style={{
+                  opacity: watermarkOpacity / 100,
+                  color: currentTheme.isDark
+                    ? 'rgba(255,255,255,0.6)'
+                    : 'rgba(0,0,0,0.4)',
+                  fontFamily: selectedFontConfig.family,
+                  fontSize: '11px',
+                  lineHeight: '1',
+                }}
+              >
+                {watermarkText}
+              </div>
+            )}
           </div>
         </div>
 

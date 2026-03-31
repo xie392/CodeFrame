@@ -22,6 +22,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@uiw/codemirror-theme-vscode": "^4.25.9",
     "@uiw/react-codemirror": "^4.25.9",
+    "@use-gesture/react": "^10.3.1",
     "@zumer/snapdom": "^2.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

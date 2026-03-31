@@ -1,5 +1,11 @@
 import React from 'react';
-import { ChevronDown, Check, Image } from 'lucide-react';
+import { Check, Image } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@shared/components/ui/tooltip';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
@@ -16,11 +22,39 @@ const DEFAULT_CODE = `const greet = (name) => {
 export default greet;`;
 
 const THEMES = [
-  { id: 'vs-dark', color: '#1E1E1E', label: 'VS Code Dark+' },
-  { id: 'one-dark', color: '#282C34', label: 'One Dark' },
-  { id: 'solarized', color: '#002B36', label: 'Solarized Dark' },
-  { id: 'light', color: '#FAFAFA', label: 'Light' },
-];
+  {
+    id: 'vs-dark',
+    color: '#1E1E1E',
+    label: 'VS Code Dark+',
+    shikiTheme: 'dark-plus',
+    windowBg: '#1E1E1E',
+    headerBg: '#252526',
+  },
+  {
+    id: 'one-dark',
+    color: '#282C34',
+    label: 'One Dark',
+    shikiTheme: 'one-dark-pro',
+    windowBg: '#282C34',
+    headerBg: '#21252B',
+  },
+  {
+    id: 'solarized',
+    color: '#002B36',
+    label: 'Solarized Dark',
+    shikiTheme: 'solarized-dark',
+    windowBg: '#002B36',
+    headerBg: '#073642',
+  },
+  {
+    id: 'light',
+    color: '#FAFAFA',
+    label: 'Light',
+    shikiTheme: 'github-light',
+    windowBg: '#FFFFFF',
+    headerBg: '#F0F0F0',
+  },
+] as const;
 
 const BACKGROUNDS = [
   { id: 'indigo', color: '#6366F1' },
@@ -37,6 +71,9 @@ async function getHighlighter(): Promise<HighlighterCore> {
   shikiHighlighter = await createHighlighterCore({
     themes: [
       import('shiki/themes/dark-plus.mjs'),
+      import('shiki/themes/one-dark-pro.mjs'),
+      import('shiki/themes/solarized-dark.mjs'),
+      import('shiki/themes/github-light.mjs'),
     ],
     langs: [
       import('shiki/langs/javascript.mjs'),
@@ -51,6 +88,8 @@ const App: React.FC = () => {
   const [selectedTheme, setSelectedTheme] = React.useState('vs-dark');
   const [selectedBg, setSelectedBg] = React.useState('indigo');
   const [highlightedHtml, setHighlightedHtml] = React.useState('');
+  const currentTheme =
+    THEMES.find((t) => t.id === selectedTheme) ?? THEMES[0];
   const selectedBgColor =
     BACKGROUNDS.find((b) => b.id === selectedBg)?.color ?? '#6366F1';
 
@@ -61,13 +100,13 @@ const App: React.FC = () => {
       if (cancelled) return;
       const html = shiki.codeToHtml(code, {
         lang: 'javascript',
-        theme: 'dark-plus',
+        theme: currentTheme.shikiTheme,
       });
       if (!cancelled) setHighlightedHtml(html);
     }
     highlight();
     return () => { cancelled = true; };
-  }, [code]);
+  }, [code, selectedTheme]);
 
   return (
     <div
@@ -125,28 +164,6 @@ const App: React.FC = () => {
           />
         </div>
 
-        {/* Language Selector */}
-        <div className="flex flex-col gap-2">
-          <span
-            className="text-[11px] leading-none"
-            style={{ color: '#BBBBBB' }}
-          >
-            language
-          </span>
-          <div
-            className="w-full h-9 rounded-lg flex items-center justify-between px-3"
-            style={{
-              background: 'rgba(255,255,255,0.5)',
-              border: '1px solid rgba(255,255,255,0.38)',
-            }}
-          >
-            <span className="text-[12px]" style={{ color: '#1A1A1A' }}>
-              javascript
-            </span>
-            <ChevronDown size={14} style={{ color: '#999999' }} />
-          </div>
-        </div>
-
         {/* Theme Selector */}
         <div className="flex flex-col gap-2">
           <span
@@ -155,23 +172,29 @@ const App: React.FC = () => {
           >
             theme
           </span>
-          <div className="w-full flex gap-2 justify-center">
-            {THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                className="w-10 h-10 rounded-lg shrink-0"
-                style={{
-                  backgroundColor: theme.color,
-                  border:
-                    selectedTheme === theme.id
-                      ? '2px solid #FF6B35'
-                      : '2px solid transparent',
-                }}
-                onClick={() => setSelectedTheme(theme.id)}
-                title={theme.label}
-              />
-            ))}
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="w-full flex gap-2">
+              {THEMES.map((theme) => (
+                <Tooltip key={theme.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="w-10 h-10 shrink-0"
+                      style={{
+                        backgroundColor: theme.color,
+                        borderRadius: '4px',
+                        border:
+                          selectedTheme === theme.id
+                            ? '2px solid #FF6B35'
+                            : '2px solid #D1D5DB',
+                      }}
+                      onClick={() => setSelectedTheme(theme.id)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>{theme.label}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
         </div>
 
         {/* Background Selector */}
@@ -182,21 +205,29 @@ const App: React.FC = () => {
           >
             background
           </span>
-          <div className="w-full flex gap-2 justify-center">
-            {BACKGROUNDS.map((bg) => (
-              <button
-                key={bg.id}
-                className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center"
-                style={{ backgroundColor: bg.color }}
-                onClick={() => setSelectedBg(bg.id)}
-                title={bg.id}
-              >
-                {selectedBg === bg.id && (
-                  <Check size={16} style={{ color: '#FFFFFF' }} />
-                )}
-              </button>
-            ))}
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="w-full flex gap-2 justify-center">
+              {BACKGROUNDS.map((bg) => (
+                <Tooltip key={bg.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="w-10 h-10 shrink-0 flex items-center justify-center"
+                      style={{
+                        backgroundColor: bg.color,
+                        borderRadius: '4px',
+                      }}
+                      onClick={() => setSelectedBg(bg.id)}
+                    >
+                      {selectedBg === bg.id && (
+                        <Check size={16} style={{ color: '#FFFFFF' }} />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{bg.id}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
         </div>
 
         {/* Spacer */}
@@ -226,7 +257,7 @@ const App: React.FC = () => {
         <div
           className="w-[520px] h-[380px] rounded-xl flex flex-col"
           style={{
-            backgroundColor: '#1E1E1E',
+            backgroundColor: currentTheme.windowBg,
             boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
           }}
         >
@@ -234,7 +265,7 @@ const App: React.FC = () => {
           <div
             className="w-full h-10 flex items-center gap-2 px-4 shrink-0"
             style={{
-              backgroundColor: '#252526',
+              backgroundColor: currentTheme.headerBg,
               borderRadius: '12px 12px 0 0',
             }}
           >

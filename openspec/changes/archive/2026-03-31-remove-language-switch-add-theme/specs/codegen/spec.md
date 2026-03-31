@@ -1,18 +1,10 @@
-# codegen Specification
+## 移除需求
 
-## Purpose
-TBD - created by archiving change restore-codegen-page. Update Purpose after archive.
-## 需求
-### 需求：CodeGen 页面整体布局
+### 需求：语言选择器
+**原因**：语言始终硬编码为 JavaScript，语言选择器仅有静态 UI 无交互功能，移除以简化面板并腾出空间给真正可用的主题切换。
+**迁移**：无。代码语言保持 JavaScript 固定。
 
-CodeGen 页面必须按照 ui.pen 设计稿还原，尺寸为 1440×900 全屏，采用 Liquid Glass 暗色主题渐变背景，包含 LeftPanel 和 PreviewArea 两个主要区域。
-
-#### 场景：页面初始化
-
-- **当** 用户打开 CodeGen 页面
-- **那么** 页面必须为全屏布局（100vw × 100vh）
-- **且** 背景必须为线性渐变（180° 旋转），从 #1E1E30 到 #151525（50% 位置）再到 #0D0D18
-- **且** 页面必须包含左侧 LeftPanel 和右侧 PreviewArea 两个区域
+## 修改需求
 
 ### 需求：LeftPanel 面板
 
@@ -31,32 +23,6 @@ LeftPanel 必须为宽 360px 的毛玻璃效果面板，包含代码输入区域
 
 - **当** 用户查看 LeftPanel 顶部
 - **那么** 必须显示 `>` 提示符（颜色 #00D4AA，字号 16px，font-weight 700）和 `code_input` 标题（颜色 #FFFFFF，字号 14px）
-
-### 需求：代码输入区域
-
-CodeArea 必须提供基于 CodeMirror 6 的可编辑代码输入区域，用户输入的代码内容必须实时同步到右侧预览区域。
-
-#### 场景：代码编辑器外观
-
-- **当** 用户查看代码输入区域
-- **那么** 区域高度必须为 300px，宽度为 fill_container
-- **且** 必须显示 CodeMirror 代码编辑器组件
-- **且** 编辑器必须使用 VS Code Dark+ 主题
-- **且** 编辑器必须使用 JetBrains Mono 字体
-- **且** 编辑器背景色必须与周围面板协调
-
-#### 场景：默认代码显示
-
-- **当** 用户首次打开 CodeGen 页面
-- **那么** 编辑器中必须预填示例 JavaScript 代码
-- **且** 预填代码必须包含：`const greet = (name) => {`、`  return \`Hello, ${name}!\`;`、`};`、空行、`export default greet;`
-
-#### 场景：用户输入代码
-
-- **当** 用户在编辑器中输入或编辑代码
-- **那么** 编辑器内容必须实时更新
-- **且** 右侧 PreviewArea 的 WindowBody 必须同步显示 Shiki 语法高亮后的代码
-- **且** 编辑器必须支持行号显示、括号匹配、自动缩进
 
 ### 需求：主题选择区域
 
@@ -78,31 +44,6 @@ ThemeSection 必须提供代码展示区域主题选择功能，用户切换主�
 - **且** 代码窗口背景色必须从主题配置中读取（如 VS Code Dark+ 为 #1E1E1E、Light 为 #FFFFFF）
 - **且** 代码窗口标题栏背景色必须从主题配置中读取（如 VS Code Dark+ 为 #252526、Light 为 #F0F0F0）
 - **且** Shiki 语法高亮配色必须使用对应的 Shiki 主题渲染
-
-### 需求：背景色选择区域
-
-BgSection 必须提供代码窗口背景色选择功能。
-
-#### 场景：背景色块显示
-
-- **当** 用户查看背景色选择区域
-- **那么** 必须显示 `background` 标签文字（颜色 #3D3D3D，字号 11px）
-- **且** 必须显示 5 个背景色块（40×40px，圆角 8px）
-- **且** 5 个色块颜色必须分别为：#6366F1（Indigo）、#8B5CF6（Violet）、#EC4899（Pink）、#0EA5E9（Sky）、#10B981（Emerald）
-- **且** 当前选中项必须显示 check 图标（颜色 #FFFFFF，尺寸 16×16px）
-
-### 需求：导出按钮
-
-ExportBtn 必须提供导出图片功能的入口按钮。
-
-#### 场景：导出按钮外观
-
-- **当** 用户查看导出按钮
-- **那么** 按钮宽度必须为 fill_container，高度 44px
-- **且** 背景色必须为 #00D4AA
-- **且** 圆角必须为 12px
-- **且** 按钮文字必须为 `$ export_image`（颜色 #0D0D0D，字号 13px，font-weight 600）
-- **且** 按钮左侧必须显示 image 图标（颜色 #0D0D0D，尺寸 16×16px）
 
 ### 需求：代码预览区域
 
@@ -133,4 +74,3 @@ PreviewArea 必须在右侧展示 Shiki 语法高亮的代码窗口预览效果�
 - **那么** 右侧 WindowBody 必须实时显示 Shiki 语法高亮后的代码内容
 - **且** 高亮渲染必须使用 `shiki/engine/javascript` 引擎（避免 WASM CSP 问题）
 - **且** 高亮结果必须缓存，仅在代码内容或选中主题变更时重新渲染
-

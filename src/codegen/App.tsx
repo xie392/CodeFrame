@@ -1,13 +1,19 @@
 import React from 'react';
 import { ChevronDown, Check, Image } from 'lucide-react';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import {
+  createHighlighterCore,
+  type HighlighterCore,
+} from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
-const SAMPLE_CODE = [
-  { text: 'const greet = (name) => {', color: '#C586C0' },
-  { text: "  return `Hello, ${name}!`;", color: '#CE9178' },
-  { text: '};', color: '#C586C0' },
-  { text: '', color: '#FFFFFF' },
-  { text: 'export default greet;', color: '#569CD6' },
-];
+const DEFAULT_CODE = `const greet = (name) => {
+  return \`Hello, \${name}!\`;
+};
+
+export default greet;`;
 
 const THEMES = [
   { id: 'vs-dark', color: '#1E1E1E', label: 'VS Code Dark+' },
@@ -24,11 +30,44 @@ const BACKGROUNDS = [
   { id: 'emerald', color: '#10B981' },
 ];
 
+let shikiHighlighter: HighlighterCore | null = null;
+
+async function getHighlighter(): Promise<HighlighterCore> {
+  if (shikiHighlighter) return shikiHighlighter;
+  shikiHighlighter = await createHighlighterCore({
+    themes: [
+      import('shiki/themes/dark-plus.mjs'),
+    ],
+    langs: [
+      import('shiki/langs/javascript.mjs'),
+    ],
+    engine: createJavaScriptRegexEngine(),
+  });
+  return shikiHighlighter;
+}
+
 const App: React.FC = () => {
+  const [code, setCode] = React.useState(DEFAULT_CODE);
   const [selectedTheme, setSelectedTheme] = React.useState('vs-dark');
   const [selectedBg, setSelectedBg] = React.useState('indigo');
+  const [highlightedHtml, setHighlightedHtml] = React.useState('');
   const selectedBgColor =
     BACKGROUNDS.find((b) => b.id === selectedBg)?.color ?? '#6366F1';
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function highlight() {
+      const shiki = await getHighlighter();
+      if (cancelled) return;
+      const html = shiki.codeToHtml(code, {
+        lang: 'javascript',
+        theme: 'dark-plus',
+      });
+      if (!cancelled) setHighlightedHtml(html);
+    }
+    highlight();
+    return () => { cancelled = true; };
+  }, [code]);
 
   return (
     <div
@@ -67,21 +106,23 @@ const App: React.FC = () => {
         </div>
 
         {/* Code Area */}
-        <div
-          className="w-full h-[300px] rounded-xl overflow-auto"
-          style={{ backgroundColor: '#1A1A1A' }}
-        >
-          <div className="flex flex-col gap-1 p-4">
-            {SAMPLE_CODE.map((line, i) => (
-              <span
-                key={i}
-                className="text-[12px] leading-[18px] whitespace-pre"
-                style={{ color: line.color }}
-              >
-                {line.text}
-              </span>
-            ))}
-          </div>
+        <div className="w-full rounded-xl overflow-auto">
+          <CodeMirror
+            value={code}
+            onChange={(value) => setCode(value)}
+            height="300px"
+            theme={vscodeDark}
+            extensions={[javascript()]}
+            basicSetup={{
+              lineNumbers: true,
+              bracketMatching: true,
+              indentOnInput: true,
+            }}
+            style={{
+              fontSize: '12px',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          />
         </div>
 
         {/* Language Selector */}
@@ -217,18 +258,16 @@ const App: React.FC = () => {
             </span>
           </div>
 
-          {/* Window Body */}
-          <div className="w-full flex-1 flex flex-col gap-1 p-5 overflow-auto">
-            {SAMPLE_CODE.map((line, i) => (
-              <span
-                key={i}
-                className="text-[13px] leading-[20px] whitespace-pre"
-                style={{ color: line.color }}
-              >
-                {line.text}
-              </span>
-            ))}
-          </div>
+          {/* Window Body — Shiki 高亮渲染 */}
+          <div
+            className="w-full flex-1 p-5 overflow-auto"
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '13px',
+              lineHeight: '20px',
+            }}
+          />
         </div>
       </main>
     </div>

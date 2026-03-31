@@ -262,11 +262,9 @@ const App: React.FC = () => {
   // ---- 画布状态 ----
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [spacePressed, setSpacePressed] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // ---- 代码窗口状态 ----
-  const [winPos, setWinPos] = useState({ x: 0, y: 0 });
   const [winSize, setWinSize] = useState({
     width: 520,
     height: calcAutoHeight(DEFAULT_CODE, true, 13),
@@ -280,7 +278,6 @@ const App: React.FC = () => {
   const offsetRef = useRef(offset);
   const isEditingRef = useRef(isEditing);
   const paddingRef = useRef(padding);
-  const winPosRef = useRef(winPos);
   const winSizeRef = useRef(winSize);
   const codeRef = useRef(code);
   const showHeaderRef = useRef(showHeader);
@@ -290,7 +287,6 @@ const App: React.FC = () => {
   useEffect(() => { offsetRef.current = offset; }, [offset]);
   useEffect(() => { isEditingRef.current = isEditing; }, [isEditing]);
   useEffect(() => { paddingRef.current = padding; }, [padding]);
-  useEffect(() => { winPosRef.current = winPos; }, [winPos]);
   useEffect(() => { winSizeRef.current = winSize; }, [winSize]);
   useEffect(() => { codeRef.current = code; }, [code]);
   useEffect(() => { showHeaderRef.current = showHeader; }, [showHeader]);
@@ -319,10 +315,8 @@ const App: React.FC = () => {
       if (isEditingRef.current) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
       const factor = e.deltaY > 0 ? 0.92 : 1.08;
-      zoomAt(scaleRef.current * factor, mouseX, mouseY);
+      zoomAt(scaleRef.current * factor, rect.width / 2, rect.height / 2);
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
@@ -331,43 +325,17 @@ const App: React.FC = () => {
   // ---- 键盘 ----
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !isEditingRef.current) {
-        e.preventDefault();
-        setSpacePressed(true);
-      }
       if (e.code === 'Escape' && isEditingRef.current) {
         exitEditRef.current();
       }
     };
-    const onUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !isEditingRef.current) {
-        setSpacePressed(false);
-      }
-    };
     window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
     return () => {
       window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
     };
   }, []);
 
   // ---- 拖拽 ----
-  const bindCanvasDrag = useDrag(
-    ({ delta: [dx, dy] }) => {
-      if (!spacePressed || isEditingRef.current) return;
-      setOffset((p) => ({ x: p.x - dx, y: p.y - dy }));
-    },
-    { filterTaps: true },
-  );
-
-  const bindWinDrag = useDrag(
-    ({ delta: [dx, dy] }) => {
-      setWinPos((p) => ({ x: p.x + dx, y: p.y + dy }));
-    },
-    { filterTaps: true },
-  );
-
   const bindResize = useDrag(
     ({ delta: [dx, dy], movement: [mx, my] }) => {
       if (Math.abs(mx) > 8 || Math.abs(my) > 8) {
@@ -533,8 +501,8 @@ const App: React.FC = () => {
   }, [shadowEnabled, shadowIntensity]);
 
   // ---- 窗口位置 ----
-  const winLeft = `calc(50% - ${winSize.width / 2}px + ${winPos.x}px)`;
-  const winTop = `calc(50% - ${winSize.height / 2}px + ${winPos.y}px)`;
+  const winLeft = `calc(50% - ${winSize.width / 2}px)`;
+  const winTop = `calc(50% - ${winSize.height / 2}px)`;
 
   // -----------------------------------------------------------------------
   // 渲染
@@ -1010,9 +978,7 @@ const App: React.FC = () => {
         className="flex-1 h-full relative overflow-hidden"
         style={{
           backgroundColor: '#E8E8F0',
-          cursor: spacePressed ? 'grab' : 'default',
         }}
-        {...bindCanvasDrag()}
       >
         {/* ---- Transform Layer ---- */}
         <div
@@ -1027,8 +993,8 @@ const App: React.FC = () => {
             <div
               className="absolute pointer-events-none"
               style={{
-                left: `calc(50% - ${winSize.width / 2}px + ${winPos.x}px - ${padding.left}px)`,
-                top: `calc(50% - ${winSize.height / 2}px + ${winPos.y}px - ${padding.top}px)`,
+                left: `calc(50% - ${winSize.width / 2}px - ${padding.left}px)`,
+                top: `calc(50% - ${winSize.height / 2}px - ${padding.top}px)`,
                 width: winSize.width + padding.left + padding.right,
                 height: winSize.height + padding.top + padding.bottom,
                 background: getBackgroundCss(),
@@ -1041,11 +1007,7 @@ const App: React.FC = () => {
           <div
             ref={codeWindowRef}
             data-code-window
-            className={`flex flex-col overflow-hidden ${
-              spacePressed && !isEditing
-                ? 'pointer-events-none'
-                : ''
-            }`}
+            className="flex flex-col overflow-hidden"
             style={{
               position: 'absolute',
               left: winLeft,
@@ -1064,10 +1026,8 @@ const App: React.FC = () => {
                 className="w-full h-10 flex items-center gap-2 px-4 shrink-0"
                 style={{
                   backgroundColor: currentTheme.headerBg,
-                  cursor: 'grab',
                   borderRadius: `${innerBorderRadius}px ${innerBorderRadius}px 0 0`,
                 }}
-                {...bindWinDrag()}
               >
                 <div
                   className="w-3 h-3 rounded-full shrink-0"

@@ -10,6 +10,7 @@ import {
   Minus,
   Plus,
   RotateCcw,
+  Settings2,
 } from 'lucide-react';
 import { useDrag } from '@use-gesture/react';
 import {
@@ -18,6 +19,11 @@ import {
   TooltipContent,
   TooltipProvider,
 } from '@shared/components/ui/tooltip';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@shared/components/ui/popover';
 import {
   createHighlighterCore,
   type HighlighterCore,
@@ -88,6 +94,25 @@ const MIN_WIN_H = 200;
 const MAX_WIN_W = 1200;
 const MAX_WIN_H = 800;
 
+const DEFAULT_PADDING = {
+  top: 40,
+  right: 40,
+  bottom: 40,
+  left: 40,
+} as const;
+
+const MAX_PADDING_VALUE = 120;
+
+type Padding = { top: number; right: number; bottom: number; left: number };
+
+function isUniformPadding(p: Padding): boolean {
+  return p.top === p.right && p.right === p.bottom && p.bottom === p.left;
+}
+
+function hasAnyPadding(p: Padding): boolean {
+  return p.top > 0 || p.right > 0 || p.bottom > 0 || p.left > 0;
+}
+
 // ---------------------------------------------------------------------------
 // Shiki 初始化（模块级缓存）
 // ---------------------------------------------------------------------------
@@ -110,6 +135,43 @@ async function getHighlighter(): Promise<HighlighterCore> {
 }
 
 // ---------------------------------------------------------------------------
+// PaddingInput 子组件
+// ---------------------------------------------------------------------------
+
+const PaddingInput: React.FC<{
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}> = ({ label, value, onChange }) => (
+  <div className="flex flex-col items-center gap-0.5">
+    <span className="text-[9px] leading-none" style={{ color: '#999' }}>
+      {label}
+    </span>
+    <input
+      type="text"
+      inputMode="numeric"
+      value={value}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        const cleaned = raw.replace(/^0+(?=\d)/, '');
+        const v = Math.min(
+          MAX_PADDING_VALUE,
+          Math.max(0, parseInt(cleaned || '0', 10)),
+        );
+        onChange(v);
+      }}
+      onFocus={(e) => e.target.select()}
+      className="w-full h-6 text-center text-[11px] tabular-nums border rounded outline-none focus:border-emerald-400 transition-colors"
+      style={{
+        backgroundColor: '#FAFAFA',
+        borderColor: 'rgba(0,0,0,0.1)',
+        color: '#333',
+      }}
+    />
+  </div>
+);
+
+// ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
 
@@ -119,7 +181,9 @@ const App: React.FC = () => {
   const [selectedTheme, setSelectedTheme] = useState('vs-dark');
   const [selectedBg, setSelectedBg] = useState('indigo');
   const [highlightedHtml, setHighlightedHtml] = useState('');
-  const [padding, setPadding] = useState(40);
+  const [padding, setPadding] = useState<Padding>({
+    ...DEFAULT_PADDING,
+  });
   const currentTheme =
     THEMES.find((t) => t.id === selectedTheme) ?? THEMES[0];
   const selectedBgColor =
@@ -363,26 +427,128 @@ const App: React.FC = () => {
 
         {/* Padding Selector */}
         <div className="flex flex-col gap-2">
-          <span
-            className="text-[11px] leading-none"
-            style={{ color: '#3D3D3D' }}
-          >
-            padding
-          </span>
+          <div className="flex items-center justify-between">
+            <span
+              className="text-[11px] leading-none"
+              style={{ color: '#3D3D3D' }}
+            >
+              padding
+            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-black/5 transition-colors"
+                  style={{
+                    color: isUniformPadding(padding)
+                      ? '#999'
+                      : '#FF6B35',
+                  }}
+                >
+                  <Settings2 size={12} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="end"
+                sideOffset={8}
+                className="w-auto !p-3 !rounded-lg"
+                style={{
+                  backgroundColor: '#fff',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+              >
+                <div className="grid grid-cols-3 gap-2 w-[140px]">
+                  {/* 上 */}
+                  <div />
+                  <PaddingInput
+                    label="上"
+                    value={padding.top}
+                    onChange={(v) =>
+                      setPadding((p) => ({ ...p, top: v }))
+                    }
+                  />
+                  <div />
+                  {/* 左 - 中 - 右 */}
+                  <PaddingInput
+                    label="左"
+                    value={padding.left}
+                    onChange={(v) =>
+                      setPadding((p) => ({ ...p, left: v }))
+                    }
+                  />
+                  <button
+                    className="w-full h-6 flex items-center justify-center rounded text-[10px] hover:bg-black/5 transition-colors"
+                    style={{ color: '#999' }}
+                    onClick={() =>
+                      setPadding((p) => ({
+                        ...p,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        left: 0,
+                      }))
+                    }
+                  >
+                    0
+                  </button>
+                  <PaddingInput
+                    label="右"
+                    value={padding.right}
+                    onChange={(v) =>
+                      setPadding((p) => ({ ...p, right: v }))
+                    }
+                  />
+                  {/* 下 */}
+                  <div />
+                  <PaddingInput
+                    label="下"
+                    value={padding.bottom}
+                    onChange={(v) =>
+                      setPadding((p) => ({ ...p, bottom: v }))
+                    }
+                  />
+                  <div />
+                </div>
+                {!isUniformPadding(padding) && (
+                  <button
+                    className="w-full mt-2 pt-2 text-[10px] text-center hover:bg-black/5 rounded transition-colors"
+                    style={{
+                      color: '#999',
+                      borderTop: '1px solid rgba(0,0,0,0.06)',
+                    }}
+                    onClick={() =>
+                      setPadding({
+                        top: padding.top,
+                        right: padding.top,
+                        bottom: padding.top,
+                        left: padding.top,
+                      })
+                    }
+                  >
+                    统一为 {padding.top}
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="w-full flex items-center gap-2">
             <input
               type="range"
               min={0}
-              max={120}
-              value={padding}
-              onChange={(e) => setPadding(parseInt(e.target.value))}
+              max={MAX_PADDING_VALUE}
+              value={isUniformPadding(padding) ? padding.top : -1}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setPadding({ top: val, right: val, bottom: val, left: val });
+              }}
               className="flex-1 accent-emerald-500"
             />
             <span
               className="text-[11px] w-8 text-right tabular-nums"
               style={{ color: '#666' }}
             >
-              {padding}
+              {isUniformPadding(padding) ? padding.top : '···'}
             </span>
           </div>
         </div>
@@ -492,14 +658,14 @@ const App: React.FC = () => {
           }}
         >
           {/* ---- Background Padding Area ---- */}
-          {padding > 0 && (
+          {hasAnyPadding(padding) && (
             <div
               className="absolute rounded-xl pointer-events-none"
               style={{
-                left: `calc(50% - ${winSize.width / 2}px + ${winPos.x}px - ${padding}px)`,
-                top: `calc(50% - ${winSize.height / 2}px + ${winPos.y}px - ${padding}px)`,
-                width: winSize.width + padding * 2,
-                height: winSize.height + padding * 2,
+                left: `calc(50% - ${winSize.width / 2}px + ${winPos.x}px - ${padding.left}px)`,
+                top: `calc(50% - ${winSize.height / 2}px + ${winPos.y}px - ${padding.top}px)`,
+                width: winSize.width + padding.left + padding.right,
+                height: winSize.height + padding.top + padding.bottom,
                 backgroundColor: selectedBgColor,
               }}
             />
@@ -519,7 +685,7 @@ const App: React.FC = () => {
               width: winSize.width,
               height: winSize.height,
               backgroundColor: currentTheme.windowBg,
-              boxShadow: padding === 0
+              boxShadow: !hasAnyPadding(padding)
                 ? '0 8px 40px rgba(0,0,0,0.15)'
                 : 'none',
               userSelect: isEditing ? 'auto' : 'none',

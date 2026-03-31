@@ -12,6 +12,7 @@ import {
   Plus,
   RotateCcw,
   Settings2,
+  Palette,
 } from 'lucide-react';
 import { useDrag } from '@use-gesture/react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -32,9 +33,18 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@shared/components/ui/popover';
+import {
+  THEMES,
+  createThemeExtension,
+  type ThemeConfig,
+} from './config/themes';
+import {
+  BACKGROUNDS,
+  type BackdropConfig,
+} from './config/backgrounds';
 
 // ---------------------------------------------------------------------------
-// 常量 & 配置
+// 常量
 // ---------------------------------------------------------------------------
 
 const DEFAULT_CODE = `const greet = (name) => {
@@ -43,53 +53,6 @@ const DEFAULT_CODE = `const greet = (name) => {
 
 export default greet;`;
 
-const THEMES = [
-  {
-    id: 'vs-dark',
-    color: '#1E1E1E',
-    label: 'VS Code Dark+',
-    shikiTheme: 'dark-plus',
-    windowBg: '#1E1E1E',
-    headerBg: '#252526',
-    textColor: '#D4D4D4',
-  },
-  {
-    id: 'one-dark',
-    color: '#282C34',
-    label: 'One Dark',
-    shikiTheme: 'one-dark-pro',
-    windowBg: '#282C34',
-    headerBg: '#21252B',
-    textColor: '#ABB2BF',
-  },
-  {
-    id: 'solarized',
-    color: '#002B36',
-    label: 'Solarized Dark',
-    shikiTheme: 'solarized-dark',
-    windowBg: '#002B36',
-    headerBg: '#073642',
-    textColor: '#839496',
-  },
-  {
-    id: 'light',
-    color: '#FAFAFA',
-    label: 'Light',
-    shikiTheme: 'github-light',
-    windowBg: '#FFFFFF',
-    headerBg: '#F0F0F0',
-    textColor: '#1E1E1E',
-  },
-] as const;
-
-const BACKGROUNDS = [
-  { id: 'indigo', color: '#6366F1' },
-  { id: 'violet', color: '#8B5CF6' },
-  { id: 'pink', color: '#EC4899' },
-  { id: 'sky', color: '#0EA5E9' },
-  { id: 'emerald', color: '#10B981' },
-];
-
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 4;
 const MIN_WIN_W = 320;
@@ -97,8 +60,7 @@ const MAX_WIN_W = 1200;
 const MAX_WIN_H = 800;
 
 const HEADER_HEIGHT = 40;
-const BODY_PADDING_V = 40; // p-5 = 20px × 2
-const LINE_HEIGHT = 20;
+const BODY_PADDING_V = 40;
 const MIN_CODE_LINES = 1;
 
 const DEFAULT_PADDING = {
@@ -110,6 +72,14 @@ const DEFAULT_PADDING = {
 
 const MAX_PADDING_VALUE = 120;
 
+// 字体列表
+const FONT_OPTIONS = [
+  { id: 'jetbrains', label: 'JetBrains Mono', family: "'JetBrains Mono', monospace" },
+  { id: 'fira-code', label: 'Fira Code', family: "'Fira Code', monospace" },
+  { id: 'source-code-pro', label: 'Source Code Pro', family: "'Source Code Pro', monospace" },
+  { id: 'ibm-plex', label: 'IBM Plex Mono', family: "'IBM Plex Mono', monospace" },
+] as const;
+
 type Padding = { top: number; right: number; bottom: number; left: number };
 
 function isUniformPadding(p: Padding): boolean {
@@ -120,50 +90,21 @@ function hasAnyPadding(p: Padding): boolean {
   return p.top > 0 || p.right > 0 || p.bottom > 0 || p.left > 0;
 }
 
-// CodeMirror 主题映射：暗色主题用 vscodeDark，浅色用 vscodeLight
-function getEditorTheme(themeId: string) {
-  return themeId === 'light' ? vscodeLight : vscodeDark;
+function getEditorBaseTheme(isDark: boolean) {
+  return isDark ? vscodeDark : vscodeLight;
 }
 
-// 根据代码行数计算窗口自适应高度
-function calcAutoHeight(codeText: string): number {
+function calcAutoHeight(
+  codeText: string,
+  showHeader: boolean,
+  fontSize: number,
+): number {
+  const lineHeight = fontSize + 7; // 行高 = 字号 + 7px 间距
   const lines = codeText.split('\n').length;
-  const total =
-    HEADER_HEIGHT + BODY_PADDING_V + Math.max(MIN_CODE_LINES, lines) * LINE_HEIGHT;
+  const headerH = showHeader ? HEADER_HEIGHT : 0;
+  const total = headerH + BODY_PADDING_V + Math.max(MIN_CODE_LINES, lines) * lineHeight;
   return Math.min(MAX_WIN_H, total);
 }
-
-// CodeMirror 全局样式覆盖（与预览区保持一致）
-const editorBaseTheme = EditorView.theme({
-  '&': {
-    fontSize: '13px',
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  '.cm-content': {
-    padding: '20px 20px 20px 8px',
-    lineHeight: '20px',
-  },
-  '.cm-gutters': {
-    backgroundColor: 'transparent',
-    border: 'none',
-  },
-  '.cm-lineNumbers': {
-    width: '32px',
-    minWidth: '32px',
-  },
-  '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 4px 0 0',
-    textAlign: 'right',
-    opacity: '0.4',
-  },
-  '.cm-focused': {
-    outline: 'none',
-  },
-  // 只读模式（contenteditable=false）下隐藏光标
-  '.cm-editor [contenteditable=false] .cm-content': {
-    caretColor: 'transparent',
-  },
-});
 
 // ---------------------------------------------------------------------------
 // PaddingInput 子组件
@@ -203,22 +144,109 @@ const PaddingInput: React.FC<{
 );
 
 // ---------------------------------------------------------------------------
+// SectionLabel 子组件
+// ---------------------------------------------------------------------------
+
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="text-[11px] leading-none shrink-0" style={{ color: '#3D3D3D' }}>
+    {children}
+  </span>
+);
+
+// ---------------------------------------------------------------------------
+// ToggleSwitch 子组件
+// ---------------------------------------------------------------------------
+
+const ToggleSwitch: React.FC<{
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}> = ({ checked, onChange }) => (
+  <button
+    className="w-9 h-5 rounded-full relative transition-colors shrink-0"
+    style={{
+      backgroundColor: checked ? '#00D4AA' : '#D1D5DB',
+    }}
+    onClick={() => onChange(!checked)}
+  >
+    <div
+      className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+      style={{
+        backgroundColor: '#fff',
+        left: checked ? '18px' : '2px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+      }}
+    />
+  </button>
+);
+
+// ---------------------------------------------------------------------------
+// SliderControl 子组件
+// ---------------------------------------------------------------------------
+
+const SliderControl: React.FC<{
+  min: number;
+  max: number;
+  step?: number;
+  value: number;
+  displayValue: string;
+  onChange: (v: number) => void;
+}> = ({ min, max, step = 1, value, displayValue, onChange }) => (
+  <div className="w-full flex items-center gap-2">
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="flex-1 accent-emerald-500 h-1"
+    />
+    <span
+      className="text-[10px] w-8 text-right tabular-nums shrink-0"
+      style={{ color: '#666' }}
+    >
+      {displayValue}
+    </span>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
 
 const App: React.FC = () => {
-  // ---- 主题 & 背景 ----
+  // ---- 主题 & 背景 & 样式 ----
   const [code, setCode] = useState(DEFAULT_CODE);
   const [selectedTheme, setSelectedTheme] = useState('vs-dark');
   const [selectedBg, setSelectedBg] = useState('indigo');
+  const [customBgColor, setCustomBgColor] = useState('#6366F1');
   const [showLineNumbers, setShowLineNumbers] = useState(true);
-  const [padding, setPadding] = useState<Padding>({
-    ...DEFAULT_PADDING,
-  });
-  const currentTheme =
+  const [padding, setPadding] = useState<Padding>({ ...DEFAULT_PADDING });
+
+  // 窗口视觉
+  const [borderRadius, setBorderRadius] = useState(12);
+  const [shadowEnabled, setShadowEnabled] = useState(true);
+  const [shadowIntensity, setShadowIntensity] = useState(50);
+  const [showHeader, setShowHeader] = useState(true);
+  const [fileName, setFileName] = useState('greet.js');
+
+  // 字体
+  const [selectedFont, setSelectedFont] = useState('jetbrains');
+  const [fontSize, setFontSize] = useState(13);
+
+  // 水印
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [watermarkText, setWatermarkText] = useState('CodeFrame');
+  const [watermarkOpacity, setWatermarkOpacity] = useState(50);
+
+  // 派生状态
+  const currentTheme: ThemeConfig =
     THEMES.find((t) => t.id === selectedTheme) ?? THEMES[0];
-  const selectedBgColor =
-    BACKGROUNDS.find((b) => b.id === selectedBg)?.color ?? '#6366F1';
+  const selectedBgConfig: BackdropConfig | undefined =
+    BACKGROUNDS.find((b) => b.id === selectedBg);
+  const selectedFontConfig = FONT_OPTIONS.find(
+    (f) => f.id === selectedFont,
+  ) ?? FONT_OPTIONS[0];
 
   // ---- 画布状态 ----
   const [scale, setScale] = useState(1);
@@ -230,19 +258,22 @@ const App: React.FC = () => {
   const [winPos, setWinPos] = useState({ x: 0, y: 0 });
   const [winSize, setWinSize] = useState({
     width: 520,
-    height: calcAutoHeight(DEFAULT_CODE),
+    height: calcAutoHeight(DEFAULT_CODE, true, 13),
   });
   const [isEditing, setIsEditing] = useState(false);
-  // 标记用户是否手动 resize 过（手动 resize 后禁用自适应高度）
   const manualResized = useRef(false);
+  const codeWindowRef = useRef<HTMLDivElement>(null);
 
-  // ---- Refs（避免闭包陷阱）----
+  // ---- Refs ----
   const scaleRef = useRef(scale);
   const offsetRef = useRef(offset);
   const isEditingRef = useRef(isEditing);
   const paddingRef = useRef(padding);
   const winPosRef = useRef(winPos);
   const winSizeRef = useRef(winSize);
+  const codeRef = useRef(code);
+  const showHeaderRef = useRef(showHeader);
+  const fontSizeRef = useRef(fontSize);
 
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { offsetRef.current = offset; }, [offset]);
@@ -250,8 +281,11 @@ const App: React.FC = () => {
   useEffect(() => { paddingRef.current = padding; }, [padding]);
   useEffect(() => { winPosRef.current = winPos; }, [winPos]);
   useEffect(() => { winSizeRef.current = winSize; }, [winSize]);
+  useEffect(() => { codeRef.current = code; }, [code]);
+  useEffect(() => { showHeaderRef.current = showHeader; }, [showHeader]);
+  useEffect(() => { fontSizeRef.current = fontSize; }, [fontSize]);
 
-  // ---- 以指定锚点缩放画布 ----
+  // ---- 缩放 ----
   const zoomAt = useCallback(
     (newScale: number, anchorX: number, anchorY: number) => {
       const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
@@ -267,7 +301,6 @@ const App: React.FC = () => {
     [],
   );
 
-  // ---- 画布滚轮缩放（passive:false）----
   useEffect(() => {
     const el = canvasRef.current;
     if (!el) return;
@@ -284,7 +317,7 @@ const App: React.FC = () => {
     return () => el.removeEventListener('wheel', handler);
   }, [zoomAt]);
 
-  // ---- 键盘事件（Space 平移 / Esc 退出编辑 / Tab 缩进）----
+  // ---- 键盘 ----
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !isEditingRef.current) {
@@ -308,7 +341,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // ---- 画布平移（Space + 拖拽，地图模式：拖右 → 内容左移）----
+  // ---- 拖拽 ----
   const bindCanvasDrag = useDrag(
     ({ delta: [dx, dy] }) => {
       if (!spacePressed || isEditingRef.current) return;
@@ -317,7 +350,6 @@ const App: React.FC = () => {
     { filterTaps: true },
   );
 
-  // ---- 代码窗口拖拽（标题栏）----
   const bindWinDrag = useDrag(
     ({ delta: [dx, dy] }) => {
       setWinPos((p) => ({ x: p.x + dx, y: p.y + dy }));
@@ -325,7 +357,6 @@ const App: React.FC = () => {
     { filterTaps: true },
   );
 
-  // ---- 代码窗口 resize ----
   const bindResize = useDrag(
     ({ delta: [dx, dy], movement: [mx, my] }) => {
       if (Math.abs(mx) > 8 || Math.abs(my) > 8) {
@@ -333,13 +364,19 @@ const App: React.FC = () => {
       }
       setWinSize((p) => ({
         width: Math.min(MAX_WIN_W, Math.max(MIN_WIN_W, p.width + dx)),
-        height: Math.min(MAX_WIN_H, Math.max(calcAutoHeight(code), p.height + dy)),
+        height: Math.min(
+          MAX_WIN_H,
+          Math.max(
+            calcAutoHeight(codeRef.current, showHeaderRef.current, fontSizeRef.current),
+            p.height + dy,
+          ),
+        ),
       }));
     },
     { filterTaps: true },
   );
 
-  // ---- 缩放控制（以画布视口中心为锚点）----
+  // ---- 缩放控制 ----
   const zoomIn = useCallback(() => {
     const el = canvasRef.current;
     if (!el) return;
@@ -374,43 +411,117 @@ const App: React.FC = () => {
   // ---- 退出编辑 ----
   const exitEdit = useCallback(() => {
     setIsEditing(false);
-    // 退出编辑时，若用户未手动 resize，则自适应高度
     if (!manualResized.current) {
       setWinSize((p) => ({
         ...p,
-        height: calcAutoHeight(code),
+        height: calcAutoHeight(code, showHeader, fontSize),
       }));
     }
-  }, [code]);
+  }, [code, showHeader, fontSize]);
 
   const exitEditRef = useRef(exitEdit);
   useEffect(() => { exitEditRef.current = exitEdit; }, [exitEdit]);
 
-  // ---- 编辑器 CodeMirror 主题（随 selectedTheme 切换）----
-  const editorTheme = getEditorTheme(selectedTheme);
+  // ---- 编辑器配置 ----
+  const editorBaseTheme = useMemo(
+    () =>
+      EditorView.theme({
+        '&': {
+          fontSize: `${fontSize}px`,
+          fontFamily: selectedFontConfig.family,
+          backgroundColor: currentTheme.windowBg,
+          color: currentTheme.textColor,
+        },
+        '.cm-scroller': {
+          backgroundColor: currentTheme.windowBg,
+          color: currentTheme.textColor,
+        },
+        '.cm-content': {
+          padding: '20px 20px 20px 8px',
+          lineHeight: `${fontSize + 7}px`,
+          color: currentTheme.textColor,
+          fontFamily: selectedFontConfig.family,
+        },
+        '.cm-gutters': {
+          backgroundColor: 'transparent',
+          border: 'none',
+          color: currentTheme.textColor,
+        },
+        '.cm-lineNumbers': {
+          width: '32px',
+          minWidth: '32px',
+        },
+        '.cm-lineNumbers .cm-gutterElement': {
+          padding: '0 4px 0 0',
+          textAlign: 'right',
+          opacity: '0.4',
+          fontFamily: selectedFontConfig.family,
+        },
+        '.cm-focused': {
+          outline: 'none',
+        },
+        '.cm-editor [contenteditable=false] .cm-content': {
+          caretColor: 'transparent',
+        },
+        '.cm-cursor': {
+          borderColor: currentTheme.textColor,
+        },
+        '.cm-selectionBackground': {
+          backgroundColor: currentTheme.isDark
+            ? 'rgba(255,255,255,0.1)'
+            : 'rgba(0,0,0,0.1)',
+        },
+        '&.cm-focused .cm-selectionBackground': {
+          backgroundColor: currentTheme.isDark
+            ? 'rgba(255,255,255,0.15)'
+            : 'rgba(0,0,0,0.15)',
+        },
+      }),
+    [fontSize, selectedFontConfig.family, currentTheme],
+  );
 
-  // ---- 编辑器 extensions（stable 引用）----
-  // tabindex 让只读模式也能获取焦点，从而触发 onFocus 进入编辑
+  // 语法高亮扩展（随主题变化）
+  const syntaxExtension = useMemo(() => {
+    if (!currentTheme.syntax) return [];
+    return [createThemeExtension(currentTheme.syntax)];
+  }, [currentTheme]);
+
   const cmExtensions = useMemo(
     () => [
       javascript(),
       editorBaseTheme,
+      ...syntaxExtension,
       EditorView.contentAttributes.of({ tabindex: '0' }),
     ],
-    [],
+    [editorBaseTheme, syntaxExtension],
   );
 
-  // ---- 代码变更时自适应窗口高度 ----
+  const editorTheme = getEditorBaseTheme(currentTheme.isDark);
+
+  // ---- 自适应高度 ----
   useEffect(() => {
     if (isEditing && !manualResized.current) {
       setWinSize((p) => ({
         ...p,
-        height: calcAutoHeight(code),
+        height: calcAutoHeight(code, showHeader, fontSize),
       }));
     }
-  }, [code, isEditing]);
+  }, [code, isEditing, showHeader, fontSize]);
 
-  // ---- 窗口位置 CSS（确保拖拽方向一致）----
+  // ---- 背景样式 ----
+  const getBackgroundCss = (): string => {
+    if (selectedBg === 'custom') return customBgColor;
+    return selectedBgConfig?.css ?? '#6366F1';
+  };
+
+  // ---- 窗口阴影 ----
+  const windowShadow = useMemo(() => {
+    if (!shadowEnabled) return 'none';
+    const alpha = shadowIntensity / 100;
+    return `0 8px ${20 + shadowIntensity * 0.3}px rgba(0,0,0,${0.15 * alpha})`;
+  }, [shadowEnabled, shadowIntensity]);
+
+  // ---- 窗口位置 ----
   const winLeft = `calc(50% - ${winSize.width / 2}px + ${winPos.x}px)`;
   const winTop = `calc(50% - ${winSize.height / 2}px + ${winPos.y}px)`;
 
@@ -429,7 +540,7 @@ const App: React.FC = () => {
       {/* LeftPanel                                                        */}
       {/* ================================================================ */}
       <aside
-        className="w-[240px] h-full shrink-0 flex flex-col gap-4 p-5"
+        className="w-[240px] h-full shrink-0 flex flex-col gap-3 p-4 overflow-y-auto"
         style={{
           background:
             'linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.33) 100%)',
@@ -440,30 +551,116 @@ const App: React.FC = () => {
         }}
       >
         {/* Panel Header */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span
             className="text-[16px] font-bold leading-none"
             style={{ color: '#00D4AA' }}
           >
             &gt;
           </span>
-          <span
-            className="text-[14px] leading-none"
-            style={{ color: '#1A1A1A' }}
-          >
+          <span className="text-[14px] leading-none" style={{ color: '#1A1A1A' }}>
             code_input
           </span>
         </div>
 
+        {/* Theme Selector */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <SectionLabel>theme</SectionLabel>
+          <TooltipProvider delayDuration={300}>
+            <div className="w-full flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {THEMES.map((theme) => (
+                <Tooltip key={theme.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="w-8 h-8 shrink-0"
+                      style={{
+                        backgroundColor: theme.color,
+                        borderRadius: '6px',
+                        border:
+                          selectedTheme === theme.id
+                            ? '2px solid #FF6B35'
+                            : '2px solid rgba(0,0,0,0.08)',
+                      }}
+                      onClick={() => setSelectedTheme(theme.id)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>{theme.label}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
+        </div>
+
+        {/* Background Selector */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <SectionLabel>background</SectionLabel>
+          <TooltipProvider delayDuration={300}>
+            <div className="w-full grid grid-cols-6 gap-1.5">
+              {BACKGROUNDS.map((bg) => (
+                <Tooltip key={bg.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="w-full aspect-square shrink-0 rounded-md relative overflow-hidden"
+                      style={{
+                        background: bg.preview,
+                        border:
+                          selectedBg === bg.id
+                            ? '2px solid #FF6B35'
+                            : '2px solid transparent',
+                      }}
+                      onClick={() => setSelectedBg(bg.id)}
+                    >
+                      {selectedBg === bg.id && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div
+                            className="w-3 h-3 rounded-full flex items-center justify-center"
+                            style={{
+                              backgroundColor: 'rgba(255,255,255,0.9)',
+                            }}
+                          >
+                            <Check size={8} style={{ color: '#333' }} />
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{bg.label}</TooltipContent>
+                </Tooltip>
+              ))}
+              {/* 自定义颜色 */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label
+                    className="w-full aspect-square shrink-0 rounded-md flex items-center justify-center cursor-pointer relative overflow-hidden"
+                    style={{
+                      border:
+                        selectedBg === 'custom'
+                          ? '2px solid #FF6B35'
+                          : '2px solid rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    <Palette size={12} style={{ color: '#999', pointerEvents: 'none' }} />
+                    <input
+                      type="color"
+                      value={customBgColor}
+                      onChange={(e) => {
+                        setCustomBgColor(e.target.value);
+                        setSelectedBg('custom');
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent>自定义颜色</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
+        </div>
+
         {/* Padding Selector */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <span
-              className="text-[11px] leading-none"
-              style={{ color: '#3D3D3D' }}
-            >
-              padding
-            </span>
+            <SectionLabel>padding</SectionLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -489,35 +686,23 @@ const App: React.FC = () => {
                 }}
               >
                 <div className="grid grid-cols-3 gap-2 w-[140px]">
-                  {/* 上 */}
                   <div />
                   <PaddingInput
                     label="上"
                     value={padding.top}
-                    onChange={(v) =>
-                      setPadding((p) => ({ ...p, top: v }))
-                    }
+                    onChange={(v) => setPadding((p) => ({ ...p, top: v }))}
                   />
                   <div />
-                  {/* 左 - 中 - 右 */}
                   <PaddingInput
                     label="左"
                     value={padding.left}
-                    onChange={(v) =>
-                      setPadding((p) => ({ ...p, left: v }))
-                    }
+                    onChange={(v) => setPadding((p) => ({ ...p, left: v }))}
                   />
                   <button
                     className="w-full h-6 flex items-center justify-center rounded text-[10px] hover:bg-black/5 transition-colors"
                     style={{ color: '#999' }}
                     onClick={() =>
-                      setPadding((p) => ({
-                        ...p,
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        left: 0,
-                      }))
+                      setPadding({ top: 0, right: 0, bottom: 0, left: 0 })
                     }
                   >
                     0
@@ -525,18 +710,13 @@ const App: React.FC = () => {
                   <PaddingInput
                     label="右"
                     value={padding.right}
-                    onChange={(v) =>
-                      setPadding((p) => ({ ...p, right: v }))
-                    }
+                    onChange={(v) => setPadding((p) => ({ ...p, right: v }))}
                   />
-                  {/* 下 */}
                   <div />
                   <PaddingInput
                     label="下"
                     value={padding.bottom}
-                    onChange={(v) =>
-                      setPadding((p) => ({ ...p, bottom: v }))
-                    }
+                    onChange={(v) => setPadding((p) => ({ ...p, bottom: v }))}
                   />
                   <div />
                 </div>
@@ -562,117 +742,132 @@ const App: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
-          <div className="w-full flex items-center gap-2">
-            <input
-              type="range"
-              min={0}
-              max={MAX_PADDING_VALUE}
-              value={isUniformPadding(padding) ? padding.top : -1}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                setPadding({ top: val, right: val, bottom: val, left: val });
-              }}
-              className="flex-1 accent-emerald-500"
-            />
-            <span
-              className="text-[11px] w-8 text-right tabular-nums"
-              style={{ color: '#666' }}
-            >
-              {isUniformPadding(padding) ? padding.top : '···'}
+          <SliderControl
+            min={0}
+            max={MAX_PADDING_VALUE}
+            value={isUniformPadding(padding) ? padding.top : -1}
+            displayValue={isUniformPadding(padding) ? `${padding.top}` : '···'}
+            onChange={(v) =>
+              setPadding({ top: v, right: v, bottom: v, left: v })
+            }
+          />
+        </div>
+
+        {/* Window Visual Controls */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <SectionLabel>window</SectionLabel>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px]" style={{ color: '#999' }}>
+              title_bar
             </span>
+            <ToggleSwitch checked={showHeader} onChange={setShowHeader} />
           </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px]" style={{ color: '#999' }}>
+              shadow
+            </span>
+            <ToggleSwitch checked={shadowEnabled} onChange={setShadowEnabled} />
+          </div>
+          {shadowEnabled && (
+            <SliderControl
+              min={0}
+              max={100}
+              value={shadowIntensity}
+              displayValue={`${shadowIntensity}%`}
+              onChange={setShadowIntensity}
+            />
+          )}
+          <SliderControl
+            min={0}
+            max={20}
+            value={borderRadius}
+            displayValue={`${borderRadius}px`}
+            onChange={setBorderRadius}
+          />
         </div>
 
         {/* Line Numbers Toggle */}
-        <div className="flex items-center justify-between">
-          <span
-            className="text-[11px] leading-none"
-            style={{ color: '#3D3D3D' }}
-          >
+        <div className="flex items-center justify-between shrink-0">
+          <span className="text-[10px]" style={{ color: '#999' }}>
             line_numbers
           </span>
-          <button
-            className="w-9 h-5 rounded-full relative transition-colors"
-            style={{
-              backgroundColor: showLineNumbers ? '#00D4AA' : '#D1D5DB',
-            }}
-            onClick={() => setShowLineNumbers((v) => !v)}
-          >
-            <div
-              className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+          <ToggleSwitch
+            checked={showLineNumbers}
+            onChange={setShowLineNumbers}
+          />
+        </div>
+
+        {/* Font Selector */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <SectionLabel>font</SectionLabel>
+          <div className="w-full flex flex-col gap-1.5">
+            <select
+              value={selectedFont}
+              onChange={(e) => setSelectedFont(e.target.value)}
+              className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
               style={{
-                backgroundColor: '#fff',
-                left: showLineNumbers ? '18px' : '2px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                backgroundColor: '#FAFAFA',
+                borderColor: 'rgba(0,0,0,0.1)',
+                color: '#333',
+                fontFamily: selectedFontConfig.family,
+              }}
+            >
+              {FONT_OPTIONS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            <SliderControl
+              min={12}
+              max={24}
+              value={fontSize}
+              displayValue={`${fontSize}px`}
+              onChange={(v) => {
+                setFontSize(v);
+                if (!manualResized.current) {
+                  setWinSize((p) => ({
+                    ...p,
+                    height: calcAutoHeight(code, showHeader, v),
+                  }));
+                }
               }}
             />
-          </button>
+          </div>
         </div>
 
-        {/* Theme Selector */}
-        <div className="flex flex-col gap-2">
-          <span
-            className="text-[11px] leading-none"
-            style={{ color: '#3D3D3D' }}
-          >
-            theme
-          </span>
-          <TooltipProvider delayDuration={300}>
-            <div className="w-full flex gap-2">
-              {THEMES.map((theme) => (
-                <Tooltip key={theme.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="w-10 h-10 shrink-0"
-                      style={{
-                        backgroundColor: theme.color,
-                        borderRadius: '4px',
-                        border:
-                          selectedTheme === theme.id
-                            ? '2px solid #FF6B35'
-                            : '2px solid #D1D5DB',
-                      }}
-                      onClick={() => setSelectedTheme(theme.id)}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>{theme.label}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </TooltipProvider>
-        </div>
-
-        {/* Background Selector */}
-        <div className="flex flex-col gap-2">
-          <span
-            className="text-[11px] leading-none"
-            style={{ color: '#3D3D3D' }}
-          >
-            background
-          </span>
-          <TooltipProvider delayDuration={300}>
-            <div className="w-full flex gap-2 justify-center">
-              {BACKGROUNDS.map((bg) => (
-                <Tooltip key={bg.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="w-10 h-10 shrink-0 flex items-center justify-center"
-                      style={{
-                        backgroundColor: bg.color,
-                        borderRadius: '4px',
-                      }}
-                      onClick={() => setSelectedBg(bg.id)}
-                    >
-                      {selectedBg === bg.id && (
-                        <Check size={16} style={{ color: '#FFFFFF' }} />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{bg.id}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </TooltipProvider>
+        {/* Watermark */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <div className="flex items-center justify-between">
+            <SectionLabel>watermark</SectionLabel>
+            <ToggleSwitch
+              checked={watermarkEnabled}
+              onChange={setWatermarkEnabled}
+            />
+          </div>
+          {watermarkEnabled && (
+            <>
+              <input
+                type="text"
+                value={watermarkText}
+                onChange={(e) => setWatermarkText(e.target.value)}
+                placeholder="Watermark text..."
+                className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
+                style={{
+                  backgroundColor: '#FAFAFA',
+                  borderColor: 'rgba(0,0,0,0.1)',
+                  color: '#333',
+                }}
+              />
+              <SliderControl
+                min={10}
+                max={90}
+                value={watermarkOpacity}
+                displayValue={`${watermarkOpacity}%`}
+                onChange={setWatermarkOpacity}
+              />
+            </>
+          )}
         </div>
 
         {/* Spacer */}
@@ -680,7 +875,7 @@ const App: React.FC = () => {
 
         {/* Export Button */}
         <button
-          className="w-full h-11 rounded-xl flex items-center justify-center gap-2"
+          className="w-full h-11 rounded-xl flex items-center justify-center gap-2 shrink-0"
           style={{ backgroundColor: '#00D4AA' }}
         >
           <Image size={16} style={{ color: '#0D0D0D' }} />
@@ -716,21 +911,23 @@ const App: React.FC = () => {
           {/* ---- Background Padding Area ---- */}
           {hasAnyPadding(padding) && (
             <div
-              className="absolute rounded-xl pointer-events-none"
+              className="absolute pointer-events-none"
               style={{
                 left: `calc(50% - ${winSize.width / 2}px + ${winPos.x}px - ${padding.left}px)`,
                 top: `calc(50% - ${winSize.height / 2}px + ${winPos.y}px - ${padding.top}px)`,
                 width: winSize.width + padding.left + padding.right,
                 height: winSize.height + padding.top + padding.bottom,
-                backgroundColor: selectedBgColor,
+                background: getBackgroundCss(),
+                borderRadius: `${borderRadius + 4}px`,
               }}
             />
           )}
 
           {/* ---- Code Window ---- */}
           <div
+            ref={codeWindowRef}
             data-code-window
-            className={`rounded-xl flex flex-col overflow-hidden ${
+            className={`flex flex-col overflow-hidden ${
               spacePressed && !isEditing
                 ? 'pointer-events-none'
                 : ''
@@ -742,43 +939,55 @@ const App: React.FC = () => {
               width: winSize.width,
               height: winSize.height,
               backgroundColor: currentTheme.windowBg,
-              boxShadow: !hasAnyPadding(padding)
-                ? '0 8px 40px rgba(0,0,0,0.15)'
-                : 'none',
+              borderRadius: `${borderRadius}px`,
+              boxShadow: windowShadow,
               userSelect: isEditing ? 'auto' : 'none',
             }}
           >
-            {/* Window Header — 拖拽手柄 */}
-            <div
-              className="w-full h-10 flex items-center gap-2 px-4 shrink-0"
-              style={{
-                backgroundColor: currentTheme.headerBg,
-                cursor: 'grab',
-              }}
-              {...bindWinDrag()}
-            >
+            {/* Window Header */}
+            {showHeader && (
               <div
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: '#FF5F56' }}
-              />
-              <div
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: '#FFBD2E' }}
-              />
-              <div
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: '#27C93F' }}
-              />
-              <span
-                className="text-[12px] ml-2"
-                style={{ color: '#777777' }}
+                className="w-full h-10 flex items-center gap-2 px-4 shrink-0"
+                style={{
+                  backgroundColor: currentTheme.headerBg,
+                  cursor: 'grab',
+                  borderRadius: `${borderRadius}px ${borderRadius}px 0 0`,
+                }}
+                {...bindWinDrag()}
               >
-                greet.js
-              </span>
-            </div>
+                <div
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: '#FF5F56' }}
+                />
+                <div
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: '#FFBD2E' }}
+                />
+                <div
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: '#27C93F' }}
+                />
+                <input
+                  type="text"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  className="text-[12px] ml-2 bg-transparent border-none outline-none flex-1 min-w-0"
+                  style={{ color: '#777777', cursor: 'text' }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
 
             {/* Window Body */}
-            <div className="w-full flex-1 overflow-hidden relative">
+            <div
+              className="w-full flex-1 overflow-hidden relative"
+              style={{
+                borderRadius: showHeader
+                  ? '0 0 ' + `${borderRadius}px ${borderRadius}px`
+                  : `${borderRadius}px`,
+              }}
+            >
               <CodeMirror
                 value={code}
                 onChange={(value) => {
@@ -791,10 +1000,7 @@ const App: React.FC = () => {
                   }
                 }}
                 onBlur={() => {
-                  const win = document.querySelector(
-                    '[data-code-window]',
-                  );
-                  if (win?.contains(document.activeElement)) return;
+                  if (codeWindowRef.current?.contains(document.activeElement)) return;
                   exitEdit();
                 }}
                 theme={editorTheme}
@@ -814,16 +1020,38 @@ const App: React.FC = () => {
                   cursor: isEditing ? 'text' : 'default',
                 }}
               />
+
+              {/* Watermark Overlay */}
+              {watermarkEnabled && watermarkText && !isEditing && (
+                <div
+                  className="absolute inset-0 overflow-hidden pointer-events-none select-none"
+                  style={{ opacity: watermarkOpacity / 100 }}
+                >
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='${
+                        currentTheme.isDark
+                          ? 'rgba(255,255,255,0.12)'
+                          : 'rgba(0,0,0,0.08)'
+                      }' font-size='14' font-family='${selectedFontConfig.family}'%3E${encodeURIComponent(watermarkText)}%3C/text%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'repeat',
+                      backgroundSize: '200px 120px',
+                      transform: 'rotate(-15deg)',
+                      transformOrigin: 'center center',
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Resize Handle */}
             <div
               className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize"
               style={{
-                borderRight:
-                  '2px solid rgba(128,128,128,0.3)',
-                borderBottom:
-                  '2px solid rgba(128,128,128,0.3)',
+                borderRight: '2px solid rgba(128,128,128,0.3)',
+                borderBottom: '2px solid rgba(128,128,128,0.3)',
+                borderRadius: `0 0 ${borderRadius}px 0`,
               }}
               {...bindResize()}
             />

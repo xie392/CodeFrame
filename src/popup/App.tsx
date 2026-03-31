@@ -108,6 +108,13 @@ function handleDelayedCapture(): void {
   setTimeout(() => window.close(), 100);
 }
 
+function handleOpenCodeEditor(): void {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('src/codegen/index.html'),
+  });
+  window.close();
+}
+
 function handleDesktopCapture(): void {
   const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
     mode: 'desktop',
@@ -287,7 +294,7 @@ const App: React.FC = () => {
         <FeatureItem
           icon={<Code size={18} style={{ color: 'var(--color-accent-teal)' }} />}
           label="代码编辑器"
-          onClick={() => console.log('code editor')}
+          onClick={handleOpenCodeEditor}
         />
       </div>
 

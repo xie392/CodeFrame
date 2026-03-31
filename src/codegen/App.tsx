@@ -3,6 +3,7 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from 'react';
 import {
   Check,
@@ -13,6 +14,13 @@ import {
   Settings2,
 } from 'lucide-react';
 import { useDrag } from '@use-gesture/react';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import {
+  vscodeDark,
+  vscodeLight,
+} from '@uiw/codemirror-theme-vscode';
+import { EditorView } from '@codemirror/view';
 import {
   Tooltip,
   TooltipTrigger,
@@ -24,11 +32,6 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@shared/components/ui/popover';
-import {
-  createHighlighterCore,
-  type HighlighterCore,
-} from 'shiki/core';
-import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
 // ---------------------------------------------------------------------------
 // 常量 & 配置
@@ -90,9 +93,13 @@ const BACKGROUNDS = [
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 4;
 const MIN_WIN_W = 320;
-const MIN_WIN_H = 200;
 const MAX_WIN_W = 1200;
 const MAX_WIN_H = 800;
+
+const HEADER_HEIGHT = 40;
+const BODY_PADDING_V = 40; // p-5 = 20px × 2
+const LINE_HEIGHT = 20;
+const MIN_CODE_LINES = 1;
 
 const DEFAULT_PADDING = {
   top: 40,
@@ -113,26 +120,50 @@ function hasAnyPadding(p: Padding): boolean {
   return p.top > 0 || p.right > 0 || p.bottom > 0 || p.left > 0;
 }
 
-// ---------------------------------------------------------------------------
-// Shiki 初始化（模块级缓存）
-// ---------------------------------------------------------------------------
-
-let shikiHighlighter: HighlighterCore | null = null;
-
-async function getHighlighter(): Promise<HighlighterCore> {
-  if (shikiHighlighter) return shikiHighlighter;
-  shikiHighlighter = await createHighlighterCore({
-    themes: [
-      import('shiki/themes/dark-plus.mjs'),
-      import('shiki/themes/one-dark-pro.mjs'),
-      import('shiki/themes/solarized-dark.mjs'),
-      import('shiki/themes/github-light.mjs'),
-    ],
-    langs: [import('shiki/langs/javascript.mjs')],
-    engine: createJavaScriptRegexEngine(),
-  });
-  return shikiHighlighter;
+// CodeMirror 主题映射：暗色主题用 vscodeDark，浅色用 vscodeLight
+function getEditorTheme(themeId: string) {
+  return themeId === 'light' ? vscodeLight : vscodeDark;
 }
+
+// 根据代码行数计算窗口自适应高度
+function calcAutoHeight(codeText: string): number {
+  const lines = codeText.split('\n').length;
+  const total =
+    HEADER_HEIGHT + BODY_PADDING_V + Math.max(MIN_CODE_LINES, lines) * LINE_HEIGHT;
+  return Math.min(MAX_WIN_H, total);
+}
+
+// CodeMirror 全局样式覆盖（与预览区保持一致）
+const editorBaseTheme = EditorView.theme({
+  '&': {
+    fontSize: '13px',
+    fontFamily: "'JetBrains Mono', monospace",
+  },
+  '.cm-content': {
+    padding: '20px 20px 20px 8px',
+    lineHeight: '20px',
+  },
+  '.cm-gutters': {
+    backgroundColor: 'transparent',
+    border: 'none',
+  },
+  '.cm-lineNumbers': {
+    width: '32px',
+    minWidth: '32px',
+  },
+  '.cm-lineNumbers .cm-gutterElement': {
+    padding: '0 4px 0 0',
+    textAlign: 'right',
+    opacity: '0.4',
+  },
+  '.cm-focused': {
+    outline: 'none',
+  },
+  // 只读模式（contenteditable=false）下隐藏光标
+  '.cm-editor [contenteditable=false] .cm-content': {
+    caretColor: 'transparent',
+  },
+});
 
 // ---------------------------------------------------------------------------
 // PaddingInput 子组件
@@ -180,7 +211,7 @@ const App: React.FC = () => {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [selectedTheme, setSelectedTheme] = useState('vs-dark');
   const [selectedBg, setSelectedBg] = useState('indigo');
-  const [highlightedHtml, setHighlightedHtml] = useState('');
+  const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [padding, setPadding] = useState<Padding>({
     ...DEFAULT_PADDING,
   });
@@ -197,9 +228,13 @@ const App: React.FC = () => {
 
   // ---- 代码窗口状态 ----
   const [winPos, setWinPos] = useState({ x: 0, y: 0 });
-  const [winSize, setWinSize] = useState({ width: 520, height: 380 });
+  const [winSize, setWinSize] = useState({
+    width: 520,
+    height: calcAutoHeight(DEFAULT_CODE),
+  });
   const [isEditing, setIsEditing] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // 标记用户是否手动 resize 过（手动 resize 后禁用自适应高度）
+  const manualResized = useRef(false);
 
   // ---- Refs（避免闭包陷阱）----
   const scaleRef = useRef(scale);
@@ -215,22 +250,6 @@ const App: React.FC = () => {
   useEffect(() => { paddingRef.current = padding; }, [padding]);
   useEffect(() => { winPosRef.current = winPos; }, [winPos]);
   useEffect(() => { winSizeRef.current = winSize; }, [winSize]);
-
-  // ---- Shiki 实时高亮 ----
-  useEffect(() => {
-    let cancelled = false;
-    async function highlight() {
-      const shiki = await getHighlighter();
-      if (cancelled) return;
-      const html = shiki.codeToHtml(code, {
-        lang: 'javascript',
-        theme: currentTheme.shikiTheme,
-      });
-      if (!cancelled) setHighlightedHtml(html);
-    }
-    highlight();
-    return () => { cancelled = true; };
-  }, [code, selectedTheme]);
 
   // ---- 以指定锚点缩放画布 ----
   const zoomAt = useCallback(
@@ -273,11 +292,13 @@ const App: React.FC = () => {
         setSpacePressed(true);
       }
       if (e.code === 'Escape' && isEditingRef.current) {
-        setIsEditing(false);
+        exitEditRef.current();
       }
     };
     const onUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') setSpacePressed(false);
+      if (e.code === 'Space' && !isEditingRef.current) {
+        setSpacePressed(false);
+      }
     };
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
@@ -306,10 +327,13 @@ const App: React.FC = () => {
 
   // ---- 代码窗口 resize ----
   const bindResize = useDrag(
-    ({ delta: [dx, dy] }) => {
+    ({ delta: [dx, dy], movement: [mx, my] }) => {
+      if (Math.abs(mx) > 8 || Math.abs(my) > 8) {
+        manualResized.current = true;
+      }
       setWinSize((p) => ({
         width: Math.min(MAX_WIN_W, Math.max(MIN_WIN_W, p.width + dx)),
-        height: Math.min(MAX_WIN_H, Math.max(MIN_WIN_H, p.height + dy)),
+        height: Math.min(MAX_WIN_H, Math.max(calcAutoHeight(code), p.height + dy)),
       }));
     },
     { filterTaps: true },
@@ -347,38 +371,44 @@ const App: React.FC = () => {
 
   const zoomPercent = Math.round(scale * 100);
 
-  // ---- 进入/退出编辑 ----
-  const enterEdit = useCallback(() => {
-    if (!isEditing) setIsEditing(true);
-  }, [isEditing]);
+  // ---- 退出编辑 ----
+  const exitEdit = useCallback(() => {
+    setIsEditing(false);
+    // 退出编辑时，若用户未手动 resize，则自适应高度
+    if (!manualResized.current) {
+      setWinSize((p) => ({
+        ...p,
+        height: calcAutoHeight(code),
+      }));
+    }
+  }, [code]);
 
-  const exitEdit = useCallback(() => setIsEditing(false), []);
+  const exitEditRef = useRef(exitEdit);
+  useEffect(() => { exitEditRef.current = exitEdit; }, [exitEdit]);
 
-  // ---- Tab 键缩进 ----
-  const handleTextareaKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const ta = e.currentTarget;
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        const updated =
-          code.substring(0, start) + '  ' + code.substring(end);
-        setCode(updated);
-        requestAnimationFrame(() => {
-          ta.selectionStart = ta.selectionEnd = start + 2;
-        });
-      }
-    },
-    [code],
+  // ---- 编辑器 CodeMirror 主题（随 selectedTheme 切换）----
+  const editorTheme = getEditorTheme(selectedTheme);
+
+  // ---- 编辑器 extensions（stable 引用）----
+  // tabindex 让只读模式也能获取焦点，从而触发 onFocus 进入编辑
+  const cmExtensions = useMemo(
+    () => [
+      javascript(),
+      editorBaseTheme,
+      EditorView.contentAttributes.of({ tabindex: '0' }),
+    ],
+    [],
   );
 
-  // ---- 编辑模式聚焦 ----
+  // ---- 代码变更时自适应窗口高度 ----
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
+    if (isEditing && !manualResized.current) {
+      setWinSize((p) => ({
+        ...p,
+        height: calcAutoHeight(code),
+      }));
     }
-  }, [isEditing]);
+  }, [code, isEditing]);
 
   // ---- 窗口位置 CSS（确保拖拽方向一致）----
   const winLeft = `calc(50% - ${winSize.width / 2}px + ${winPos.x}px)`;
@@ -553,6 +583,32 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* Line Numbers Toggle */}
+        <div className="flex items-center justify-between">
+          <span
+            className="text-[11px] leading-none"
+            style={{ color: '#3D3D3D' }}
+          >
+            line_numbers
+          </span>
+          <button
+            className="w-9 h-5 rounded-full relative transition-colors"
+            style={{
+              backgroundColor: showLineNumbers ? '#00D4AA' : '#D1D5DB',
+            }}
+            onClick={() => setShowLineNumbers((v) => !v)}
+          >
+            <div
+              className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+              style={{
+                backgroundColor: '#fff',
+                left: showLineNumbers ? '18px' : '2px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+              }}
+            />
+          </button>
+        </div>
+
         {/* Theme Selector */}
         <div className="flex flex-col gap-2">
           <span
@@ -673,6 +729,7 @@ const App: React.FC = () => {
 
           {/* ---- Code Window ---- */}
           <div
+            data-code-window
             className={`rounded-xl flex flex-col overflow-hidden ${
               spacePressed && !isEditing
                 ? 'pointer-events-none'
@@ -722,38 +779,41 @@ const App: React.FC = () => {
 
             {/* Window Body */}
             <div className="w-full flex-1 overflow-hidden relative">
-              {isEditing ? (
-                <textarea
-                  ref={textareaRef}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onBlur={exitEdit}
-                  onKeyDown={handleTextareaKeyDown}
-                  spellCheck={false}
-                  className="w-full h-full resize-none p-5 bg-transparent outline-none"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '13px',
-                    lineHeight: '20px',
-                    color: currentTheme.textColor,
-                    caretColor: '#00D4AA',
-                    tabSize: 2,
-                  }}
-                />
-              ) : (
-                <div
-                  className="w-full h-full p-5 overflow-auto cursor-text"
-                  dangerouslySetInnerHTML={{
-                    __html: highlightedHtml,
-                  }}
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '13px',
-                    lineHeight: '20px',
-                  }}
-                  onClick={enterEdit}
-                />
-              )}
+              <CodeMirror
+                value={code}
+                onChange={(value) => {
+                  setCode(value);
+                }}
+                onFocus={() => {
+                  if (!isEditing) {
+                    setIsEditing(true);
+                    manualResized.current = false;
+                  }
+                }}
+                onBlur={() => {
+                  const win = document.querySelector(
+                    '[data-code-window]',
+                  );
+                  if (win?.contains(document.activeElement)) return;
+                  exitEdit();
+                }}
+                theme={editorTheme}
+                extensions={cmExtensions}
+                editable={isEditing}
+                readOnly={!isEditing}
+                basicSetup={{
+                  lineNumbers: showLineNumbers,
+                  bracketMatching: true,
+                  indentOnInput: true,
+                  tabSize: 2,
+                  foldGutter: false,
+                }}
+                className="w-full h-full"
+                style={{
+                  height: '100%',
+                  cursor: isEditing ? 'text' : 'default',
+                }}
+              />
             </div>
 
             {/* Resize Handle */}

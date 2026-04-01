@@ -535,22 +535,9 @@ const App: React.FC = () => {
           boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
         }}
       >
-        {/* Panel Header */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span
-            className="text-[16px] font-bold leading-none"
-            style={{ color: '#00D4AA' }}
-          >
-            &gt;
-          </span>
-          <span className="text-[14px] leading-none" style={{ color: '#1A1A1A' }}>
-            code_input
-          </span>
-        </div>
-
         {/* Theme Selector */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>theme</SectionLabel>
+          <SectionLabel>主题</SectionLabel>
           <select
             value={selectedTheme}
             onChange={(e) => setSelectedTheme(e.target.value)}
@@ -571,7 +558,7 @@ const App: React.FC = () => {
 
         {/* Background Selector */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>background</SectionLabel>
+          <SectionLabel>背景</SectionLabel>
           <TooltipProvider delayDuration={300}>
             <div className="w-full grid grid-cols-6 gap-1.5">
               {BACKGROUNDS.map((bg) => (
@@ -638,7 +625,7 @@ const App: React.FC = () => {
         {/* Padding Selector */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>padding</SectionLabel>
+            <SectionLabel>内边距</SectionLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -733,16 +720,25 @@ const App: React.FC = () => {
 
         {/* Window Visual Controls */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>window</SectionLabel>
+          <SectionLabel>窗口</SectionLabel>
           <div className="flex items-center justify-between">
             <span className="text-[10px]" style={{ color: '#999' }}>
-              title_bar
+              标题栏
             </span>
             <ToggleSwitch checked={showHeader} onChange={setShowHeader} />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[10px]" style={{ color: '#999' }}>
-              shadow
+              行号
+            </span>
+            <ToggleSwitch
+              checked={showLineNumbers}
+              onChange={setShowLineNumbers}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px]" style={{ color: '#999' }}>
+              阴影
             </span>
             <ToggleSwitch checked={shadowEnabled} onChange={setShadowEnabled} />
           </div>
@@ -760,7 +756,7 @@ const App: React.FC = () => {
         {/* Border Radius Controls */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>border_radius</SectionLabel>
+            <SectionLabel>圆角</SectionLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -792,7 +788,7 @@ const App: React.FC = () => {
                       className="text-[9px] leading-none"
                       style={{ color: '#999' }}
                     >
-                      outer
+                      外圆角
                     </span>
                     <SliderControl
                       min={0}
@@ -809,7 +805,7 @@ const App: React.FC = () => {
                       className="text-[9px] leading-none"
                       style={{ color: '#999' }}
                     >
-                      inner
+                      内圆角
                     </span>
                     <SliderControl
                       min={0}
@@ -867,20 +863,9 @@ const App: React.FC = () => {
           />
         </div>
 
-        {/* Line Numbers Toggle */}
-        <div className="flex items-center justify-between shrink-0">
-          <span className="text-[10px]" style={{ color: '#999' }}>
-            line_numbers
-          </span>
-          <ToggleSwitch
-            checked={showLineNumbers}
-            onChange={setShowLineNumbers}
-          />
-        </div>
-
         {/* Font Selector */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>font</SectionLabel>
+          <SectionLabel>字体</SectionLabel>
           <div className="w-full flex flex-col gap-1.5">
             <select
               value={selectedFont}
@@ -920,7 +905,7 @@ const App: React.FC = () => {
         {/* Watermark */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>watermark</SectionLabel>
+            <SectionLabel>水印</SectionLabel>
             <ToggleSwitch
               checked={watermarkEnabled}
               onChange={setWatermarkEnabled}
@@ -932,7 +917,7 @@ const App: React.FC = () => {
                 type="text"
                 value={watermarkText}
                 onChange={(e) => setWatermarkText(e.target.value)}
-                placeholder="Watermark text..."
+                placeholder="水印文字..."
                 className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
                 style={{
                   backgroundColor: '#FAFAFA',
@@ -967,7 +952,7 @@ const App: React.FC = () => {
               className="text-[13px] font-semibold leading-none"
               style={{ color: '#0D0D0D' }}
             >
-              {isExporting ? 'exporting...' : '$ export_image'}
+              {isExporting ? '导出中...' : '导出图片'}
             </span>
           </button>
           <TooltipProvider delayDuration={300}>

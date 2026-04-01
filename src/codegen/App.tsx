@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import {
   Check,
+  ClipboardCopy,
   Image,
   Minus,
   Plus,
@@ -15,6 +16,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { useDrag } from '@use-gesture/react';
+import { snapdom } from '@zumer/snapdom';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorView } from '@codemirror/view';
@@ -83,10 +85,6 @@ type Padding = { top: number; right: number; bottom: number; left: number };
 
 function isUniformPadding(p: Padding): boolean {
   return p.top === p.right && p.right === p.bottom && p.bottom === p.left;
-}
-
-function hasAnyPadding(p: Padding): boolean {
-  return p.top > 0 || p.right > 0 || p.bottom > 0 || p.left > 0;
 }
 
 function calcAutoHeight(
@@ -392,6 +390,60 @@ const App: React.FC = () => {
   const exitEditRef = useRef(exitEdit);
   useEffect(() => { exitEditRef.current = exitEdit; }, [exitEdit]);
 
+  // ---- 导出 / 复制 ----
+  const [isExporting, setIsExporting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  const handleExportImage = useCallback(async () => {
+    const el = exportRef.current;
+    if (!el) return;
+    setIsExporting(true);
+    try {
+      // 退出编辑模式以隐藏光标
+      if (isEditingRef.current) exitEditRef.current();
+      // 等待 DOM 更新
+      await new Promise((r) => setTimeout(r, 50));
+      const img = await snapdom.toPng(el, {
+        scale: 2,
+        exclude: ['[data-no-export]'],
+      });
+      const a = document.createElement('a');
+      a.href = img.src;
+      a.download = `codeframe-${Date.now()}.png`;
+      a.click();
+    } catch (err) {
+      console.error('导出失败:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
+
+  const handleCopyToClipboard = useCallback(async () => {
+    const el = exportRef.current;
+    if (!el) return;
+    if (!navigator.clipboard?.write) {
+      alert('当前浏览器不支持复制图片到剪贴板');
+      return;
+    }
+    try {
+      if (isEditingRef.current) exitEditRef.current();
+      await new Promise((r) => setTimeout(r, 50));
+      const blob = await snapdom.toBlob(el, {
+        scale: 2,
+        type: 'png',
+        exclude: ['[data-no-export]'],
+      });
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('复制失败:', err);
+    }
+  }, []);
+
   // ---- 编辑器配置 ----
   // 字体和行高覆盖（与主题无关的排版配置）
   const editorStyleOverrides = useMemo(
@@ -457,10 +509,6 @@ const App: React.FC = () => {
     const alpha = shadowIntensity / 100;
     return `0 8px ${20 + shadowIntensity * 0.3}px rgba(0,0,0,${0.15 * alpha})`;
   }, [shadowEnabled, shadowIntensity]);
-
-  // ---- 窗口位置 ----
-  const winLeft = `calc(50% - ${winSize.width / 2}px)`;
-  const winTop = `calc(50% - ${winSize.height / 2}px)`;
 
   // -----------------------------------------------------------------------
   // 渲染
@@ -906,19 +954,43 @@ const App: React.FC = () => {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Export Button */}
-        <button
-          className="w-full h-11 rounded-xl flex items-center justify-center gap-2 shrink-0"
-          style={{ backgroundColor: '#00D4AA' }}
-        >
-          <Image size={16} style={{ color: '#0D0D0D' }} />
-          <span
-            className="text-[13px] font-semibold leading-none"
-            style={{ color: '#0D0D0D' }}
+        {/* Export Button Group */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleExportImage}
+            disabled={isExporting}
+            className="flex-1 h-11 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60"
+            style={{ backgroundColor: '#00D4AA' }}
           >
-            $ export_image
-          </span>
-        </button>
+            <Image size={16} style={{ color: '#0D0D0D' }} />
+            <span
+              className="text-[13px] font-semibold leading-none"
+              style={{ color: '#0D0D0D' }}
+            >
+              {isExporting ? 'exporting...' : '$ export_image'}
+            </span>
+          </button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleCopyToClipboard}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.08)' }}
+                >
+                  {copied ? (
+                    <Check size={16} style={{ color: '#00D4AA' }} />
+                  ) : (
+                    <ClipboardCopy size={16} style={{ color: '#00D4AA' }} />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                <p className="text-[12px]">{copied ? '已复制' : '复制到剪贴板'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </aside>
 
       {/* ================================================================ */}
@@ -939,38 +1011,42 @@ const App: React.FC = () => {
             transformOrigin: '0 0',
           }}
         >
-          {/* ---- Background Padding Area ---- */}
-          {hasAnyPadding(padding) && (
+          {/* ---- Export Container (Background + Code Window) ---- */}
+          <div
+            ref={exportRef}
+            className="absolute overflow-hidden"
+            style={{
+              left: `calc(50% - ${winSize.width / 2}px - ${padding.left}px)`,
+              top: `calc(50% - ${winSize.height / 2}px - ${padding.top}px)`,
+              width: winSize.width + padding.left + padding.right,
+              height: winSize.height + padding.top + padding.bottom,
+            }}
+          >
+            {/* Background (always render for export consistency) */}
             <div
-              className="absolute pointer-events-none"
+              className="absolute inset-0 pointer-events-none"
               style={{
-                left: `calc(50% - ${winSize.width / 2}px - ${padding.left}px)`,
-                top: `calc(50% - ${winSize.height / 2}px - ${padding.top}px)`,
-                width: winSize.width + padding.left + padding.right,
-                height: winSize.height + padding.top + padding.bottom,
                 background: getBackgroundCss(),
                 borderRadius: `${outerBorderRadius}px`,
               }}
-            />
-          )}
+            ></div>
 
-          {/* ---- Code Window ---- */}
-          <div
-            ref={codeWindowRef}
-            data-code-window
-            className="flex flex-col overflow-hidden"
-            style={{
-              position: 'absolute',
-              left: winLeft,
-              top: winTop,
-              width: winSize.width,
-              height: winSize.height,
-              backgroundColor: currentTheme.windowBg,
-              borderRadius: `${innerBorderRadius}px`,
-              boxShadow: windowShadow,
-              userSelect: isEditing ? 'auto' : 'none',
-            }}
-          >
+            {/* ---- Code Window ---- */}
+            <div
+              ref={codeWindowRef}
+              data-code-window
+              className="flex flex-col overflow-hidden absolute"
+              style={{
+                left: padding.left,
+                top: padding.top,
+                width: winSize.width,
+                height: winSize.height,
+                backgroundColor: currentTheme.windowBg,
+                borderRadius: `${innerBorderRadius}px`,
+                boxShadow: windowShadow,
+                userSelect: isEditing ? 'auto' : 'none',
+              }}
+            >
             {/* Window Header */}
             {showHeader && (
               <div
@@ -1050,6 +1126,7 @@ const App: React.FC = () => {
             {/* Resize Handle */}
             <div
               className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize"
+              data-no-export
               style={{
                 borderRight: '2px solid rgba(128,128,128,0.3)',
                 borderBottom: '2px solid rgba(128,128,128,0.3)',
@@ -1077,6 +1154,7 @@ const App: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
 
         {/* ---- Zoom Controls ---- */}
         <div

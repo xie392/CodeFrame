@@ -18,6 +18,9 @@ import {
   ImagePlus,
   Download,
   ClipboardCopy,
+  Minus,
+  Plus,
+  RotateCcw,
 } from 'lucide-react';
 import { STORAGE_KEYS } from '@shared/constants';
 
@@ -31,6 +34,11 @@ const ACCEPTED_IMAGE_TYPES = [
   'image/webp',
   'image/gif',
 ] as const;
+
+const MIN_SCALE = 0.25;
+const MAX_SCALE = 4;
+const MAX_IMG_W = 800;
+const MAX_IMG_H = 600;
 
 type EditorSource = 'capture' | 'upload';
 type ToolId = 'select' | 'arrow' | 'rect' | 'text' | 'mosaic' | 'crop';
@@ -281,14 +289,34 @@ const UploadPlaceholder: React.FC<{
 };
 
 /** 画布中显示的图片 */
-const CanvasImage: React.FC<{ src: string }> = ({ src }) => (
-  <img
-    src={src}
-    alt="编辑图片"
-    className="max-w-full max-h-full object-contain rounded-[8px] shadow-lg"
-    draggable={false}
-  />
-);
+const CanvasImage: React.FC<{ src: string }> = ({ src }) => {
+  const [naturalSize, setNaturalSize] = useState<{
+    w: number;
+    h: number;
+  } | null>(null);
+
+  return (
+    <img
+      src={src}
+      alt="编辑图片"
+      onLoad={(e) => {
+        const img = e.currentTarget;
+        setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+      }}
+      className="rounded-[8px] shadow-lg"
+      draggable={false}
+      style={{
+        maxWidth: naturalSize
+          ? Math.min(MAX_IMG_W, naturalSize.w)
+          : MAX_IMG_W,
+        maxHeight: naturalSize
+          ? Math.min(MAX_IMG_H, naturalSize.h)
+          : MAX_IMG_H,
+        objectFit: 'contain',
+      }}
+    />
+  );
+};
 
 // ---------------------------------------------------------------------------
 // 主组件
@@ -300,6 +328,124 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
   const initialized = useRef(false);
+
+  // 画布缩放/平移状态
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const scaleRef = useRef(scale);
+  const offsetRef = useRef(offset);
+
+  // 锚点缩放
+  const zoomAt = useCallback(
+    (newScale: number, anchorX: number, anchorY: number) => {
+      const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+      const oldScale = scaleRef.current;
+      const ratio = clamped / oldScale;
+      const old = offsetRef.current;
+      const newOffset = {
+        x: anchorX * (1 - ratio) + old.x * ratio,
+        y: anchorY * (1 - ratio) + old.y * ratio,
+      };
+      scaleRef.current = clamped;
+      offsetRef.current = newOffset;
+      setScale(clamped);
+      setOffset(newOffset);
+    },
+    [],
+  );
+
+  // 鼠标滚轮缩放
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const factor = e.deltaY > 0 ? 0.92 : 1.08;
+      zoomAt(
+        scaleRef.current * factor,
+        rect.width / 2,
+        rect.height / 2,
+      );
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [zoomAt]);
+
+  // 画布拖拽平移
+  const isPanning = useRef(false);
+  const panStart = useRef({ x: 0, y: 0 });
+  const panOffsetStart = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0 || !imageData) return;
+      isPanning.current = true;
+      panStart.current = { x: e.clientX, y: e.clientY };
+      panOffsetStart.current = offsetRef.current;
+      el.style.cursor = 'grabbing';
+    };
+
+    const onMove = (e: MouseEvent) => {
+      if (!isPanning.current) return;
+      const dx = e.clientX - panStart.current.x;
+      const dy = e.clientY - panStart.current.y;
+      setOffset({
+        x: panOffsetStart.current.x + dx,
+        y: panOffsetStart.current.y + dy,
+      });
+    };
+
+    const onUp = () => {
+      isPanning.current = false;
+      el.style.cursor = 'grab';
+    };
+
+    el.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      el.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  // 缩放控制
+  const zoomIn = useCallback(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    zoomAt(scaleRef.current * 1.2, rect.width / 2, rect.height / 2);
+  }, [zoomAt]);
+
+  const zoomOut = useCallback(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    zoomAt(scaleRef.current / 1.2, rect.width / 2, rect.height / 2);
+  }, [zoomAt]);
+
+  const resetView = useCallback(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  const handleSlider = useCallback(
+    (newScale: number) => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      zoomAt(newScale, rect.width / 2, rect.height / 2);
+    },
+    [zoomAt],
+  );
+
+  const zoomPercent = Math.round(scale * 100);
 
   // 解析 URL 参数
   useEffect(() => {
@@ -368,24 +514,95 @@ const App: React.FC = () => {
       <Toolbar activeTool={activeTool} onSelectTool={setActiveTool} />
 
       {/* 中央画布 */}
-      <main className="editor-canvas flex-1 h-full flex items-center justify-center overflow-auto p-4">
+      <main
+        ref={canvasRef}
+        className="editor-canvas flex-1 h-full relative overflow-hidden"
+        style={{ cursor: 'grab' }}
+      >
         {error ? (
-          <div className="text-center">
-            <p className="text-[13px] text-[var(--color-editor-error)] font-body mb-1">
-              // capture error
-            </p>
-            <p className="text-[11px] text-[var(--color-editor-hint)] font-body">
-              {error}
-            </p>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-[13px] text-[var(--color-editor-error)] font-body mb-1">
+                // capture error
+              </p>
+              <p className="text-[11px] text-[var(--color-editor-hint)] font-body">
+                {error}
+              </p>
+            </div>
           </div>
         ) : imageData ? (
-          <CanvasImage src={imageData} />
+          <>
+            {/* Transform Layer */}
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+                transformOrigin: '0 0',
+              }}
+            >
+              <CanvasImage src={imageData} />
+            </div>
+
+            {/* 缩放控制条 */}
+            <div
+              className="absolute bottom-4 left-1/2 h-8 flex items-center gap-2 rounded-lg px-2"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.85)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid rgba(0,0,0,0.1)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <button
+                onClick={zoomOut}
+                className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"
+              >
+                <Minus size={14} />
+              </button>
+              <span
+                className="text-[12px] w-10 text-center tabular-nums"
+                style={{ color: '#333' }}
+              >
+                {zoomPercent}%
+              </span>
+              <input
+                type="range"
+                min={MIN_SCALE}
+                max={MAX_SCALE}
+                step={0.01}
+                value={scale}
+                onChange={(e) =>
+                  handleSlider(parseFloat(e.target.value))
+                }
+                className="w-20 accent-emerald-500"
+              />
+              <button
+                onClick={zoomIn}
+                className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"
+              >
+                <Plus size={14} />
+              </button>
+              <div className="w-px h-4 bg-gray-300" />
+              <button
+                onClick={resetView}
+                className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"
+              >
+                <RotateCcw size={14} />
+              </button>
+            </div>
+          </>
         ) : showPlaceholder ? (
-          <UploadPlaceholder onImageLoad={handleImageLoad} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <UploadPlaceholder onImageLoad={handleImageLoad} />
+          </div>
         ) : (
-          <p className="text-[13px] text-[var(--color-editor-comment)] font-body">
-            // editor_canvas
-          </p>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-[13px] text-[var(--color-editor-comment)] font-body">
+              // editor_canvas
+            </p>
+          </div>
         )}
       </main>
 

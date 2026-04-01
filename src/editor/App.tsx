@@ -276,6 +276,23 @@ type MosaicDragType = RectDragType;
 // 马赛克控制点光标映射（与矩形相同）
 const MOSAIC_CURSOR_MAP: Record<MosaicDragType, string> = RECT_CURSOR_MAP;
 
+// 裁剪区域数据结构
+interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// 裁剪框拖拽类型（与矩形相同）
+type CropDragType = RectDragType;
+
+// 裁剪框光标映射（与矩形相同）
+const CROP_CURSOR_MAP: Record<CropDragType, string> = RECT_CURSOR_MAP;
+
+// 最小裁剪尺寸
+const MIN_CROP_SIZE = 10;
+
 // 在 Canvas 上绘制箭头
 function drawArrow(
   ctx: CanvasRenderingContext2D,
@@ -844,6 +861,139 @@ function getMosaicDragTypeAtPoint(
   }
 
   return 'none';
+}
+
+// ---------------------------------------------------------------------------
+// 裁剪相关函数
+// ---------------------------------------------------------------------------
+
+// 获取裁剪框的 8 个控制点位置
+function getCropHandles(crop: CropArea): { x: number; y: number }[] {
+  const { x, y, width, height } = crop;
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+
+  return [
+    { x: x, y: y }, // 左上 (tl)
+    { x: cx, y: y }, // 上中 (t)
+    { x: x + width, y: y }, // 右上 (tr)
+    { x: x + width, y: cy }, // 右中 (r)
+    { x: x + width, y: y + height }, // 右下 (br)
+    { x: cx, y: y + height }, // 下中 (b)
+    { x: x, y: y + height }, // 左下 (bl)
+    { x: x, y: cy }, // 左中 (l)
+  ];
+}
+
+// 检测点击是否在裁剪框内部
+function isPointInCrop(x: number, y: number, crop: CropArea): boolean {
+  const { x: cx, y: cy, width, height } = crop;
+  return x >= cx && x <= cx + width && y >= cy && y <= cy + height;
+}
+
+// 检测点击位置返回裁剪框拖拽类型
+function getCropDragTypeAtPoint(
+  x: number,
+  y: number,
+  crop: CropArea,
+): CropDragType {
+  const threshold = HANDLE_RADIUS + 2;
+  const handles = getCropHandles(crop);
+  const handleTypes: CropDragType[] = [
+    'resize-tl',
+    'resize-t',
+    'resize-tr',
+    'resize-r',
+    'resize-br',
+    'resize-b',
+    'resize-bl',
+    'resize-l',
+  ];
+
+  // 检测控制点
+  for (let i = 0; i < handles.length; i++) {
+    const handle = handles[i];
+    const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
+    if (dist <= threshold) {
+      return handleTypes[i];
+    }
+  }
+
+  // 检测内部
+  if (isPointInCrop(x, y, crop)) {
+    return 'move';
+  }
+
+  return 'none';
+}
+
+// 在 Canvas 上绘制裁剪框
+function drawCropBox(
+  ctx: CanvasRenderingContext2D,
+  crop: CropArea,
+  imageWidth: number,
+  imageHeight: number,
+): void {
+  const { x, y, width, height } = crop;
+
+  ctx.save();
+
+  // 绘制裁剪区域外的半透明遮罩（降低透明度）
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  
+  // 上边遮罩
+  ctx.fillRect(0, 0, imageWidth, y);
+  // 下边遮罩
+  ctx.fillRect(0, y + height, imageWidth, imageHeight - y - height);
+  // 左边遮罩
+  ctx.fillRect(0, y, x, height);
+  // 右边遮罩
+  ctx.fillRect(x + width, y, imageWidth - x - width, height);
+
+  // 绘制裁剪框边框（虚线）
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 4]);
+  ctx.strokeRect(x, y, width, height);
+
+  // 绘制网格线（三分线）
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  
+  // 垂直三分线
+  const thirdW = width / 3;
+  ctx.beginPath();
+  ctx.moveTo(x + thirdW, y);
+  ctx.lineTo(x + thirdW, y + height);
+  ctx.moveTo(x + thirdW * 2, y);
+  ctx.lineTo(x + thirdW * 2, y + height);
+  ctx.stroke();
+
+  // 水平三分线
+  const thirdH = height / 3;
+  ctx.beginPath();
+  ctx.moveTo(x, y + thirdH);
+  ctx.lineTo(x + width, y + thirdH);
+  ctx.moveTo(x, y + thirdH * 2);
+  ctx.lineTo(x + width, y + thirdH * 2);
+  ctx.stroke();
+
+  // 绘制控制点
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#3B82F6';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+
+  const handles = getCropHandles(crop);
+  handles.forEach((handle) => {
+    ctx.beginPath();
+    ctx.arc(handle.x, handle.y, HANDLE_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -1609,7 +1759,8 @@ const UploadPlaceholder: React.FC<{
 const CanvasImage: React.FC<{
   src: string;
   onSizeChange?: (w: number, h: number) => void;
-}> = ({ src, onSizeChange }) => {
+  onNaturalSizeChange?: (w: number, h: number) => void;
+}> = ({ src, onSizeChange, onNaturalSizeChange }) => {
   return (
     <img
       src={src}
@@ -1618,6 +1769,8 @@ const CanvasImage: React.FC<{
         const img = e.currentTarget;
         const nw = img.naturalWidth;
         const nh = img.naturalHeight;
+        // 返回原始尺寸
+        onNaturalSizeChange?.(nw, nh);
         // 计算实际显示尺寸（保持宽高比）
         const maxW = Math.min(MAX_IMG_W, nw);
         const maxH = Math.min(MAX_IMG_H, nh);
@@ -1658,6 +1811,9 @@ const App: React.FC = () => {
   // 图片加载后计算居中偏移
   const handleImageSizeChange = useCallback(
     (w: number, h: number) => {
+      // 存储显示尺寸（用于裁剪坐标转换）
+      setImageDisplaySize({ width: w, height: h });
+
       const container = canvasRef.current;
       if (!container) return;
       const containerW = container.clientWidth;
@@ -1672,6 +1828,11 @@ const App: React.FC = () => {
     },
     [],
   );
+
+  // 图片原始尺寸变化（用于裁剪）
+  const handleImageNaturalSizeChange = useCallback((w: number, h: number) => {
+    setImageNaturalSize({ width: w, height: h });
+  }, []);
 
   // 箭头相关状态
   const [arrows, setArrows] = useState<ArrowShape[]>([]);
@@ -1750,6 +1911,32 @@ const App: React.FC = () => {
     mosaicOrig: { x: number; y: number; width: number; height: number };
   } | null>(null);
 
+  // 裁剪相关状态
+  const [cropArea, setCropArea] = useState<CropArea | null>(null);
+  const [imageNaturalSize, setImageNaturalSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [imageDisplaySize, setImageDisplaySize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const drawingCrop = useRef<{
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+  } | null>(null);
+  const isDrawingCrop = useRef(false);
+
+  // 裁剪框拖拽状态
+  const draggingCropRef = useRef<{
+    type: CropDragType;
+    startX: number;
+    startY: number;
+    cropOrig: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+
   // Canvas 引用
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -1794,6 +1981,19 @@ const App: React.FC = () => {
 
   const selectedMosaicIdRef = useRef(selectedMosaicId);
   selectedMosaicIdRef.current = selectedMosaicId;
+
+  // 裁剪区域 ref
+  const cropAreaRef = useRef(cropArea);
+  cropAreaRef.current = cropArea;
+
+  // 图片原始尺寸 ref
+  const imageNaturalSizeRef = useRef(imageNaturalSize);
+  imageNaturalSizeRef.current = imageNaturalSize;
+
+  // 图片显示尺寸 ref
+  const imageDisplaySizeRef = useRef(imageDisplaySize);
+  imageDisplaySizeRef.current = imageDisplaySize;
+  imageNaturalSizeRef.current = imageNaturalSize;
 
   // 将屏幕坐标转换为图片坐标
   const screenToImageCoord = useCallback(
@@ -1889,8 +2089,27 @@ const App: React.FC = () => {
       drawMosaic(ctx, tempMosaic, false);
     }
 
+    // 绘制裁剪框（裁剪工具激活时）
+    if (activeTool === 'crop' && imageDisplaySize) {
+      // 如果有确定的裁剪区域，绘制它
+      if (cropArea) {
+        drawCropBox(ctx, cropArea, imageDisplaySize.width, imageDisplaySize.height);
+      }
+      // 如果正在绘制裁剪框，绘制临时裁剪框
+      if (drawingCrop.current && isDrawingCrop.current) {
+        const { startX, startY, endX, endY } = drawingCrop.current;
+        const tempCrop: CropArea = {
+          x: Math.min(startX, endX),
+          y: Math.min(startY, endY),
+          width: Math.abs(endX - startX),
+          height: Math.abs(endY - startY),
+        };
+        drawCropBox(ctx, tempCrop, imageDisplaySize.width, imageDisplaySize.height);
+      }
+    }
+
     ctx.restore();
-  }, [arrows, rects, texts, mosaics, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId]);
+  }, [arrows, rects, texts, mosaics, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, cropArea, imageDisplaySize, activeTool]);
 
   // 更新箭头属性
   const updateArrow = useCallback(
@@ -2039,6 +2258,42 @@ const App: React.FC = () => {
           endX: coord.x,
           endY: coord.y,
         };
+        return;
+      }
+
+      // 裁剪工具
+      if (activeTool === 'crop') {
+        const currentCrop = cropAreaRef.current;
+        const imgSize = imageNaturalSizeRef.current;
+
+        // 如果已有裁剪框，检测是否点击控制点或内部
+        if (currentCrop && imgSize) {
+          const dragType = getCropDragTypeAtPoint(coord.x, coord.y, currentCrop);
+          if (dragType !== 'none') {
+            draggingCropRef.current = {
+              type: dragType,
+              startX: coord.x,
+              startY: coord.y,
+              cropOrig: {
+                x: currentCrop.x,
+                y: currentCrop.y,
+                width: currentCrop.width,
+                height: currentCrop.height,
+              },
+            };
+            return;
+          }
+        }
+
+        // 否则开始绘制新的裁剪框
+        isDrawingCrop.current = true;
+        drawingCrop.current = {
+          startX: coord.x,
+          startY: coord.y,
+          endX: coord.x,
+          endY: coord.y,
+        };
+        setCropArea(null); // 清除之前的裁剪框
         return;
       }
 
@@ -2484,6 +2739,112 @@ const App: React.FC = () => {
         return;
       }
 
+      // 处理裁剪框绘制
+      if (isDrawingCrop.current && activeTool === 'crop') {
+        if (!drawingCrop.current) return;
+        const imgSize = imageNaturalSizeRef.current;
+        if (!imgSize) return;
+
+        // 限制在图片范围内
+        drawingCrop.current.endX = Math.max(0, Math.min(imgSize.width, coord.x));
+        drawingCrop.current.endY = Math.max(0, Math.min(imgSize.height, coord.y));
+        renderShapes();
+        return;
+      }
+
+      // 处理裁剪框拖拽
+      if (draggingCropRef.current && activeTool === 'crop') {
+        const drag = draggingCropRef.current;
+        const dx = coord.x - drag.startX;
+        const dy = coord.y - drag.startY;
+        const orig = drag.cropOrig;
+        const imgSize = imageNaturalSizeRef.current;
+        if (!imgSize) return;
+
+        let newCrop: CropArea;
+
+        switch (drag.type) {
+          case 'move':
+            newCrop = {
+              x: Math.max(0, Math.min(imgSize.width - orig.width, orig.x + dx)),
+              y: Math.max(0, Math.min(imgSize.height - orig.height, orig.y + dy)),
+              width: orig.width,
+              height: orig.height,
+            };
+            break;
+          case 'resize-tl':
+            newCrop = {
+              x: Math.max(0, orig.x + dx),
+              y: Math.max(0, orig.y + dy),
+              width: Math.max(MIN_CROP_SIZE, orig.width - dx),
+              height: Math.max(MIN_CROP_SIZE, orig.height - dy),
+            };
+            break;
+          case 'resize-tr':
+            newCrop = {
+              x: orig.x,
+              y: Math.max(0, orig.y + dy),
+              width: Math.min(imgSize.width - orig.x, Math.max(MIN_CROP_SIZE, orig.width + dx)),
+              height: Math.max(MIN_CROP_SIZE, orig.height - dy),
+            };
+            break;
+          case 'resize-bl':
+            newCrop = {
+              x: Math.max(0, orig.x + dx),
+              y: orig.y,
+              width: Math.max(MIN_CROP_SIZE, orig.width - dx),
+              height: Math.min(imgSize.height - orig.y, Math.max(MIN_CROP_SIZE, orig.height + dy)),
+            };
+            break;
+          case 'resize-br':
+            newCrop = {
+              x: orig.x,
+              y: orig.y,
+              width: Math.min(imgSize.width - orig.x, Math.max(MIN_CROP_SIZE, orig.width + dx)),
+              height: Math.min(imgSize.height - orig.y, Math.max(MIN_CROP_SIZE, orig.height + dy)),
+            };
+            break;
+          case 'resize-t':
+            newCrop = {
+              x: orig.x,
+              y: Math.max(0, orig.y + dy),
+              width: orig.width,
+              height: Math.max(MIN_CROP_SIZE, orig.height - dy),
+            };
+            break;
+          case 'resize-b':
+            newCrop = {
+              x: orig.x,
+              y: orig.y,
+              width: orig.width,
+              height: Math.min(imgSize.height - orig.y, Math.max(MIN_CROP_SIZE, orig.height + dy)),
+            };
+            break;
+          case 'resize-l':
+            newCrop = {
+              x: Math.max(0, orig.x + dx),
+              y: orig.y,
+              width: Math.max(MIN_CROP_SIZE, orig.width - dx),
+              height: orig.height,
+            };
+            break;
+          case 'resize-r':
+            newCrop = {
+              x: orig.x,
+              y: orig.y,
+              width: Math.min(imgSize.width - orig.x, Math.max(MIN_CROP_SIZE, orig.width + dx)),
+              height: orig.height,
+            };
+            break;
+          default:
+            return;
+        }
+
+        setCropArea(newCrop);
+        renderShapes();
+        return;
+      }
+
       // 更新光标样式
       if (activeTool === 'select') {
         const currentRects = rectsRef.current;
@@ -2548,6 +2909,17 @@ const App: React.FC = () => {
         }
 
         el.style.cursor = 'default';
+      }
+
+      // 更新裁剪工具光标样式
+      if (activeTool === 'crop') {
+        const currentCrop = cropAreaRef.current;
+        if (currentCrop) {
+          const dragType = getCropDragTypeAtPoint(coord.x, coord.y, currentCrop);
+          el.style.cursor = CROP_CURSOR_MAP[dragType];
+        } else {
+          el.style.cursor = 'crosshair';
+        }
       }
     };
 
@@ -2620,11 +2992,31 @@ const App: React.FC = () => {
       isDrawingMosaic.current = false;
       drawingMosaic.current = null;
 
+      // 结束裁剪框绘制
+      if (isDrawingCrop.current && drawingCrop.current) {
+        const { startX, startY, endX, endY } = drawingCrop.current;
+        const width = Math.abs(endX - startX);
+        const height = Math.abs(endY - startY);
+        // 裁剪框尺寸大于最小值时才创建
+        if (width >= MIN_CROP_SIZE && height >= MIN_CROP_SIZE) {
+          const newCrop: CropArea = {
+            x: Math.min(startX, endX),
+            y: Math.min(startY, endY),
+            width,
+            height,
+          };
+          setCropArea(newCrop);
+        }
+      }
+      isDrawingCrop.current = false;
+      drawingCrop.current = null;
+
       // 结束拖拽
       draggingRef.current = null;
       draggingRectRef.current = null;
       draggingTextRef.current = null;
       draggingMosaicRef.current = null;
+      draggingCropRef.current = null;
 
       renderShapes();
     };
@@ -2638,7 +3030,7 @@ const App: React.FC = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [activeTool, imageData, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, screenToImageCoord, renderShapes]);
+  }, [activeTool, imageData, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, screenToImageCoord, renderShapes, cropArea]);
 
   // 标注变化时重新渲染
   useEffect(() => {
@@ -2667,9 +3059,105 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', resizeCanvas);
   }, [renderShapes]);
 
+  // 执行裁剪操作
+  const applyCrop = useCallback(() => {
+    const currentCropArea = cropAreaRef.current;
+    const naturalSize = imageNaturalSizeRef.current;
+    const displaySize = imageDisplaySizeRef.current;
+
+    if (!currentCropArea || !imageData || !naturalSize || !displaySize) return;
+
+    // 计算显示坐标到原始坐标的缩放比例
+    const scaleX = naturalSize.width / displaySize.width;
+    const scaleY = naturalSize.height / displaySize.height;
+
+    // 转换为原始图片坐标
+    const cropX = Math.round(currentCropArea.x * scaleX);
+    const cropY = Math.round(currentCropArea.y * scaleY);
+    const cropWidth = Math.round(currentCropArea.width * scaleX);
+    const cropHeight = Math.round(currentCropArea.height * scaleY);
+
+    // 创建临时图片来获取原始图片数据
+    const img = new window.Image();
+    img.onload = () => {
+      // 创建临时 Canvas 进行裁剪
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cropWidth;
+      tempCanvas.height = cropHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return;
+
+      // 绘制裁剪区域（使用原始坐标）
+      tempCtx.drawImage(
+        img,
+        cropX,
+        cropY,
+        cropWidth,
+        cropHeight,
+        0,
+        0,
+        cropWidth,
+        cropHeight,
+      );
+
+      // 获取裁剪后的图片数据
+      const croppedImageData = tempCanvas.toDataURL('image/png');
+
+      // 更新图片数据
+      setImageData(croppedImageData);
+
+      // 清除所有标注
+      setArrows([]);
+      setRects([]);
+      setTexts([]);
+      setMosaics([]);
+
+      // 清除选中状态
+      setSelectedArrowId(null);
+      setSelectedRectId(null);
+      setSelectedTextId(null);
+      setSelectedMosaicId(null);
+
+      // 清除裁剪状态
+      setCropArea(null);
+      setImageNaturalSize({ width: cropWidth, height: cropHeight });
+      setImageDisplaySize(null);
+
+      // 切换到选择工具
+      setActiveTool('select');
+
+      // 重置视图
+      scaleRef.current = 1;
+      offsetRef.current = { x: 0, y: 0 };
+      setScale(1);
+      setOffset({ x: 0, y: 0 });
+    };
+    img.src = imageData;
+  }, [imageData]);
+
+  // 取消裁剪操作
+  const cancelCrop = useCallback(() => {
+    setCropArea(null);
+    setActiveTool('select');
+  }, []);
+
   // Delete 键删除选中的箭头、矩形或文字
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 裁剪工具快捷键
+      if (activeTool === 'crop') {
+        if (e.key === 'Enter' && cropArea) {
+          e.preventDefault();
+          applyCrop();
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelCrop();
+          return;
+        }
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         // 避免在输入框中触发
         if (
@@ -2707,18 +3195,26 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId]);
+  }, [selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, activeTool, cropArea, applyCrop, cancelCrop]);
 
-  // 双击文字进入编辑模式
+  // 双击文字进入编辑模式 / 双击确认裁剪
   useEffect(() => {
     const el = canvasRef.current;
     if (!el || !imageData) return;
 
     const onDoubleClick = (e: MouseEvent) => {
-      if (activeTool !== 'select') return;
-
       const coord = screenToImageCoord(e.clientX, e.clientY);
       if (!coord) return;
+
+      // 裁剪工具：双击确认裁剪
+      if (activeTool === 'crop' && cropArea) {
+        if (isPointInCrop(coord.x, coord.y, cropArea)) {
+          applyCrop();
+          return;
+        }
+      }
+
+      if (activeTool !== 'select') return;
 
       const canvas = annotationCanvasRef.current;
       if (!canvas) return;
@@ -2745,7 +3241,18 @@ const App: React.FC = () => {
 
     el.addEventListener('dblclick', onDoubleClick);
     return () => el.removeEventListener('dblclick', onDoubleClick);
-  }, [activeTool, imageData, screenToImageCoord]);
+  }, [activeTool, imageData, screenToImageCoord, cropArea, applyCrop]);
+
+  // 工具切换时处理裁剪状态
+  useEffect(() => {
+    if (activeTool !== 'crop') {
+      // 切换到其他工具时，清除裁剪状态
+      if (cropArea) {
+        setCropArea(null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool]);
 
   // 锚点缩放
   const zoomAt = useCallback(
@@ -2938,7 +3445,7 @@ const App: React.FC = () => {
           cursor:
             activeTool === 'move'
               ? 'grab'
-              : activeTool === 'arrow' || activeTool === 'rect' || activeTool === 'text' || activeTool === 'mosaic'
+              : activeTool === 'arrow' || activeTool === 'rect' || activeTool === 'text' || activeTool === 'mosaic' || activeTool === 'crop'
                 ? 'crosshair'
                 : 'default',
         }}
@@ -2965,7 +3472,7 @@ const App: React.FC = () => {
                 transformOrigin: '0 0',
               }}
             >
-              <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} />
+              <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
             </div>
 
             {/* Annotation Canvas Layer */}
@@ -3041,6 +3548,32 @@ const App: React.FC = () => {
                 />
               );
             })()}
+
+            {/* 裁剪操作提示 */}
+            {activeTool === 'crop' && (
+              <div
+                className="absolute top-4 left-1/2 flex items-center gap-3 rounded-lg px-4 py-2"
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.75)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <span className="text-[12px] text-white">
+                  {cropArea ? '拖拽调整裁剪区域，' : '拖拽绘制裁剪区域，'}
+                </span>
+                <span className="text-[12px] text-emerald-400">
+                  Enter
+                </span>
+                <span className="text-[12px] text-white">确认</span>
+                <span className="text-[12px] text-gray-400 mx-1">|</span>
+                <span className="text-[12px] text-amber-400">
+                  Esc
+                </span>
+                <span className="text-[12px] text-white">取消</span>
+              </div>
+            )}
 
             {/* 缩放控制条 */}
             <div

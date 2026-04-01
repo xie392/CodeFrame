@@ -20,7 +20,9 @@ function isRestrictedUrl(url?: string): boolean {
 }
 
 function openEditor(): void {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/editor/index.html') });
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('src/editor/index.html?source=capture'),
+  });
 }
 
 function delay(ms: number): Promise<void> {

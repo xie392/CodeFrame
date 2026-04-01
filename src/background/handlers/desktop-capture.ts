@@ -7,7 +7,9 @@ import type { CaptureResult } from '@shared/types';
 let isCapturing = false;
 
 function openEditor(): void {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/editor/index.html') });
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('src/editor/index.html?source=capture'),
+  });
 }
 
 // 注入到目标标签页的截图函数（自包含，不能引用外部变量）

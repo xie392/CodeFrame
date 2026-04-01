@@ -179,3 +179,94 @@ html {
     animation-duration: 0ms !important;
   }
 }
+
+/* ===== Editor 页面样式 ===== */
+
+/* editor 主容器渐变背景 */
+.editor-container {
+  background: linear-gradient(180deg, #f0f0f8 0%, #eaeaf2 50%, #e0e0ea 100%);
+}
+
+/* 工具栏 */
+.toolbar {
+  background: #ffffff;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.04);
+}
+
+/* 工具按钮 - 未选中 */
+.tool-btn {
+  color: #777777;
+  background: transparent;
+  border: none;
+}
+
+.tool-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* 工具按钮 - 选中 */
+.tool-btn-active {
+  color: #0d0d0d;
+  background: #ff6b35;
+  border: none;
+}
+
+/* 画布区域 */
+.editor-canvas {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* 属性面板 */
+.properties-panel {
+  background: #ffffff;
+  border-left: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.04);
+}
+
+/* editor 专属 CSS 变量 */
+:root {
+  --color-editor-separator: #3d3d3d;
+  --color-editor-comment: #bbbbbb;
+  --color-editor-error: #ef4444;
+  --color-editor-hint: #999999;
+  --color-editor-upload-bg: rgba(0, 0, 0, 0.04);
+  --color-editor-upload-icon: #999999;
+}
+
+/* 属性面板数值输入字段 */
+.prop-field {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+}
+
+.prop-field-sm {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* 导出按钮 */
+.export-btn {
+  background: #ff6b35;
+  border: none;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.25);
+  transition: filter 200ms ease;
+}
+
+.export-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* 复制按钮 */
+.copy-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border: none;
+  transition: background 200ms ease;
+}
+
+.copy-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}

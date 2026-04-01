@@ -35,7 +35,9 @@ async function captureVisibleTab(): Promise<CaptureResult> {
 }
 
 function openEditor(): void {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/editor/index.html') });
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('src/editor/index.html?source=capture'),
+  });
 }
 
 export async function handleCaptureRequest(): Promise<CaptureResult> {

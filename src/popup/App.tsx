@@ -108,6 +108,13 @@ function handleDelayedCapture(): void {
   setTimeout(() => window.close(), 100);
 }
 
+function handleOpenEditor(): void {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('src/editor/index.html?source=upload'),
+  });
+  window.close();
+}
+
 function handleOpenCodeEditor(): void {
   chrome.tabs.create({
     url: chrome.runtime.getURL('src/codegen/index.html'),
@@ -289,7 +296,7 @@ const App: React.FC = () => {
         <FeatureItem
           icon={<ImagePlus size={18} style={{ color: 'var(--color-accent-orange)' }} />}
           label="编辑本地或粘贴图片"
-          onClick={() => console.log('local image')}
+          onClick={handleOpenEditor}
         />
         <FeatureItem
           icon={<Code size={18} style={{ color: 'var(--color-accent-teal)' }} />}

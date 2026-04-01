@@ -81,6 +81,19 @@ const DEFAULT_RECT_STYLE: {
   borderStyle: 'solid',
 };
 
+// 默认文字样式
+const DEFAULT_TEXT_STYLE: {
+  color: string;
+  fontSize: number;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+} = {
+  color: '#EF4444',
+  fontSize: 24,
+  fontWeight: 'normal',
+  fontStyle: 'normal',
+};
+
 type EditorSource = 'capture' | 'upload';
 type ToolId = 'select' | 'move' | 'arrow' | 'rect' | 'text' | 'mosaic' | 'crop';
 type ArrowStyle = 'single' | 'double';
@@ -115,6 +128,18 @@ interface RectShape {
   strokeWidth: number;
   fillOpacity: number; // 0-100
   borderStyle: RectBorderStyle;
+}
+
+// 文字数据结构
+interface TextShape {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  fontSize: number;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
 }
 
 const TOOLS: ToolConfig[] = [
@@ -165,6 +190,13 @@ function generateRectId(): string {
   return `rect_${Date.now()}_${++rectIdCounter}`;
 }
 
+// 文字 ID 计数器
+let textIdCounter = 0;
+
+function generateTextId(): string {
+  return `text_${Date.now()}_${++textIdCounter}`;
+}
+
 // 控制点半径
 const HANDLE_RADIUS = 6;
 
@@ -196,6 +228,19 @@ const RECT_CURSOR_MAP: Record<RectDragType, string> = {
   'resize-b': 'ns-resize',
   'resize-l': 'ew-resize',
   'resize-r': 'ew-resize',
+};
+
+// 文字拖拽类型（四角调整字号）
+type TextDragType = 'none' | 'move' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br';
+
+// 文字控制点光标映射
+const TEXT_CURSOR_MAP: Record<TextDragType, string> = {
+  none: 'default',
+  move: 'move',
+  'resize-tl': 'nwse-resize',
+  'resize-tr': 'nesw-resize',
+  'resize-bl': 'nesw-resize',
+  'resize-br': 'nwse-resize',
 };
 
 // 在 Canvas 上绘制箭头
@@ -527,6 +572,130 @@ function getRectDragTypeAtPoint(
 }
 
 // ---------------------------------------------------------------------------
+// 文字相关函数
+// ---------------------------------------------------------------------------
+
+// 获取文字边界
+function getTextBounds(
+  text: TextShape,
+  ctx: CanvasRenderingContext2D,
+): { x: number; y: number; width: number; height: number } {
+  ctx.save();
+  ctx.font = `${text.fontStyle === 'italic' ? 'italic ' : ''}${text.fontWeight === 'bold' ? 'bold ' : ''}${text.fontSize}px sans-serif`;
+  const metrics = ctx.measureText(text.text);
+  const width = metrics.width;
+  const height = text.fontSize * 1.2; // 行高约为字号的 1.2 倍
+  ctx.restore();
+
+  return {
+    x: text.x,
+    y: text.y,
+    width,
+    height,
+  };
+}
+
+// 获取文字的四个角控制点
+function getTextHandles(
+  text: TextShape,
+  ctx: CanvasRenderingContext2D,
+): { x: number; y: number; type: TextDragType }[] {
+  const bounds = getTextBounds(text, ctx);
+  const { x, y, width, height } = bounds;
+
+  return [
+    { x: x, y: y, type: 'resize-tl' }, // 左上
+    { x: x + width, y: y, type: 'resize-tr' }, // 右上
+    { x: x, y: y + height, type: 'resize-bl' }, // 左下
+    { x: x + width, y: y + height, type: 'resize-br' }, // 右下
+  ];
+}
+
+// 检测点击是否在文字区域内
+function isPointInText(
+  x: number,
+  y: number,
+  text: TextShape,
+  ctx: CanvasRenderingContext2D,
+): boolean {
+  const bounds = getTextBounds(text, ctx);
+  return (
+    x >= bounds.x &&
+    x <= bounds.x + bounds.width &&
+    y >= bounds.y &&
+    y <= bounds.y + bounds.height
+  );
+}
+
+// 检测点击位置返回文字拖拽类型
+function getTextDragTypeAtPoint(
+  x: number,
+  y: number,
+  text: TextShape,
+  ctx: CanvasRenderingContext2D,
+): TextDragType {
+  const threshold = HANDLE_RADIUS + 2;
+  const handles = getTextHandles(text, ctx);
+
+  // 检测控制点
+  for (const handle of handles) {
+    const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
+    if (dist <= threshold) {
+      return handle.type;
+    }
+  }
+
+  // 检测文字内部
+  if (isPointInText(x, y, text, ctx)) {
+    return 'move';
+  }
+
+  return 'none';
+}
+
+// 在 Canvas 上绘制文字
+function drawText(
+  ctx: CanvasRenderingContext2D,
+  text: TextShape,
+  isSelected: boolean = false,
+): void {
+  ctx.save();
+
+  const bounds = getTextBounds(text, ctx);
+
+  // 先绘制选中状态高亮（在文字下方）
+  if (isSelected) {
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+    ctx.fillRect(bounds.x - 4, bounds.y - 2, bounds.width + 8, bounds.height + 4);
+  }
+
+  // 设置文字样式
+  ctx.font = `${text.fontStyle === 'italic' ? 'italic ' : ''}${text.fontWeight === 'bold' ? 'bold ' : ''}${text.fontSize}px sans-serif`;
+  ctx.fillStyle = text.color;
+  ctx.textBaseline = 'top';
+
+  // 绘制文字
+  ctx.fillText(text.text, text.x, text.y);
+
+  // 绘制选中状态的控制点
+  if (isSelected) {
+    ctx.fillStyle = '#3B82F6';
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+
+    const handles = getTextHandles(text, ctx);
+    handles.forEach((handle) => {
+      ctx.beginPath();
+      ctx.arc(handle.x, handle.y, HANDLE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
 // 子组件
 // ---------------------------------------------------------------------------
 
@@ -782,19 +951,91 @@ const RectBorderStyleToggle: React.FC<{
   </div>
 );
 
+/** 文字粗体切换 */
+const FontWeightToggle: React.FC<{
+  fontWeight: 'normal' | 'bold';
+  onChange: (weight: 'normal' | 'bold') => void;
+}> = ({ fontWeight, onChange }) => (
+  <div className="flex items-center gap-2">
+    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+      weight:
+    </span>
+    <div className="flex gap-1">
+      <button
+        onClick={() => onChange('normal')}
+        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+          fontWeight === 'normal'
+            ? 'bg-[var(--color-accent)] text-black'
+            : 'prop-field-sm'
+        }`}
+      >
+        <span className="text-[11px] font-body leading-none">normal</span>
+      </button>
+      <button
+        onClick={() => onChange('bold')}
+        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+          fontWeight === 'bold'
+            ? 'bg-[var(--color-accent)] text-black'
+            : 'prop-field-sm'
+        }`}
+      >
+        <span className="text-[11px] font-body font-bold leading-none">bold</span>
+      </button>
+    </div>
+  </div>
+);
+
+/** 文字斜体切换 */
+const FontStyleToggle: React.FC<{
+  fontStyle: 'normal' | 'italic';
+  onChange: (style: 'normal' | 'italic') => void;
+}> = ({ fontStyle, onChange }) => (
+  <div className="flex items-center gap-2">
+    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+      style:
+    </span>
+    <div className="flex gap-1">
+      <button
+        onClick={() => onChange('normal')}
+        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+          fontStyle === 'normal'
+            ? 'bg-[var(--color-accent)] text-black'
+            : 'prop-field-sm'
+        }`}
+      >
+        <span className="text-[11px] font-body leading-none">normal</span>
+      </button>
+      <button
+        onClick={() => onChange('italic')}
+        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+          fontStyle === 'italic'
+            ? 'bg-[var(--color-accent)] text-black'
+            : 'prop-field-sm'
+        }`}
+      >
+        <span className="text-[11px] font-body italic leading-none">italic</span>
+      </button>
+    </div>
+  </div>
+);
+
 /** 右侧属性面板 */
 const PropertiesPanel: React.FC<{
   selectedArrow: ArrowShape | null;
   onUpdateArrow: (updates: Partial<ArrowShape>) => void;
   selectedRect: RectShape | null;
   onUpdateRect: (updates: Partial<RectShape>) => void;
-}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect }) => {
-  // 选中类型：arrow, rect, 或 none
-  const selectionType: 'arrow' | 'rect' | 'none' = selectedArrow
+  selectedText: TextShape | null;
+  onUpdateText: (updates: Partial<TextShape>) => void;
+}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText }) => {
+  // 选中类型：arrow, rect, text 或 none
+  const selectionType: 'arrow' | 'rect' | 'text' | 'none' = selectedArrow
     ? 'arrow'
     : selectedRect
       ? 'rect'
-      : 'none';
+      : selectedText
+        ? 'text'
+        : 'none';
 
   // 箭头属性处理
   const handleArrowColorChange = (color: string) => {
@@ -822,6 +1063,20 @@ const PropertiesPanel: React.FC<{
   };
   const handleBorderStyleChange = (borderStyle: RectBorderStyle) => {
     if (selectedRect) onUpdateRect({ borderStyle });
+  };
+
+  // 文字属性处理
+  const handleTextColorChange = (color: string) => {
+    if (selectedText) onUpdateText({ color });
+  };
+  const handleFontSizeChange = (fontSize: number) => {
+    if (selectedText) onUpdateText({ fontSize });
+  };
+  const handleFontWeightChange = (fontWeight: 'normal' | 'bold') => {
+    if (selectedText) onUpdateText({ fontWeight });
+  };
+  const handleFontStyleChange = (fontStyle: 'normal' | 'italic') => {
+    if (selectedText) onUpdateText({ fontStyle });
   };
 
   return (
@@ -889,6 +1144,21 @@ const PropertiesPanel: React.FC<{
                 label="h"
                 value={selectedRect.height}
                 onChange={(val) => onUpdateRect({ height: val })}
+              />
+            </div>
+          </>
+        ) : selectionType === 'text' && selectedText ? (
+          <>
+            <div className="flex gap-2">
+              <EditableField
+                label="x"
+                value={selectedText.x}
+                onChange={(val) => onUpdateText({ x: val })}
+              />
+              <EditableField
+                label="y"
+                value={selectedText.y}
+                onChange={(val) => onUpdateText({ y: val })}
               />
             </div>
           </>
@@ -968,6 +1238,34 @@ const PropertiesPanel: React.FC<{
           <RectBorderStyleToggle
             borderStyle={selectedRect.borderStyle}
             onChange={handleBorderStyleChange}
+          />
+        </div>
+      ) : selectionType === 'text' && selectedText ? (
+        <div className="flex flex-col gap-[10px]">
+          <span
+            className="text-[11px] font-body font-semibold"
+            style={{ color: 'var(--color-accent-orange)' }}
+          >
+            [text_style]
+          </span>
+          <ColorPicker
+            color={selectedText.color}
+            onChange={handleTextColorChange}
+          />
+          <SliderControl
+            label="size"
+            value={selectedText.fontSize}
+            min={8}
+            max={120}
+            onChange={handleFontSizeChange}
+          />
+          <FontWeightToggle
+            fontWeight={selectedText.fontWeight}
+            onChange={handleFontWeightChange}
+          />
+          <FontStyleToggle
+            fontStyle={selectedText.fontStyle}
+            onChange={handleFontStyleChange}
           />
         </div>
       ) : (
@@ -1094,29 +1392,31 @@ const UploadPlaceholder: React.FC<{
 };
 
 /** 画布中显示的图片 */
-const CanvasImage: React.FC<{ src: string }> = ({ src }) => {
-  const [naturalSize, setNaturalSize] = useState<{
-    w: number;
-    h: number;
-  } | null>(null);
-
+const CanvasImage: React.FC<{
+  src: string;
+  onSizeChange?: (w: number, h: number) => void;
+}> = ({ src, onSizeChange }) => {
   return (
     <img
       src={src}
       alt="编辑图片"
       onLoad={(e) => {
         const img = e.currentTarget;
-        setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+        const nw = img.naturalWidth;
+        const nh = img.naturalHeight;
+        // 计算实际显示尺寸（保持宽高比）
+        const maxW = Math.min(MAX_IMG_W, nw);
+        const maxH = Math.min(MAX_IMG_H, nh);
+        const ratio = Math.min(maxW / nw, maxH / nh);
+        const displayW = nw * ratio;
+        const displayH = nh * ratio;
+        onSizeChange?.(displayW, displayH);
       }}
       className="rounded-[8px] shadow-lg"
       draggable={false}
       style={{
-        maxWidth: naturalSize
-          ? Math.min(MAX_IMG_W, naturalSize.w)
-          : MAX_IMG_W,
-        maxHeight: naturalSize
-          ? Math.min(MAX_IMG_H, naturalSize.h)
-          : MAX_IMG_H,
+        maxWidth: MAX_IMG_W,
+        maxHeight: MAX_IMG_H,
         objectFit: 'contain',
       }}
     />
@@ -1140,6 +1440,24 @@ const App: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(scale);
   const offsetRef = useRef(offset);
+
+  // 图片加载后计算居中偏移
+  const handleImageSizeChange = useCallback(
+    (w: number, h: number) => {
+      const container = canvasRef.current;
+      if (!container) return;
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+      // 计算居中偏移
+      const newOffset = {
+        x: (containerW - w) / 2,
+        y: (containerH - h) / 2,
+      };
+      offsetRef.current = newOffset;
+      setOffset(newOffset);
+    },
+    [],
+  );
 
   // 箭头相关状态
   const [arrows, setArrows] = useState<ArrowShape[]>([]);
@@ -1182,6 +1500,22 @@ const App: React.FC = () => {
     rectOrig: { x: number; y: number; width: number; height: number };
   } | null>(null);
 
+  // 文字相关状态
+  const [texts, setTexts] = useState<TextShape[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingTextValue, setEditingTextValue] = useState('');
+  const textInputRef = useRef<HTMLInputElement>(null);
+
+  // 文字拖拽状态
+  const draggingTextRef = useRef<{
+    type: TextDragType;
+    textId: string;
+    startX: number;
+    startY: number;
+    textOrig: { x: number; y: number; fontSize: number };
+  } | null>(null);
+
   // Canvas 引用
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -1192,6 +1526,9 @@ const App: React.FC = () => {
   // 默认矩形样式（用于创建新矩形）
   const rectStyleRef = useRef(DEFAULT_RECT_STYLE);
 
+  // 默认文字样式（用于创建新文字）
+  const textStyleRef = useRef(DEFAULT_TEXT_STYLE);
+
   // 使用 ref 避免闭包陈旧状态
   const arrowsRef = useRef(arrows);
   arrowsRef.current = arrows;
@@ -1200,12 +1537,19 @@ const App: React.FC = () => {
   const rectsRef = useRef(rects);
   rectsRef.current = rects;
 
+  // 文字 ref
+  const textsRef = useRef(texts);
+  textsRef.current = texts;
+
   // 选中 ID ref（避免事件处理中的闭包问题）
   const selectedArrowIdRef = useRef(selectedArrowId);
   selectedArrowIdRef.current = selectedArrowId;
 
   const selectedRectIdRef = useRef(selectedRectId);
   selectedRectIdRef.current = selectedRectId;
+
+  const selectedTextIdRef = useRef(selectedTextId);
+  selectedTextIdRef.current = selectedTextId;
 
   // 将屏幕坐标转换为图片坐标
   const screenToImageCoord = useCallback(
@@ -1275,8 +1619,15 @@ const App: React.FC = () => {
       drawArrow(ctx, tempArrow, false);
     }
 
+    // 绘制已保存的文字
+    texts.forEach((text) => {
+      // 如果正在编辑此文字，则跳过绘制（用 input 替代）
+      if (editingTextId === text.id) return;
+      drawText(ctx, text, text.id === selectedTextId);
+    });
+
     ctx.restore();
-  }, [arrows, rects, selectedArrowId, selectedRectId]);
+  }, [arrows, rects, texts, selectedArrowId, selectedRectId, selectedTextId, editingTextId]);
 
   // 更新箭头属性
   const updateArrow = useCallback(
@@ -1304,6 +1655,19 @@ const App: React.FC = () => {
     [selectedRectId],
   );
 
+  // 更新文字属性
+  const updateText = useCallback(
+    (updates: Partial<TextShape>) => {
+      if (!selectedTextId) return;
+      setTexts((prev) =>
+        prev.map((t) =>
+          t.id === selectedTextId ? { ...t, ...updates } : t,
+        ),
+      );
+    },
+    [selectedTextId],
+  );
+
   // 选中的箭头
   const selectedArrow = useMemo(
     () => arrows.find((a) => a.id === selectedArrowId) || null,
@@ -1316,6 +1680,12 @@ const App: React.FC = () => {
     [rects, selectedRectId],
   );
 
+  // 选中的文字
+  const selectedText = useMemo(
+    () => texts.find((t) => t.id === selectedTextId) || null,
+    [texts, selectedTextId],
+  );
+
   // 标注绘制与编辑事件处理
   useEffect(() => {
     const el = canvasRef.current;
@@ -1323,6 +1693,9 @@ const App: React.FC = () => {
 
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
+
+      // 如果正在编辑文字，不处理拖动
+      if (editingTextId) return;
 
       const coord = screenToImageCoord(e.clientX, e.clientY);
       if (!coord) return;
@@ -1351,10 +1724,60 @@ const App: React.FC = () => {
         return;
       }
 
+      // 文字工具：点击创建文字
+      if (activeTool === 'text') {
+        const canvas = annotationCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const newText: TextShape = {
+          id: generateTextId(),
+          x: coord.x,
+          y: coord.y,
+          text: 'Text',
+          ...textStyleRef.current,
+        };
+        setTexts((prev) => [...prev, newText]);
+        setSelectedTextId(newText.id);
+        setSelectedArrowId(null);
+        setSelectedRectId(null);
+        // 不自动进入编辑模式，让用户双击编辑
+        setActiveTool('select');
+        return;
+      }
+
       // 选择工具
       if (activeTool === 'select') {
         const currentArrows = arrowsRef.current;
         const currentRects = rectsRef.current;
+        const currentTexts = textsRef.current;
+        const canvas = annotationCanvasRef.current;
+        const ctx = canvas?.getContext('2d');
+
+        // 如果已选中文字，优先检测文字控制点
+        if (selectedTextId && ctx) {
+          const selectedText = currentTexts.find((t) => t.id === selectedTextId);
+          if (selectedText) {
+            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, selectedText, ctx);
+            if (dragType !== 'none') {
+              setSelectedArrowId(null); // 清除箭头选中
+              setSelectedRectId(null); // 清除矩形选中
+              draggingTextRef.current = {
+                type: dragType,
+                textId: selectedTextId,
+                startX: coord.x,
+                startY: coord.y,
+                textOrig: {
+                  x: selectedText.x,
+                  y: selectedText.y,
+                  fontSize: selectedText.fontSize,
+                },
+              };
+              return;
+            }
+          }
+        }
 
         // 如果已选中矩形，优先检测矩形控制点
         if (selectedRectId) {
@@ -1363,6 +1786,7 @@ const App: React.FC = () => {
             const dragType = getRectDragTypeAtPoint(coord.x, coord.y, selectedRect);
             if (dragType !== 'none') {
               setSelectedArrowId(null); // 清除箭头选中
+              setSelectedTextId(null); // 清除文字选中
               draggingRectRef.current = {
                 type: dragType,
                 rectId: selectedRectId,
@@ -1387,6 +1811,7 @@ const App: React.FC = () => {
             const dragType = getDragTypeAtPoint(coord.x, coord.y, selectedArrow);
             if (dragType !== 'none') {
               setSelectedRectId(null); // 清除矩形选中
+              setSelectedTextId(null); // 清除文字选中
               draggingRef.current = {
                 type: dragType,
                 arrowId: selectedArrowId,
@@ -1400,12 +1825,37 @@ const App: React.FC = () => {
           }
         }
 
+        // 检测是否点击到文字（从后往前遍历，先检测最上层）
+        if (ctx) {
+          for (let i = currentTexts.length - 1; i >= 0; i--) {
+            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, currentTexts[i], ctx);
+            if (dragType !== 'none') {
+              setSelectedTextId(currentTexts[i].id);
+              setSelectedArrowId(null);
+              setSelectedRectId(null);
+              draggingTextRef.current = {
+                type: dragType,
+                textId: currentTexts[i].id,
+                startX: coord.x,
+                startY: coord.y,
+                textOrig: {
+                  x: currentTexts[i].x,
+                  y: currentTexts[i].y,
+                  fontSize: currentTexts[i].fontSize,
+                },
+              };
+              return;
+            }
+          }
+        }
+
         // 检测是否点击到矩形（从后往前遍历，先检测最上层）
         for (let i = currentRects.length - 1; i >= 0; i--) {
           const dragType = getRectDragTypeAtPoint(coord.x, coord.y, currentRects[i]);
           if (dragType !== 'none') {
             setSelectedRectId(currentRects[i].id);
             setSelectedArrowId(null);
+            setSelectedTextId(null);
             draggingRectRef.current = {
               type: dragType,
               rectId: currentRects[i].id,
@@ -1428,6 +1878,7 @@ const App: React.FC = () => {
           if (dragType !== 'none') {
             setSelectedArrowId(currentArrows[i].id);
             setSelectedRectId(null);
+            setSelectedTextId(null);
             draggingRef.current = {
               type: dragType,
               arrowId: currentArrows[i].id,
@@ -1443,6 +1894,7 @@ const App: React.FC = () => {
         // 点击空白区域，清除选中
         setSelectedArrowId(null);
         setSelectedRectId(null);
+        setSelectedTextId(null);
       }
     };
 
@@ -1559,10 +2011,77 @@ const App: React.FC = () => {
         return;
       }
 
+      // 处理文字拖拽（移动和四角调整字号）
+      if (draggingTextRef.current && activeTool === 'select') {
+        const drag = draggingTextRef.current;
+        const dx = coord.x - drag.startX;
+        const dy = coord.y - drag.startY;
+        const orig = drag.textOrig;
+
+        setTexts((prev) =>
+          prev.map((t) => {
+            if (t.id !== drag.textId) return t;
+
+            // 最小字号
+            const minFontSize = 8;
+            const maxFontSize = 120;
+
+            switch (drag.type) {
+              case 'move':
+                return { ...t, x: orig.x + dx, y: orig.y + dy };
+              // 四角调整字号：控制点跟随鼠标移动
+              // 右下角(resize-br): 向右下拖放大，向左上拖缩小
+              case 'resize-br': {
+                const delta = (dx + dy) / 2;
+                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
+                return { ...t, fontSize: newFontSize };
+              }
+              // 左上角(resize-tl): 向左上拖放大，向右下拖缩小
+              case 'resize-tl': {
+                const delta = (-dx - dy) / 2;
+                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
+                return { ...t, fontSize: newFontSize, x: orig.x + dx, y: orig.y + dy };
+              }
+              // 右上角(resize-tr): 向右上拖放大，向左下拖缩小
+              case 'resize-tr': {
+                const delta = (dx - dy) / 2;
+                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
+                return { ...t, fontSize: newFontSize, y: orig.y + dy };
+              }
+              // 左下角(resize-bl): 向左下拖放大，向右上拖缩小
+              case 'resize-bl': {
+                const delta = (-dx + dy) / 2;
+                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
+                return { ...t, fontSize: newFontSize, x: orig.x + dx };
+              }
+              default:
+                return t;
+            }
+          }),
+        );
+        renderShapes();
+        return;
+      }
+
       // 更新光标样式
       if (activeTool === 'select') {
         const currentRects = rectsRef.current;
         const currentArrows = arrowsRef.current;
+        const currentTexts = textsRef.current;
+        const canvas = annotationCanvasRef.current;
+        const ctx = canvas?.getContext('2d');
+
+        // 检测文字光标
+        if (selectedTextIdRef.current && ctx) {
+          const selectedText = currentTexts.find(
+            (t) => t.id === selectedTextIdRef.current,
+          );
+          if (selectedText) {
+            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, selectedText, ctx);
+            el.style.cursor = TEXT_CURSOR_MAP[dragType];
+            return;
+          }
+        }
 
         // 检测矩形光标
         if (selectedRectIdRef.current) {
@@ -1647,6 +2166,7 @@ const App: React.FC = () => {
       // 结束拖拽
       draggingRef.current = null;
       draggingRectRef.current = null;
+      draggingTextRef.current = null;
 
       renderShapes();
     };
@@ -1660,12 +2180,12 @@ const App: React.FC = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [activeTool, imageData, selectedArrowId, selectedRectId, screenToImageCoord, renderShapes]);
+  }, [activeTool, imageData, selectedArrowId, selectedRectId, selectedTextId, editingTextId, screenToImageCoord, renderShapes]);
 
   // 标注变化时重新渲染
   useEffect(() => {
     renderShapes();
-  }, [arrows, rects, selectedArrowId, selectedRectId, renderShapes]);
+  }, [arrows, rects, texts, selectedArrowId, selectedRectId, selectedTextId, renderShapes]);
 
   // 缩放/平移变化时重新渲染
   useEffect(() => {
@@ -1689,7 +2209,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', resizeCanvas);
   }, [renderShapes]);
 
-  // Delete 键删除选中的箭头或矩形
+  // Delete 键删除选中的箭头、矩形或文字
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -1712,12 +2232,56 @@ const App: React.FC = () => {
           setRects((prev) => prev.filter((r) => r.id !== selectedRectId));
           setSelectedRectId(null);
         }
+
+        // 删除选中的文字
+        if (selectedTextId) {
+          setTexts((prev) => prev.filter((t) => t.id !== selectedTextId));
+          setSelectedTextId(null);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedArrowId, selectedRectId]);
+  }, [selectedArrowId, selectedRectId, selectedTextId]);
+
+  // 双击文字进入编辑模式
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el || !imageData) return;
+
+    const onDoubleClick = (e: MouseEvent) => {
+      if (activeTool !== 'select') return;
+
+      const coord = screenToImageCoord(e.clientX, e.clientY);
+      if (!coord) return;
+
+      const canvas = annotationCanvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // 检测是否双击到文字
+      const currentTexts = textsRef.current;
+      for (let i = currentTexts.length - 1; i >= 0; i--) {
+        const text = currentTexts[i];
+        if (isPointInText(coord.x, coord.y, text, ctx)) {
+          setEditingTextId(text.id);
+          setEditingTextValue(text.text);
+          setSelectedTextId(text.id);
+          // 聚焦输入框
+          setTimeout(() => {
+            textInputRef.current?.focus();
+            textInputRef.current?.select();
+          }, 0);
+          return;
+        }
+      }
+    };
+
+    el.addEventListener('dblclick', onDoubleClick);
+    return () => el.removeEventListener('dblclick', onDoubleClick);
+  }, [activeTool, imageData, screenToImageCoord]);
 
   // 锚点缩放
   const zoomAt = useCallback(
@@ -1910,7 +2474,7 @@ const App: React.FC = () => {
           cursor:
             activeTool === 'move'
               ? 'grab'
-              : activeTool === 'arrow' || activeTool === 'rect'
+              : activeTool === 'arrow' || activeTool === 'rect' || activeTool === 'text'
                 ? 'crosshair'
                 : 'default',
         }}
@@ -1931,13 +2495,13 @@ const App: React.FC = () => {
             {/* Transform Layer */}
             <div
               ref={imageContainerRef}
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0"
               style={{
                 transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
                 transformOrigin: '0 0',
               }}
             >
-              <CanvasImage src={imageData} />
+              <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} />
             </div>
 
             {/* Annotation Canvas Layer */}
@@ -1946,6 +2510,73 @@ const App: React.FC = () => {
               className="absolute inset-0 pointer-events-none"
               style={{ pointerEvents: 'auto' }}
             />
+
+            {/* 文字编辑输入框 */}
+            {editingTextId && (() => {
+              const editingText = texts.find(t => t.id === editingTextId);
+              if (!editingText) return null;
+              
+              // 计算相对于容器的位置：文字坐标 * scale + offset
+              const containerX = editingText.x * scale + offset.x;
+              const containerY = editingText.y * scale + offset.y;
+              
+              return (
+                <input
+                  ref={textInputRef}
+                  type="text"
+                  value={editingTextValue}
+                  onChange={(e) => setEditingTextValue(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      // 确认编辑
+                      if (editingTextId && editingTextValue.trim()) {
+                        setTexts((prev) =>
+                          prev.map((t) =>
+                            t.id === editingTextId ? { ...t, text: editingTextValue } : t,
+                          ),
+                        );
+                      }
+                      setEditingTextId(null);
+                      setEditingTextValue('');
+                    } else if (e.key === 'Escape') {
+                      // 取消编辑
+                      setEditingTextId(null);
+                      setEditingTextValue('');
+                    }
+                  }}
+                  onBlur={() => {
+                    // 失去焦点时保存
+                    if (editingTextId && editingTextValue.trim()) {
+                      setTexts((prev) =>
+                        prev.map((t) =>
+                          t.id === editingTextId ? { ...t, text: editingTextValue } : t,
+                        ),
+                      );
+                    }
+                    setEditingTextId(null);
+                    setEditingTextValue('');
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: containerX,
+                    top: containerY,
+                    fontSize: editingText.fontSize * scale,
+                    fontWeight: editingText.fontWeight,
+                    fontStyle: editingText.fontStyle,
+                    color: editingText.color,
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    minWidth: 50,
+                    fontFamily: 'sans-serif',
+                    padding: 0,
+                    margin: 0,
+                    zIndex: 1000,
+                  }}
+                />
+              );
+            })()}
 
             {/* 缩放控制条 */}
             <div
@@ -2016,6 +2647,8 @@ const App: React.FC = () => {
         onUpdateArrow={updateArrow}
         selectedRect={selectedRect}
         onUpdateRect={updateRect}
+        selectedText={selectedText}
+        onUpdateText={updateText}
       />
     </div>
   );

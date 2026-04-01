@@ -272,7 +272,8 @@
                   "fill": "#FFFFFF",
                   "content": "可视截图",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -344,7 +345,8 @@
                   "fill": "#FFFFFF",
                   "content": "选择区域",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -416,7 +418,8 @@
                   "fill": "#FFFFFF",
                   "content": "整页截图",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -799,7 +802,8 @@
               "fill": "#3D3D3D",
               "content": "// alt+shift+s capture . alt+shift+c code",
               "fontFamily": "JetBrains Mono",
-              "fontSize": 9
+              "fontSize": 9,
+              "fontWeight": "normal"
             }
           ]
         }
@@ -1107,7 +1111,8 @@
               "fill": "#3D3D3D",
               "content": "// editor_canvas",
               "fontFamily": "JetBrains Mono",
-              "fontSize": 14
+              "fontSize": 14,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -1222,7 +1227,8 @@
               "width": "fill_container",
               "content": "// properties",
               "fontFamily": "JetBrains Mono",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -1264,7 +1270,8 @@
                           "fill": "#777777",
                           "content": "x",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -1291,7 +1298,8 @@
                               "fill": "#FFFFFF",
                               "content": "200",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -1312,7 +1320,8 @@
                           "fill": "#777777",
                           "content": "y",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -1339,7 +1348,8 @@
                               "fill": "#FFFFFF",
                               "content": "180",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -1369,7 +1379,8 @@
                           "fill": "#777777",
                           "content": "w",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -1396,7 +1407,8 @@
                               "fill": "#FFFFFF",
                               "content": "800",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -1417,7 +1429,8 @@
                           "fill": "#777777",
                           "content": "h",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -1444,7 +1457,8 @@
                               "fill": "#FFFFFF",
                               "content": "500",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -1487,7 +1501,8 @@
                       "fill": "#777777",
                       "content": "stroke:",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -1506,7 +1521,8 @@
                       "fill": "#FFFFFF",
                       "content": "#00D4AA",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -1525,7 +1541,8 @@
                       "fill": "#777777",
                       "content": "width:",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -1548,7 +1565,8 @@
                           "fill": "#FFFFFF",
                           "content": "2px",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -1755,7 +1773,8 @@
                   "fill": "#FFFFFF",
                   "content": "code_input",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 14
+                  "fontSize": 14,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1768,7 +1787,8 @@
               "width": "fill_container",
               "content": "// paste your code here...",
               "fontFamily": "JetBrains Mono",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -1803,7 +1823,8 @@
                   "fill": "#C586C0",
                   "content": "const greet = (name) => {",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1814,7 +1835,8 @@
                   "fill": "#CE9178",
                   "content": "  return `Hello, ${name}!`;",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1825,7 +1847,8 @@
                   "fill": "#C586C0",
                   "content": "};",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1835,7 +1858,8 @@
                   "name": "line4",
                   "fill": "#FFFFFF",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1846,7 +1870,8 @@
                   "fill": "#569CD6",
                   "content": "export default greet;",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1865,7 +1890,8 @@
                   "fill": "#3D3D3D",
                   "content": "// language",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -1893,7 +1919,8 @@
                       "fill": "#FFFFFF",
                       "content": "javascript",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "icon_font",
@@ -1924,7 +1951,8 @@
                   "fill": "#3D3D3D",
                   "content": "// theme",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2010,7 +2038,8 @@
                   "fill": "#3D3D3D",
                   "content": "// background",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2210,7 +2239,8 @@
                       "fill": "#777777",
                       "content": "greet.js",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -2231,7 +2261,8 @@
                       "fill": "#C586C0",
                       "content": "const greet = (name) => {",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2240,7 +2271,8 @@
                       "fill": "#CE9178",
                       "content": "  return `Hello, ${name}!`;",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2249,7 +2281,8 @@
                       "fill": "#C586C0",
                       "content": "};",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2257,7 +2290,8 @@
                       "name": "pl4",
                       "fill": "#FFFFFF",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2266,7 +2300,8 @@
                       "fill": "#569CD6",
                       "content": "export default greet;",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2274,7 +2309,8 @@
                       "name": "pl6",
                       "fill": "#FFFFFF",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2283,7 +2319,8 @@
                       "fill": "#3D3D3D",
                       "content": "// code preview",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -2531,7 +2568,8 @@
                               "fill": "#FFFFFF",
                               "content": "default_theme",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -2556,7 +2594,8 @@
                               "fill": "#FFFFFF",
                               "content": "dark",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -2609,7 +2648,8 @@
                               "fill": "#FFFFFF",
                               "content": "default_export_format",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -2634,7 +2674,8 @@
                               "fill": "#FFFFFF",
                               "content": "png",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -2687,7 +2728,8 @@
                               "fill": "#FFFFFF",
                               "content": "capture_quality",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -2698,7 +2740,8 @@
                           "fill": "#00D4AA",
                           "content": "2x",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -2810,7 +2853,8 @@
                               "fill": "#FFFFFF",
                               "content": "capture_screenshot",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -2854,7 +2898,8 @@
                               "fill": "#3D3D3D",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -2889,7 +2934,8 @@
                               "fill": "#3D3D3D",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -2958,7 +3004,8 @@
                               "fill": "#FFFFFF",
                               "content": "open_code_editor",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -3002,7 +3049,8 @@
                               "fill": "#3D3D3D",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -3037,7 +3085,8 @@
                               "fill": "#3D3D3D",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -3196,7 +3245,8 @@
                           "fill": "#777777",
                           "content": "version",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "text",
@@ -3205,7 +3255,8 @@
                           "fill": "#FFFFFF",
                           "content": "0.1.0",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -3224,7 +3275,8 @@
                           "fill": "#777777",
                           "content": "author",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "text",
@@ -3233,7 +3285,8 @@
                           "fill": "#FFFFFF",
                           "content": "CodeFrame Team",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -3252,7 +3305,8 @@
                           "fill": "#777777",
                           "content": "repository",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "text",
@@ -3261,7 +3315,8 @@
                           "fill": "#00D4AA",
                           "content": "github.com/codeframe",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -3544,7 +3599,8 @@
                   "fill": "#1A1A1A",
                   "content": "可视截图",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -3616,7 +3672,8 @@
                   "fill": "#1A1A1A",
                   "content": "选择区域",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -3688,7 +3745,8 @@
                   "fill": "#1A1A1A",
                   "content": "整页截图",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -4061,7 +4119,8 @@
               "fill": "#BBBBBB",
               "content": "// alt+shift+s capture . alt+shift+c code",
               "fontFamily": "JetBrains Mono",
-              "fontSize": 9
+              "fontSize": 9,
+              "fontWeight": "normal"
             }
           ]
         }
@@ -4361,17 +4420,6 @@
           "layout": "none",
           "children": [
             {
-              "type": "text",
-              "id": "L0PkI",
-              "x": 16,
-              "y": 16,
-              "name": "canvasLabel",
-              "fill": "#BBBBBB",
-              "content": "// editor_canvas",
-              "fontFamily": "JetBrains Mono",
-              "fontSize": 14
-            },
-            {
               "type": "frame",
               "id": "qStr1",
               "x": 200,
@@ -4476,17 +4524,6 @@
           ],
           "children": [
             {
-              "type": "text",
-              "id": "qkodj",
-              "name": "panelTitle",
-              "fill": "#BBBBBB",
-              "textGrowth": "fixed-width",
-              "width": "fill_container",
-              "content": "// properties",
-              "fontFamily": "JetBrains Mono",
-              "fontSize": 12
-            },
-            {
               "type": "frame",
               "id": "qXLz9",
               "name": "PositionSection",
@@ -4526,7 +4563,8 @@
                           "fill": "#999999",
                           "content": "x",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -4553,7 +4591,8 @@
                               "fill": "#1A1A1A",
                               "content": "200",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -4574,7 +4613,8 @@
                           "fill": "#999999",
                           "content": "y",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -4601,7 +4641,8 @@
                               "fill": "#1A1A1A",
                               "content": "180",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -4631,7 +4672,8 @@
                           "fill": "#999999",
                           "content": "w",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -4658,7 +4700,8 @@
                               "fill": "#1A1A1A",
                               "content": "800",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -4679,7 +4722,8 @@
                           "fill": "#999999",
                           "content": "h",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 10
+                          "fontSize": 10,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -4706,7 +4750,8 @@
                               "fill": "#1A1A1A",
                               "content": "500",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -4749,7 +4794,8 @@
                       "fill": "#999999",
                       "content": "stroke:",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -4768,7 +4814,8 @@
                       "fill": "#1A1A1A",
                       "content": "#00D4AA",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -4787,7 +4834,8 @@
                       "fill": "#999999",
                       "content": "width:",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -4810,7 +4858,8 @@
                           "fill": "#1A1A1A",
                           "content": "2px",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -4863,7 +4912,7 @@
                       "id": "LQDsD",
                       "name": "exportText",
                       "fill": "#0D0D0D",
-                      "content": "$ export_image",
+                      "content": "export_image",
                       "fontFamily": "JetBrains Mono",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -4901,7 +4950,7 @@
                       "id": "t7Qr8",
                       "name": "copyText",
                       "fill": "#777777",
-                      "content": "$ copy_to_clipboard",
+                      "content": "copy_to_clipboard",
                       "fontFamily": "JetBrains Mono",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -5021,7 +5070,8 @@
                   "fill": "#1A1A1A",
                   "content": "code_input",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 14
+                  "fontSize": 14,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -5034,7 +5084,8 @@
               "width": "fill_container",
               "content": "// paste your code here...",
               "fontFamily": "JetBrains Mono",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -5055,7 +5106,8 @@
                   "fill": "#C586C0",
                   "content": "const greet = (name) => {",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -5066,7 +5118,8 @@
                   "fill": "#CE9178",
                   "content": "  return `Hello, ${name}!`;",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -5077,7 +5130,8 @@
                   "fill": "#C586C0",
                   "content": "};",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -5087,7 +5141,8 @@
                   "name": "line4",
                   "fill": "#FFFFFF",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -5098,7 +5153,8 @@
                   "fill": "#569CD6",
                   "content": "export default greet;",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -5117,7 +5173,8 @@
                   "fill": "#BBBBBB",
                   "content": "// language",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -5145,7 +5202,8 @@
                       "fill": "#1A1A1A",
                       "content": "javascript",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "icon_font",
@@ -5176,7 +5234,8 @@
                   "fill": "#BBBBBB",
                   "content": "// theme",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -5262,7 +5321,8 @@
                   "fill": "#BBBBBB",
                   "content": "// background",
                   "fontFamily": "JetBrains Mono",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -5462,7 +5522,8 @@
                       "fill": "#777777",
                       "content": "greet.js",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -5483,7 +5544,8 @@
                       "fill": "#C586C0",
                       "content": "const greet = (name) => {",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -5492,7 +5554,8 @@
                       "fill": "#CE9178",
                       "content": "  return `Hello, ${name}!`;",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -5501,7 +5564,8 @@
                       "fill": "#C586C0",
                       "content": "};",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -5509,7 +5573,8 @@
                       "name": "pl4",
                       "fill": "#FFFFFF",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -5518,7 +5583,8 @@
                       "fill": "#569CD6",
                       "content": "export default greet;",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -5526,7 +5592,8 @@
                       "name": "pl6",
                       "fill": "#FFFFFF",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -5535,7 +5602,8 @@
                       "fill": "#3D3D3D",
                       "content": "// code preview",
                       "fontFamily": "JetBrains Mono",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -5822,7 +5890,8 @@
                               "fill": "#1A1A1A",
                               "content": "default_theme",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -5847,7 +5916,8 @@
                               "fill": "#1A1A1A",
                               "content": "dark",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -5900,7 +5970,8 @@
                               "fill": "#1A1A1A",
                               "content": "default_export_format",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -5925,7 +5996,8 @@
                               "fill": "#1A1A1A",
                               "content": "png",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -5978,7 +6050,8 @@
                               "fill": "#1A1A1A",
                               "content": "capture_quality",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -5989,7 +6062,8 @@
                           "fill": "#00D4AA",
                           "content": "2x",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -6140,7 +6214,8 @@
                               "fill": "#1A1A1A",
                               "content": "capture_screenshot",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -6184,7 +6259,8 @@
                               "fill": "#CCCCCC",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -6219,7 +6295,8 @@
                               "fill": "#CCCCCC",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -6288,7 +6365,8 @@
                               "fill": "#1A1A1A",
                               "content": "open_code_editor",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         },
@@ -6332,7 +6410,8 @@
                               "fill": "#CCCCCC",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -6367,7 +6446,8 @@
                               "fill": "#CCCCCC",
                               "content": "+",
                               "fontFamily": "JetBrains Mono",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -6526,7 +6606,8 @@
                           "fill": "#999999",
                           "content": "version",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "text",
@@ -6535,7 +6616,8 @@
                           "fill": "#1A1A1A",
                           "content": "0.1.0",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -6554,7 +6636,8 @@
                           "fill": "#999999",
                           "content": "author",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "text",
@@ -6563,7 +6646,8 @@
                           "fill": "#1A1A1A",
                           "content": "CodeFrame Team",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -6582,7 +6666,8 @@
                           "fill": "#999999",
                           "content": "repository",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "text",
@@ -6591,7 +6676,8 @@
                           "fill": "#00D4AA",
                           "content": "github.com/codeframe",
                           "fontFamily": "JetBrains Mono",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     }

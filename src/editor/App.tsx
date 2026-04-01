@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   MousePointer2,
+  Move,
   MoveRight,
   Square,
   Type,
@@ -41,7 +42,7 @@ const MAX_IMG_W = 800;
 const MAX_IMG_H = 600;
 
 type EditorSource = 'capture' | 'upload';
-type ToolId = 'select' | 'arrow' | 'rect' | 'text' | 'mosaic' | 'crop';
+type ToolId = 'select' | 'move' | 'arrow' | 'rect' | 'text' | 'mosaic' | 'crop';
 
 interface ToolConfig {
   id: ToolId;
@@ -50,6 +51,7 @@ interface ToolConfig {
 
 const TOOLS: ToolConfig[] = [
   { id: 'select', icon: <MousePointer2 size={18} /> },
+  { id: 'move', icon: <Move size={18} /> },
   { id: 'arrow', icon: <MoveRight size={18} /> },
   { id: 'rect', icon: <Square size={18} /> },
   { id: 'text', icon: <Type size={18} /> },
@@ -383,7 +385,7 @@ const App: React.FC = () => {
     if (!el) return;
 
     const onDown = (e: MouseEvent) => {
-      if (e.button !== 0 || !imageData) return;
+      if (e.button !== 0 || !imageData || activeTool !== 'move') return;
       isPanning.current = true;
       panStart.current = { x: e.clientX, y: e.clientY };
       panOffsetStart.current = offsetRef.current;
@@ -394,15 +396,19 @@ const App: React.FC = () => {
       if (!isPanning.current) return;
       const dx = e.clientX - panStart.current.x;
       const dy = e.clientY - panStart.current.y;
-      setOffset({
+      const newOffset = {
         x: panOffsetStart.current.x + dx,
         y: panOffsetStart.current.y + dy,
-      });
+      };
+      offsetRef.current = newOffset;
+      setOffset(newOffset);
     };
 
     const onUp = () => {
       isPanning.current = false;
-      el.style.cursor = 'grab';
+      if (activeTool === 'move') {
+        el.style.cursor = 'grab';
+      }
     };
 
     el.addEventListener('mousedown', onDown);
@@ -413,7 +419,7 @@ const App: React.FC = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, []);
+  }, [activeTool, imageData]);
 
   // 缩放控制
   const zoomIn = useCallback(() => {
@@ -431,6 +437,8 @@ const App: React.FC = () => {
   }, [zoomAt]);
 
   const resetView = useCallback(() => {
+    scaleRef.current = 1;
+    offsetRef.current = { x: 0, y: 0 };
     setScale(1);
     setOffset({ x: 0, y: 0 });
   }, []);
@@ -517,7 +525,7 @@ const App: React.FC = () => {
       <main
         ref={canvasRef}
         className="editor-canvas flex-1 h-full relative overflow-hidden"
-        style={{ cursor: 'grab' }}
+        style={{ cursor: activeTool === 'move' ? 'grab' : 'default' }}
       >
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center">

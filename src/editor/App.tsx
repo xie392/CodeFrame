@@ -26,6 +26,18 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { STORAGE_KEYS } from '@shared/constants';
+import { useEditorHistory } from './hooks/useEditorHistory';
+import type {
+  EditorState,
+  ArrowShape,
+  RectShape,
+  TextShape,
+  MosaicShape,
+  CropArea,
+  ToolId,
+  ArrowStyle,
+  RectBorderStyle,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // 常量与类型
@@ -104,62 +116,10 @@ const DEFAULT_MOSAIC_STYLE: {
 };
 
 type EditorSource = 'capture' | 'upload';
-type ToolId = 'select' | 'move' | 'arrow' | 'rect' | 'text' | 'mosaic' | 'crop';
-type ArrowStyle = 'single' | 'double';
-type RectBorderStyle = 'solid' | 'dashed';
 
 interface ToolConfig {
   id: ToolId;
   icon: React.ReactNode;
-}
-
-// 箭头数据结构
-interface ArrowShape {
-  id: string;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  color: string;
-  strokeWidth: number;
-  headSize: number;
-  style: ArrowStyle;
-}
-
-// 矩形数据结构
-interface RectShape {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  strokeWidth: number;
-  fillOpacity: number; // 0-100
-  borderStyle: RectBorderStyle;
-}
-
-// 文字数据结构
-interface TextShape {
-  id: string;
-  x: number;
-  y: number;
-  text: string;
-  color: string;
-  fontSize: number;
-  fontWeight: 'normal' | 'bold';
-  fontStyle: 'normal' | 'italic';
-}
-
-// 马赛克数据结构
-interface MosaicShape {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  blockSize: number;
-  opacity: number; // 0-100
 }
 
 const TOOLS: ToolConfig[] = [
@@ -276,22 +236,14 @@ type MosaicDragType = RectDragType;
 // 马赛克控制点光标映射（与矩形相同）
 const MOSAIC_CURSOR_MAP: Record<MosaicDragType, string> = RECT_CURSOR_MAP;
 
-// 裁剪区域数据结构
-interface CropArea {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+// 最小裁剪尺寸
+const MIN_CROP_SIZE = 10;
 
 // 裁剪框拖拽类型（与矩形相同）
 type CropDragType = RectDragType;
 
 // 裁剪框光标映射（与矩形相同）
 const CROP_CURSOR_MAP: Record<CropDragType, string> = RECT_CURSOR_MAP;
-
-// 最小裁剪尺寸
-const MIN_CROP_SIZE = 10;
 
 // 在 Canvas 上绘制箭头
 function drawArrow(
@@ -1004,7 +956,11 @@ function drawCropBox(
 const Toolbar: React.FC<{
   activeTool: ToolId;
   onSelectTool: (tool: ToolId) => void;
-}> = ({ activeTool, onSelectTool }) => (
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+}> = ({ activeTool, onSelectTool, canUndo, canRedo, onUndo, onRedo }) => (
   <aside className="toolbar w-[56px] h-full flex flex-col items-center py-3 gap-1 shrink-0">
     {TOOLS.map((tool) => {
       const isActive = activeTool === tool.id;
@@ -1027,10 +983,28 @@ const Toolbar: React.FC<{
     <div className="w-[24px] h-[1px] my-1 bg-[var(--color-editor-separator)]" />
 
     {/* 撤销 / 重做 */}
-    <button className="w-[40px] h-[40px] rounded-[12px] flex items-center justify-center tool-btn cursor-not-allowed opacity-40">
+    <button
+      onClick={onUndo}
+      disabled={!canUndo}
+      className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center transition-colors duration-200 ${
+        canUndo
+          ? 'tool-btn cursor-pointer'
+          : 'tool-btn cursor-not-allowed opacity-40'
+      }`}
+      title="撤销 (Ctrl+Z)"
+    >
       <Undo2 size={18} />
     </button>
-    <button className="w-[40px] h-[40px] rounded-[12px] flex items-center justify-center tool-btn cursor-not-allowed opacity-40">
+    <button
+      onClick={onRedo}
+      disabled={!canRedo}
+      className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center transition-colors duration-200 ${
+        canRedo
+          ? 'tool-btn cursor-pointer'
+          : 'tool-btn cursor-not-allowed opacity-40'
+      }`}
+      title="重做 (Ctrl+Shift+Z)"
+    >
       <Redo2 size={18} />
     </button>
   </aside>
@@ -1995,6 +1969,97 @@ const App: React.FC = () => {
   imageDisplaySizeRef.current = imageDisplaySize;
   imageNaturalSizeRef.current = imageNaturalSize;
 
+  // ---------------------------------------------------------------------------
+  // 历史记录（撤销/恢复）
+  // ---------------------------------------------------------------------------
+  const historyActions = useEditorHistory();
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // 更新撤销/恢复按钮状态
+  const updateHistoryButtons = useCallback(() => {
+    setCanUndo(historyActions.canUndo());
+    setCanRedo(historyActions.canRedo());
+  }, [historyActions]);
+
+  // 推送当前状态到历史记录
+  const pushHistory = useCallback(() => {
+    // 深拷贝数组避免引用污染
+    const state: EditorState = {
+      arrows: JSON.parse(JSON.stringify(arrowsRef.current)),
+      rects: JSON.parse(JSON.stringify(rectsRef.current)),
+      texts: JSON.parse(JSON.stringify(textsRef.current)),
+      mosaics: JSON.parse(JSON.stringify(mosaicsRef.current)),
+      imageData: imageData,
+      view: {
+        scale: scaleRef.current,
+        offset: { ...offsetRef.current },
+      },
+      selectedArrowId: selectedArrowIdRef.current,
+      selectedRectId: selectedRectIdRef.current,
+      selectedTextId: selectedTextIdRef.current,
+      selectedMosaicId: selectedMosaicIdRef.current,
+    };
+    historyActions.pushState(state);
+    updateHistoryButtons();
+  }, [historyActions, imageData, updateHistoryButtons]);
+
+  // 撤销操作
+  const handleUndo = useCallback(() => {
+    const prevState = historyActions.undo();
+    if (prevState) {
+      setArrows(prevState.arrows);
+      setRects(prevState.rects);
+      setTexts(prevState.texts);
+      setMosaics(prevState.mosaics);
+      // 同步 ref
+      arrowsRef.current = prevState.arrows;
+      rectsRef.current = prevState.rects;
+      textsRef.current = prevState.texts;
+      mosaicsRef.current = prevState.mosaics;
+      if (prevState.imageData && prevState.imageData !== imageData) {
+        setImageData(prevState.imageData);
+      }
+      setScale(prevState.view.scale);
+      setOffset(prevState.view.offset);
+      scaleRef.current = prevState.view.scale;
+      offsetRef.current = prevState.view.offset;
+      setSelectedArrowId(prevState.selectedArrowId);
+      setSelectedRectId(prevState.selectedRectId);
+      setSelectedTextId(prevState.selectedTextId);
+      setSelectedMosaicId(prevState.selectedMosaicId);
+    }
+    updateHistoryButtons();
+  }, [historyActions, imageData, updateHistoryButtons]);
+
+  // 恢复操作
+  const handleRedo = useCallback(() => {
+    const nextState = historyActions.redo();
+    if (nextState) {
+      setArrows(nextState.arrows);
+      setRects(nextState.rects);
+      setTexts(nextState.texts);
+      setMosaics(nextState.mosaics);
+      // 同步 ref
+      arrowsRef.current = nextState.arrows;
+      rectsRef.current = nextState.rects;
+      textsRef.current = nextState.texts;
+      mosaicsRef.current = nextState.mosaics;
+      if (nextState.imageData && nextState.imageData !== imageData) {
+        setImageData(nextState.imageData);
+      }
+      setScale(nextState.view.scale);
+      setOffset(nextState.view.offset);
+      scaleRef.current = nextState.view.scale;
+      offsetRef.current = nextState.view.offset;
+      setSelectedArrowId(nextState.selectedArrowId);
+      setSelectedRectId(nextState.selectedRectId);
+      setSelectedTextId(nextState.selectedTextId);
+      setSelectedMosaicId(nextState.selectedMosaicId);
+    }
+    updateHistoryButtons();
+  }, [historyActions, imageData, updateHistoryButtons]);
+
   // 将屏幕坐标转换为图片坐标
   const screenToImageCoord = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -2115,52 +2180,60 @@ const App: React.FC = () => {
   const updateArrow = useCallback(
     (updates: Partial<ArrowShape>) => {
       if (!selectedArrowId) return;
+      // 修改前保存历史
+      pushHistory();
       setArrows((prev) =>
         prev.map((a) =>
           a.id === selectedArrowId ? { ...a, ...updates } : a,
         ),
       );
     },
-    [selectedArrowId],
+    [selectedArrowId, pushHistory],
   );
 
   // 更新矩形属性
   const updateRect = useCallback(
     (updates: Partial<RectShape>) => {
       if (!selectedRectId) return;
+      // 修改前保存历史
+      pushHistory();
       setRects((prev) =>
         prev.map((r) =>
           r.id === selectedRectId ? { ...r, ...updates } : r,
         ),
       );
     },
-    [selectedRectId],
+    [selectedRectId, pushHistory],
   );
 
   // 更新文字属性
   const updateText = useCallback(
     (updates: Partial<TextShape>) => {
       if (!selectedTextId) return;
+      // 修改前保存历史
+      pushHistory();
       setTexts((prev) =>
         prev.map((t) =>
           t.id === selectedTextId ? { ...t, ...updates } : t,
         ),
       );
     },
-    [selectedTextId],
+    [selectedTextId, pushHistory],
   );
 
   // 更新马赛克属性
   const updateMosaic = useCallback(
     (updates: Partial<MosaicShape>) => {
       if (!selectedMosaicId) return;
+      // 修改前保存历史
+      pushHistory();
       setMosaics((prev) =>
         prev.map((m) =>
           m.id === selectedMosaicId ? { ...m, ...updates } : m,
         ),
       );
     },
-    [selectedMosaicId],
+    [selectedMosaicId, pushHistory],
   );
 
   // 选中的箭头
@@ -2231,6 +2304,9 @@ const App: React.FC = () => {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
+
+        // 创建前保存历史
+        pushHistory();
 
         const newText: TextShape = {
           id: generateTextId(),
@@ -2930,6 +3006,8 @@ const App: React.FC = () => {
         const dist = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
         const minDrawDist = 5;
         if (dist > minDrawDist) {
+          // 创建前保存历史
+          pushHistory();
           const newArrow: ArrowShape = {
             id: generateId(),
             startX,
@@ -2953,6 +3031,8 @@ const App: React.FC = () => {
         const height = Math.abs(endY - startY);
         const minSize = 5;
         if (width >= minSize && height >= minSize) {
+          // 创建前保存历史
+          pushHistory();
           const newRect: RectShape = {
             id: generateRectId(),
             x: Math.min(startX, endX),
@@ -2976,6 +3056,8 @@ const App: React.FC = () => {
         const height = Math.abs(endY - startY);
         const minSize = 5;
         if (width >= minSize && height >= minSize) {
+          // 创建前保存历史
+          pushHistory();
           const newMosaic: MosaicShape = {
             id: generateMosaicId(),
             x: Math.min(startX, endX),
@@ -3011,6 +3093,16 @@ const App: React.FC = () => {
       isDrawingCrop.current = false;
       drawingCrop.current = null;
 
+      // 结束拖拽 - 拖拽结束时保存历史
+      if (
+        draggingRef.current ||
+        draggingRectRef.current ||
+        draggingTextRef.current ||
+        draggingMosaicRef.current
+      ) {
+        pushHistory();
+      }
+
       // 结束拖拽
       draggingRef.current = null;
       draggingRectRef.current = null;
@@ -3030,7 +3122,7 @@ const App: React.FC = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [activeTool, imageData, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, screenToImageCoord, renderShapes, cropArea]);
+  }, [activeTool, imageData, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, screenToImageCoord, renderShapes, cropArea, pushHistory]);
 
   // 标注变化时重新渲染
   useEffect(() => {
@@ -3066,6 +3158,9 @@ const App: React.FC = () => {
     const displaySize = imageDisplaySizeRef.current;
 
     if (!currentCropArea || !imageData || !naturalSize || !displaySize) return;
+
+    // 裁剪前保存历史（包含原始图片和标注）
+    pushHistory();
 
     // 计算显示坐标到原始坐标的缩放比例
     const scaleX = naturalSize.width / displaySize.width;
@@ -3133,7 +3228,7 @@ const App: React.FC = () => {
       setOffset({ x: 0, y: 0 });
     };
     img.src = imageData;
-  }, [imageData]);
+  }, [imageData, pushHistory]);
 
   // 取消裁剪操作
   const cancelCrop = useCallback(() => {
@@ -3141,9 +3236,40 @@ const App: React.FC = () => {
     setActiveTool('select');
   }, []);
 
-  // Delete 键删除选中的箭头、矩形或文字
+  // Delete 键删除选中的箭头、矩形或文字 / Ctrl+Z 撤销 / Ctrl+Shift+Z 重做
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 撤销快捷键：Ctrl+Z / Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        // 避免在输入框中触发
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // 重做快捷键：Ctrl+Shift+Z / Cmd+Shift+Z 或 Ctrl+Y / Cmd+Y
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
+        ((e.ctrlKey || e.metaKey) && e.key === 'y')
+      ) {
+        // 避免在输入框中触发
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
       // 裁剪工具快捷键
       if (activeTool === 'crop') {
         if (e.key === 'Enter' && cropArea) {
@@ -3165,6 +3291,13 @@ const App: React.FC = () => {
           e.target instanceof HTMLTextAreaElement
         ) {
           return;
+        }
+
+        // 删除前保存历史
+        const hasSelection =
+          selectedArrowId || selectedRectId || selectedTextId || selectedMosaicId;
+        if (hasSelection) {
+          pushHistory();
         }
 
         // 删除选中的箭头
@@ -3195,7 +3328,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, activeTool, cropArea, applyCrop, cancelCrop]);
+  }, [selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, activeTool, cropArea, applyCrop, cancelCrop, handleUndo, handleRedo, pushHistory]);
 
   // 双击文字进入编辑模式 / 双击确认裁剪
   useEffect(() => {
@@ -3425,9 +3558,33 @@ const App: React.FC = () => {
     };
   }, [source]);
 
+  // 图片加载后初始化/重置历史
+  const imageLoadedRef = useRef(false);
+  useEffect(() => {
+    if (imageData && !imageLoadedRef.current) {
+      imageLoadedRef.current = true;
+      // 重置历史状态
+      historyActions.resetToState({
+        arrows: [],
+        rects: [],
+        texts: [],
+        mosaics: [],
+        imageData,
+        view: { scale: 1, offset: { x: 0, y: 0 } },
+        selectedArrowId: null,
+        selectedRectId: null,
+        selectedTextId: null,
+        selectedMosaicId: null,
+      });
+      updateHistoryButtons();
+    }
+  }, [imageData, historyActions, updateHistoryButtons]);
+
   const handleImageLoad = useCallback((dataUrl: string) => {
     setImageData(dataUrl);
     setError(null);
+    // 新图片加载时重置历史初始化标记
+    imageLoadedRef.current = false;
   }, []);
 
   const showPlaceholder = source === 'upload' && !imageData && !error;
@@ -3435,7 +3592,14 @@ const App: React.FC = () => {
   return (
     <div className="editor-container w-screen h-screen flex overflow-hidden">
       {/* 左侧工具栏 */}
-      <Toolbar activeTool={activeTool} onSelectTool={setActiveTool} />
+      <Toolbar
+        activeTool={activeTool}
+        onSelectTool={setActiveTool}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
 
       {/* 中央画布 */}
       <main

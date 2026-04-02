@@ -120,9 +120,9 @@ const DEFAULT_MOSAIC_STYLE: {
 // 默认图片容器设置
 const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
   background: {
-    type: 'solid',
+    type: 'linear',
     color: '#FFFFFF',
-    gradientColors: ['#FFFFFF', '#000000'],
+    gradientColors: ['#E0F7FA', '#E1BEE7'],
     gradientAngle: 135,
   },
   padding: {

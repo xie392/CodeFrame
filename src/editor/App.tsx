@@ -120,23 +120,23 @@ const DEFAULT_MOSAIC_STYLE: {
 const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
   background: {
     type: 'solid',
-    color: 'transparent',
+    color: '#FFFFFF',
     gradientColors: ['#FFFFFF', '#000000'],
     gradientAngle: 135,
   },
   padding: {
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
+    top: 40,
+    right: 40,
+    bottom: 40,
+    left: 40,
     linked: true,
   },
   borderRadius: {
-    value: 0,
+    value: 12,
     linked: true,
   },
   shadow: {
-    enabled: false,
+    enabled: true,
     color: '#000000',
     blur: 20,
     offsetX: 0,
@@ -2466,6 +2466,33 @@ const UploadPlaceholder: React.FC<{
   );
 };
 
+/** 根据背景设置生成 CSS 背景样式 */
+const getBackgroundStyle = (bg: ImageFrameSettings['background']): React.CSSProperties => {
+  if (bg.type === 'solid') {
+    if (bg.color === 'transparent') {
+      // 透明背景：显示棋盘格图案
+      return {
+        background: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
+        backgroundSize: '16px 16px',
+        backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+        backgroundColor: '#fff',
+      };
+    }
+    return { backgroundColor: bg.color };
+  }
+  if (bg.type === 'linear') {
+    return {
+      background: `linear-gradient(${bg.gradientAngle}deg, ${bg.gradientColors[0]}, ${bg.gradientColors[1]})`,
+    };
+  }
+  if (bg.type === 'radial') {
+    return {
+      background: `radial-gradient(circle, ${bg.gradientColors[0]}, ${bg.gradientColors[1]})`,
+    };
+  }
+  return {};
+};
+
 /** 画布中显示的图片 */
 const CanvasImage: React.FC<{
   src: string;
@@ -4641,7 +4668,22 @@ const App: React.FC = () => {
                 transformOrigin: '0 0',
               }}
             >
-              <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
+              {/* Frame Container - 背景和图片 */}
+              <div
+                style={{
+                  ...getBackgroundStyle(frameSettings.background),
+                  borderRadius: frameSettings.borderRadius.value,
+                  padding: frameSettings.padding.linked
+                    ? frameSettings.padding.top
+                    : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
+                  display: 'inline-block',
+                  boxShadow: frameSettings.shadow.enabled
+                    ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
+                    : 'none',
+                }}
+              >
+                <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
+              </div>
             </div>
 
             {/* Annotation Canvas Layer */}

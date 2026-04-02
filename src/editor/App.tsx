@@ -2697,7 +2697,9 @@ const PropertiesPanel: React.FC<{
   };
 
   return (
-    <aside className="properties-panel w-[350px] h-full flex flex-col gap-4 p-5 shrink-0 overflow-y-auto">
+    <aside className="properties-panel w-[350px] h-full flex flex-col shrink-0">
+      {/* 可滚动内容区域 */}
+      <div className="flex-1 flex flex-col gap-4 p-5 overflow-y-auto overflow-x-hidden">
       {/* 位置区域 */}
       <div className="flex flex-col gap-[10px]">
         <span
@@ -2941,9 +2943,11 @@ const PropertiesPanel: React.FC<{
           onUpdate={onUpdateFrameSettings}
         />
       )}
+      </div>
 
-      {/* 操作按钮 */}
-      <div className="flex flex-col gap-2 mt-auto">
+      {/* 固定底部操作按钮区域 */}
+      <div className="shrink-0 p-5 pt-0">
+        <div className="flex flex-col gap-2">
         <button
           className="export-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={onExportImage}
@@ -2981,6 +2985,7 @@ const PropertiesPanel: React.FC<{
             {exportError}
           </div>
         )}
+        </div>
       </div>
     </aside>
   );

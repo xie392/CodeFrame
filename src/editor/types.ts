@@ -122,8 +122,16 @@ export interface ImageFrameSettings {
     bottomLeft: number;
     linked: boolean;
   };
-  // 阴影
+  // 阴影（容器）
   shadow: {
+    enabled: boolean;
+    color: string;
+    blur: number;
+    offsetX: number;
+    offsetY: number;
+  };
+  // 图片阴影
+  imageShadow: {
     enabled: boolean;
     color: string;
     blur: number;

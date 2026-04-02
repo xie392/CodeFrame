@@ -155,6 +155,13 @@ const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
     offsetX: 0,
     offsetY: 10,
   },
+  imageShadow: {
+    enabled: false,
+    color: '#000000',
+    blur: 20,
+    offsetX: 0,
+    offsetY: 10,
+  },
   aspectRatio: 'original',
   windowControl: {
     enabled: false,
@@ -208,6 +215,14 @@ const BACKGROUND_PRESETS = [
 
 // 阴影预设
 const SHADOW_PRESETS = [
+  { name: '无', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
+  { name: '轻微', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
+  { name: '中等', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
+  { name: '强烈', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
+];
+
+// 图片阴影预设
+const IMAGE_SHADOW_PRESETS = [
   { name: '无', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
   { name: '轻微', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
   { name: '中等', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
@@ -1635,6 +1650,22 @@ const ShadowPresetButton: React.FC<{
   </button>
 );
 
+/** 图片阴影预设按钮 */
+const ImageShadowPresetButton: React.FC<{
+  preset: (typeof IMAGE_SHADOW_PRESETS)[number];
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ preset, isSelected, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+      isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
+    }`}
+  >
+    <span className="text-[10px] font-body leading-none">{preset.name}</span>
+  </button>
+);
+
 /** 图片容器设置面板 */
 const FrameSettings: React.FC<{
   settings: ImageFrameSettings;
@@ -2165,6 +2196,70 @@ const FrameSettings: React.FC<{
                 onUpdate({
                   shadow: {
                     ...settings.shadow,
+                    enabled: preset.enabled,
+                    blur: preset.blur,
+                    offsetX: preset.offsetX,
+                    offsetY: preset.offsetY,
+                  },
+                })
+              }
+            />
+          ))}
+        </div>
+      </CollapsibleSection>
+
+      {/* 图片阴影设置 */}
+      <CollapsibleSection
+        title="图片阴影"
+        enabled={settings.imageShadow.enabled}
+        onToggle={(enabled) =>
+          onUpdate({ imageShadow: { ...settings.imageShadow, enabled } })
+        }
+      >
+        <ColorPicker
+          color={settings.imageShadow.color}
+          onChange={(color) =>
+            onUpdate({ imageShadow: { ...settings.imageShadow, color } })
+          }
+        />
+        <SliderControl
+          label="模糊"
+          value={settings.imageShadow.blur}
+          min={0}
+          max={100}
+          onChange={(blur) =>
+            onUpdate({ imageShadow: { ...settings.imageShadow, blur } })
+          }
+        />
+        <div className="flex gap-2">
+          <EditableField
+            label="X"
+            value={settings.imageShadow.offsetX}
+            onChange={(offsetX) =>
+              onUpdate({ imageShadow: { ...settings.imageShadow, offsetX } })
+            }
+          />
+          <EditableField
+            label="Y"
+            value={settings.imageShadow.offsetY}
+            onChange={(offsetY) =>
+              onUpdate({ imageShadow: { ...settings.imageShadow, offsetY } })
+            }
+          />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {IMAGE_SHADOW_PRESETS.map((preset) => (
+            <ImageShadowPresetButton
+              key={preset.name}
+              preset={preset}
+              isSelected={
+                settings.imageShadow.enabled === preset.enabled &&
+                settings.imageShadow.blur === preset.blur
+              }
+              onClick={() =>
+                onUpdate({
+                  imageShadow: {
+                    ...settings.imageShadow,
                     enabled: preset.enabled,
                     blur: preset.blur,
                     offsetX: preset.offsetX,
@@ -4949,6 +5044,9 @@ const App: React.FC = () => {
                   }${frameSettings.imageRadius.unit}`,
                   overflow: 'hidden',
                   display: 'inline-block',
+                  boxShadow: frameSettings.imageShadow.enabled
+                    ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
+                    : 'none',
                 }}>
                   <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
                 </div>

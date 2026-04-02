@@ -37,6 +37,7 @@ import type {
   ToolId,
   ArrowStyle,
   RectBorderStyle,
+  ImageFrameSettings,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -114,6 +115,102 @@ const DEFAULT_MOSAIC_STYLE: {
   blockSize: 10,
   opacity: 100,
 };
+
+// 默认图片容器设置
+const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
+  background: {
+    type: 'solid',
+    color: 'transparent',
+    gradientColors: ['#FFFFFF', '#000000'],
+    gradientAngle: 135,
+  },
+  padding: {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    linked: true,
+  },
+  borderRadius: {
+    value: 0,
+    linked: true,
+  },
+  shadow: {
+    enabled: false,
+    color: '#000000',
+    blur: 20,
+    offsetX: 0,
+    offsetY: 10,
+  },
+  aspectRatio: 'original',
+  windowControl: {
+    enabled: false,
+    style: 'macos',
+  },
+  watermark: {
+    enabled: false,
+    text: '',
+    position: 'bottom-right',
+    opacity: 50,
+    fontSize: 14,
+  },
+};
+
+// 背景预设
+const BACKGROUND_PRESETS = [
+  { name: 'Transparent', type: 'solid' as const, color: 'transparent' },
+  { name: 'White', type: 'solid' as const, color: '#FFFFFF' },
+  { name: 'Black', type: 'solid' as const, color: '#000000' },
+  {
+    name: 'Sunset',
+    type: 'linear' as const,
+    gradientColors: ['#FF512F', '#DD2476'] as [string, string],
+    gradientAngle: 135,
+  },
+  {
+    name: 'Ocean',
+    type: 'linear' as const,
+    gradientColors: ['#2193b0', '#6dd5ed'] as [string, string],
+    gradientAngle: 135,
+  },
+  {
+    name: 'Forest',
+    type: 'linear' as const,
+    gradientColors: ['#134E5E', '#71B280'] as [string, string],
+    gradientAngle: 135,
+  },
+  {
+    name: 'Purple',
+    type: 'linear' as const,
+    gradientColors: ['#667eea', '#764ba2'] as [string, string],
+    gradientAngle: 135,
+  },
+  {
+    name: 'Peach',
+    type: 'linear' as const,
+    gradientColors: ['#FFB88C', '#DE6262'] as [string, string],
+    gradientAngle: 135,
+  },
+];
+
+// 阴影预设
+const SHADOW_PRESETS = [
+  { name: 'None', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
+  { name: 'Subtle', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
+  { name: 'Medium', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
+  { name: 'Strong', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
+];
+
+// 比例预设
+const ASPECT_RATIO_PRESETS = [
+  { name: 'Original', value: 'original' },
+  { name: '1:1', value: '1:1' },
+  { name: '4:3', value: '4:3' },
+  { name: '16:9', value: '16:9' },
+  { name: '16:10', value: '16:10' },
+  { name: 'iPhone', value: '9:19.5' },
+  { name: 'iPad', value: '3:4' },
+];
 
 type EditorSource = 'capture' | 'upload';
 
@@ -1390,6 +1487,575 @@ const FontStyleToggle: React.FC<{
   </div>
 );
 
+// ---------------------------------------------------------------------------
+// 图片容器设置组件
+// ---------------------------------------------------------------------------
+
+/** 可折叠区块 */
+const CollapsibleSection: React.FC<{
+  title: string;
+  defaultOpen?: boolean;
+  enabled?: boolean;
+  onToggle?: (enabled: boolean) => void;
+  children: React.ReactNode;
+}> = ({ title, defaultOpen = true, enabled, onToggle, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const hasToggle = enabled !== undefined && onToggle !== undefined;
+
+  return (
+    <div className="flex flex-col gap-[10px]">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1 cursor-pointer"
+        >
+          <ChevronRight
+            size={12}
+            style={{
+              color: 'var(--color-accent-orange)',
+              transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s ease',
+            }}
+          />
+          <span
+            className="text-[11px] font-body font-semibold"
+            style={{ color: 'var(--color-accent-orange)' }}
+          >
+            {title}
+          </span>
+        </button>
+        {hasToggle && (
+          <ToggleSwitch enabled={enabled!} onChange={onToggle!} />
+        )}
+      </div>
+      {isOpen && (!hasToggle || enabled) && (
+        <div className="pl-3 flex flex-col gap-[8px]">{children}</div>
+      )}
+    </div>
+  );
+};
+
+/** 开关控件 */
+const ToggleSwitch: React.FC<{
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}> = ({ enabled, onChange }) => (
+  <button
+    onClick={() => onChange(!enabled)}
+    className={`w-[36px] h-[20px] rounded-full relative cursor-pointer transition-colors border ${
+      enabled
+        ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+        : 'bg-transparent border-[var(--color-editor-hint)]'
+    }`}
+  >
+    <div
+      className={`w-[16px] h-[16px] rounded-full absolute top-[1px] transition-transform ${
+        enabled ? 'translate-x-[18px] bg-black' : 'translate-x-[1px] bg-[var(--color-editor-hint)]'
+      }`}
+    />
+  </button>
+);
+
+/** 下拉选择器 */
+const SelectControl: React.FC<{
+  value: string;
+  options: { name: string; value: string }[];
+  onChange: (value: string) => void;
+}> = ({ value, options, onChange }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    className="prop-field-sm h-[28px] px-2 rounded-[6px] text-[11px] font-body bg-transparent text-foreground cursor-pointer outline-none"
+  >
+    {options.map((opt) => (
+      <option key={opt.value} value={opt.value} className="bg-[var(--color-bg)]">
+        {opt.name}
+      </option>
+    ))}
+  </select>
+);
+
+/** 背景预设按钮 */
+const BackgroundPresetButton: React.FC<{
+  preset: (typeof BACKGROUND_PRESETS)[number];
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ preset, isSelected, onClick }) => {
+  const getBackground = () => {
+    if (preset.type === 'solid') {
+      return preset.color === 'transparent'
+        ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)'
+        : preset.color;
+    }
+    return `linear-gradient(${preset.gradientAngle}deg, ${preset.gradientColors[0]}, ${preset.gradientColors[1]})`;
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-[24px] h-[24px] rounded-[4px] shrink-0 cursor-pointer border-2 transition-colors ${
+        isSelected ? 'border-[var(--color-accent)]' : 'border-transparent'
+      }`}
+      style={{
+        background: getBackground(),
+        backgroundSize: preset.color === 'transparent' ? '8px 8px' : 'auto',
+        backgroundPosition: preset.color === 'transparent' ? '0 0, 0 4px, 4px -4px, -4px 0px' : 'auto',
+      }}
+      title={preset.name}
+    />
+  );
+};
+
+/** 阴影预设按钮 */
+const ShadowPresetButton: React.FC<{
+  preset: (typeof SHADOW_PRESETS)[number];
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ preset, isSelected, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+      isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
+    }`}
+  >
+    <span className="text-[10px] font-body leading-none">{preset.name}</span>
+  </button>
+);
+
+/** 图片容器设置面板 */
+const FrameSettings: React.FC<{
+  settings: ImageFrameSettings;
+  onUpdate: (updates: Partial<ImageFrameSettings>) => void;
+}> = ({ settings, onUpdate }) => {
+  return (
+    <div className="flex flex-col gap-3">
+      <span
+        className="text-[11px] font-body font-semibold"
+        style={{ color: 'var(--color-accent-orange)' }}
+      >
+        [frame]
+      </span>
+
+      {/* 背景设置 */}
+      <CollapsibleSection title="background" defaultOpen={true}>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+            type:
+          </span>
+          <SelectControl
+            value={settings.background.type}
+            options={[
+              { name: 'Solid', value: 'solid' },
+              { name: 'Linear', value: 'linear' },
+              { name: 'Radial', value: 'radial' },
+            ]}
+            onChange={(type) =>
+              onUpdate({
+                background: { ...settings.background, type: type as 'solid' | 'linear' | 'radial' },
+              })
+            }
+          />
+        </div>
+        {settings.background.type === 'solid' ? (
+          <ColorPicker
+            color={settings.background.color}
+            onChange={(color) =>
+              onUpdate({ background: { ...settings.background, color } })
+            }
+          />
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+                from:
+              </span>
+              <div className="flex gap-1">
+                {PRESET_COLORS.slice(0, 4).map((color) => (
+                  <button
+                    key={color}
+                    onClick={() =>
+                      onUpdate({
+                        background: {
+                          ...settings.background,
+                          gradientColors: [color, settings.background.gradientColors[1]],
+                        },
+                      })
+                    }
+                    className="w-[20px] h-[20px] rounded-[4px] shrink-0 cursor-pointer border border-[var(--color-border)]"
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={settings.background.gradientColors[0]}
+                  onChange={(e) =>
+                    onUpdate({
+                      background: {
+                        ...settings.background,
+                        gradientColors: [e.target.value, settings.background.gradientColors[1]],
+                      },
+                    })
+                  }
+                  className="w-[20px] h-[20px] rounded-[4px] cursor-pointer bg-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+                to:
+              </span>
+              <div className="flex gap-1">
+                {PRESET_COLORS.slice(0, 4).map((color) => (
+                  <button
+                    key={color}
+                    onClick={() =>
+                      onUpdate({
+                        background: {
+                          ...settings.background,
+                          gradientColors: [settings.background.gradientColors[0], color],
+                        },
+                      })
+                    }
+                    className="w-[20px] h-[20px] rounded-[4px] shrink-0 cursor-pointer border border-[var(--color-border)]"
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={settings.background.gradientColors[1]}
+                  onChange={(e) =>
+                    onUpdate({
+                      background: {
+                        ...settings.background,
+                        gradientColors: [settings.background.gradientColors[0], e.target.value],
+                      },
+                    })
+                  }
+                  className="w-[20px] h-[20px] rounded-[4px] cursor-pointer bg-transparent"
+                />
+              </div>
+            </div>
+            <SliderControl
+              label="angle"
+              value={settings.background.gradientAngle}
+              min={0}
+              max={360}
+              onChange={(gradientAngle) =>
+                onUpdate({ background: { ...settings.background, gradientAngle } })
+              }
+            />
+          </>
+        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {BACKGROUND_PRESETS.map((preset) => (
+            <BackgroundPresetButton
+              key={preset.name}
+              preset={preset}
+              isSelected={
+                preset.type === settings.background.type &&
+                (preset.type === 'solid'
+                  ? preset.color === settings.background.color
+                  : preset.gradientColors?.[0] === settings.background.gradientColors[0] &&
+                    preset.gradientColors?.[1] === settings.background.gradientColors[1])
+              }
+              onClick={() => {
+                if (preset.type === 'solid') {
+                  onUpdate({
+                    background: {
+                      ...settings.background,
+                      type: 'solid',
+                      color: preset.color,
+                    },
+                  });
+                } else {
+                  onUpdate({
+                    background: {
+                      ...settings.background,
+                      type: 'linear',
+                      gradientColors: preset.gradientColors,
+                      gradientAngle: preset.gradientAngle,
+                    },
+                  });
+                }
+              }}
+            />
+          ))}
+        </div>
+      </CollapsibleSection>
+
+      {/* 边距设置 */}
+      <CollapsibleSection title="padding">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              onUpdate({
+                padding: { ...settings.padding, linked: !settings.padding.linked },
+              })
+            }
+            className={`w-[20px] h-[20px] rounded-[4px] flex items-center justify-center cursor-pointer transition-colors ${
+              settings.padding.linked
+                ? 'bg-[var(--color-accent)] text-black'
+                : 'prop-field-sm'
+            }`}
+            title={settings.padding.linked ? 'Unlink' : 'Link'}
+          >
+            <span className="text-[10px] font-body leading-none">
+              {settings.padding.linked ? '🔗' : '⛓️‍💥'}
+            </span>
+          </button>
+          <div className="flex gap-1 flex-1">
+            <EditableField
+              label="t"
+              value={settings.padding.top}
+              onChange={(top) =>
+                onUpdate({
+                  padding: settings.padding.linked
+                    ? { ...settings.padding, top, right: top, bottom: top, left: top }
+                    : { ...settings.padding, top },
+                })
+              }
+            />
+            <EditableField
+              label="r"
+              value={settings.padding.right}
+              onChange={(right) =>
+                onUpdate({
+                  padding: settings.padding.linked
+                    ? { ...settings.padding, top: right, right, bottom: right, left: right }
+                    : { ...settings.padding, right },
+                })
+              }
+            />
+          </div>
+        </div>
+        <div className="flex gap-1 pl-7">
+          <EditableField
+            label="b"
+            value={settings.padding.bottom}
+            onChange={(bottom) =>
+              onUpdate({
+                padding: settings.padding.linked
+                  ? { ...settings.padding, top: bottom, right: bottom, bottom, left: bottom }
+                  : { ...settings.padding, bottom },
+              })
+            }
+          />
+          <EditableField
+            label="l"
+            value={settings.padding.left}
+            onChange={(left) =>
+              onUpdate({
+                padding: settings.padding.linked
+                  ? { ...settings.padding, top: left, right: left, bottom: left, left }
+                  : { ...settings.padding, left },
+              })
+            }
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* 圆角设置 */}
+      <CollapsibleSection title="border-radius">
+        <SliderControl
+          label="radius"
+          value={settings.borderRadius.value}
+          min={0}
+          max={100}
+          onChange={(value) =>
+            onUpdate({ borderRadius: { ...settings.borderRadius, value } })
+          }
+        />
+      </CollapsibleSection>
+
+      {/* 阴影设置 */}
+      <CollapsibleSection
+        title="shadow"
+        enabled={settings.shadow.enabled}
+        onToggle={(enabled) =>
+          onUpdate({ shadow: { ...settings.shadow, enabled } })
+        }
+      >
+        <ColorPicker
+          color={settings.shadow.color}
+          onChange={(color) =>
+            onUpdate({ shadow: { ...settings.shadow, color } })
+          }
+        />
+        <SliderControl
+          label="blur"
+          value={settings.shadow.blur}
+          min={0}
+          max={100}
+          onChange={(blur) =>
+            onUpdate({ shadow: { ...settings.shadow, blur } })
+          }
+        />
+        <div className="flex gap-2">
+          <EditableField
+            label="x"
+            value={settings.shadow.offsetX}
+            onChange={(offsetX) =>
+              onUpdate({ shadow: { ...settings.shadow, offsetX } })
+            }
+          />
+          <EditableField
+            label="y"
+            value={settings.shadow.offsetY}
+            onChange={(offsetY) =>
+              onUpdate({ shadow: { ...settings.shadow, offsetY } })
+            }
+          />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {SHADOW_PRESETS.map((preset) => (
+            <ShadowPresetButton
+              key={preset.name}
+              preset={preset}
+              isSelected={
+                settings.shadow.enabled === preset.enabled &&
+                settings.shadow.blur === preset.blur
+              }
+              onClick={() =>
+                onUpdate({
+                  shadow: {
+                    ...settings.shadow,
+                    enabled: preset.enabled,
+                    blur: preset.blur,
+                    offsetX: preset.offsetX,
+                    offsetY: preset.offsetY,
+                  },
+                })
+              }
+            />
+          ))}
+        </div>
+      </CollapsibleSection>
+
+      {/* 比例设置 */}
+      <CollapsibleSection title="aspect-ratio">
+        <SelectControl
+          value={settings.aspectRatio}
+          options={ASPECT_RATIO_PRESETS}
+          onChange={(aspectRatio) => onUpdate({ aspectRatio })}
+        />
+      </CollapsibleSection>
+
+      {/* 窗口控件设置 */}
+      <CollapsibleSection
+        title="window-control"
+        enabled={settings.windowControl.enabled}
+        onToggle={(enabled) =>
+          onUpdate({ windowControl: { ...settings.windowControl, enabled } })
+        }
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+            style:
+          </span>
+          <div className="flex gap-1">
+            <button
+              onClick={() =>
+                onUpdate({
+                  windowControl: { ...settings.windowControl, style: 'macos' },
+                })
+              }
+              className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+                settings.windowControl.style === 'macos'
+                  ? 'bg-[var(--color-accent)] text-black'
+                  : 'prop-field-sm'
+              }`}
+            >
+              <span className="text-[11px] font-body leading-none">macOS</span>
+            </button>
+            <button
+              onClick={() =>
+                onUpdate({
+                  windowControl: { ...settings.windowControl, style: 'windows' },
+                })
+              }
+              className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+                settings.windowControl.style === 'windows'
+                  ? 'bg-[var(--color-accent)] text-black'
+                  : 'prop-field-sm'
+              }`}
+            >
+              <span className="text-[11px] font-body leading-none">Windows</span>
+            </button>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* 水印设置 */}
+      <CollapsibleSection
+        title="watermark"
+        enabled={settings.watermark.enabled}
+        onToggle={(enabled) =>
+          onUpdate({ watermark: { ...settings.watermark, enabled } })
+        }
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+            text:
+          </span>
+          <input
+            type="text"
+            value={settings.watermark.text}
+            onChange={(e) =>
+              onUpdate({
+                watermark: { ...settings.watermark, text: e.target.value },
+              })
+            }
+            placeholder="Watermark text"
+            className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body bg-transparent text-foreground outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+            position:
+          </span>
+          <SelectControl
+            value={settings.watermark.position}
+            options={[
+              { name: 'Bottom Right', value: 'bottom-right' },
+              { name: 'Bottom Left', value: 'bottom-left' },
+              { name: 'Top Right', value: 'top-right' },
+              { name: 'Top Left', value: 'top-left' },
+              { name: 'Center', value: 'center' },
+            ]}
+            onChange={(position) =>
+              onUpdate({
+                watermark: {
+                  ...settings.watermark,
+                  position: position as ImageFrameSettings['watermark']['position'],
+                },
+              })
+            }
+          />
+        </div>
+        <SliderControl
+          label="opacity"
+          value={settings.watermark.opacity}
+          min={0}
+          max={100}
+          unit="%"
+          onChange={(opacity) =>
+            onUpdate({ watermark: { ...settings.watermark, opacity } })
+          }
+        />
+        <SliderControl
+          label="size"
+          value={settings.watermark.fontSize}
+          min={8}
+          max={48}
+          onChange={(fontSize) =>
+            onUpdate({ watermark: { ...settings.watermark, fontSize } })
+          }
+        />
+      </CollapsibleSection>
+    </div>
+  );
+};
+
 /** 右侧属性面板 */
 const PropertiesPanel: React.FC<{
   selectedArrow: ArrowShape | null;
@@ -1400,7 +2066,9 @@ const PropertiesPanel: React.FC<{
   onUpdateText: (updates: Partial<TextShape>) => void;
   selectedMosaic: MosaicShape | null;
   onUpdateMosaic: (updates: Partial<MosaicShape>) => void;
-}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic }) => {
+  frameSettings: ImageFrameSettings;
+  onUpdateFrameSettings: (updates: Partial<ImageFrameSettings>) => void;
+}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings }) => {
   // 选中类型：arrow, rect, text, mosaic 或 none
   const selectionType: 'arrow' | 'rect' | 'text' | 'mosaic' | 'none' = selectedArrow
     ? 'arrow'
@@ -1702,37 +2370,14 @@ const PropertiesPanel: React.FC<{
             onChange={handleMosaicOpacityChange}
           />
         </div>
-      ) : (
-        <div className="flex flex-col gap-[10px]">
-          <span
-            className="text-[11px] font-body font-semibold"
-            style={{ color: 'var(--color-accent-orange)' }}
-          >
-            [style]
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-              stroke:
-            </span>
-            <div
-              className="w-[20px] h-[20px] rounded-[4px] shrink-0"
-              style={{ backgroundColor: '#00D4AA' }}
-            />
-            <span className="text-[11px] text-foreground font-body leading-none">
-              #00D4AA
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-              width:
-            </span>
-            <div className="prop-field-sm h-[28px] w-[60px] rounded-[6px] px-2 flex items-center">
-              <span className="text-[11px] text-foreground font-body leading-none">
-                2px
-              </span>
-            </div>
-          </div>
-        </div>
+      ) : null}
+
+      {/* [frame] 区域 - 未选中标注时显示 */}
+      {selectionType === 'none' && (
+        <FrameSettings
+          settings={frameSettings}
+          onUpdate={onUpdateFrameSettings}
+        />
       )}
 
       {/* 操作按钮 */}
@@ -1870,6 +2515,9 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
   const initialized = useRef(false);
+
+  // 图片容器设置
+  const [frameSettings, setFrameSettings] = useState<ImageFrameSettings>(DEFAULT_FRAME_SETTINGS);
 
   // 画布缩放/平移状态
   const [scale, setScale] = useState(1);
@@ -4173,6 +4821,10 @@ const App: React.FC = () => {
         onUpdateText={updateText}
         selectedMosaic={selectedMosaic}
         onUpdateMosaic={updateMosaic}
+        frameSettings={frameSettings}
+        onUpdateFrameSettings={(updates) =>
+          setFrameSettings((prev) => ({ ...prev, ...updates }))
+        }
       />
     </div>
   );

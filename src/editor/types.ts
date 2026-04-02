@@ -68,6 +68,53 @@ export interface CropArea {
   height: number;
 }
 
+// 图片容器设置
+export interface ImageFrameSettings {
+  // 背景
+  background: {
+    type: 'solid' | 'linear' | 'radial';
+    color: string;
+    gradientColors: [string, string];
+    gradientAngle: number;
+  };
+  // 边距
+  padding: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+    linked: boolean;
+  };
+  // 圆角
+  borderRadius: {
+    value: number;
+    linked: boolean;
+  };
+  // 阴影
+  shadow: {
+    enabled: boolean;
+    color: string;
+    blur: number;
+    offsetX: number;
+    offsetY: number;
+  };
+  // 比例
+  aspectRatio: string;
+  // 窗口控件
+  windowControl: {
+    enabled: boolean;
+    style: 'macos' | 'windows';
+  };
+  // 水印
+  watermark: {
+    enabled: boolean;
+    text: string;
+    position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
+    opacity: number;
+    fontSize: number;
+  };
+}
+
 // 视图状态
 export interface ViewState {
   scale: number;

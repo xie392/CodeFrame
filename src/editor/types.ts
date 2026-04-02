@@ -140,6 +140,8 @@ export interface ImageFrameSettings {
   };
   // 比例
   aspectRatio: string;
+  // 自定义比例（当 aspectRatio 为 'custom' 时使用）
+  customAspectRatio: { width: number; height: number };
   // 窗口控件
   windowControl: {
     enabled: boolean;

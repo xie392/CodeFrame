@@ -162,7 +162,8 @@ const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
     offsetX: 0,
     offsetY: 10,
   },
-  aspectRatio: 'original',
+  aspectRatio: 'auto',
+  customAspectRatio: { width: 0, height: 0 },
   windowControl: {
     enabled: false,
     style: 'macos',
@@ -229,16 +230,98 @@ const IMAGE_SHADOW_PRESETS = [
   { name: '强烈', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
 ];
 
-// 比例预设
+// 比例预设（按分类组织）
 const ASPECT_RATIO_PRESETS = [
-  { name: '原始', value: 'original' },
+  // 原始比例
+  { name: '自动', value: 'auto' },
+  // 基础比例
   { name: '1:1', value: '1:1' },
   { name: '4:3', value: '4:3' },
+  { name: '3:2', value: '3:2' },
+  { name: '2:3', value: '2:3' },
+  { name: '5:4', value: '5:4' },
   { name: '16:9', value: '16:9' },
   { name: '16:10', value: '16:10' },
-  { name: 'iPhone', value: '9:19.5' },
-  { name: 'iPad', value: '3:4' },
+  { name: '21:9', value: '21:9' },
+  // 社交媒体
+  { name: '9:16', value: '9:16' },
+  { name: '4:5', value: '4:5' },
+  { name: '3:4', value: '3:4' },
+  { name: '1.91:1', value: '1.91:1' },
+  // 设备屏幕（使用 device: 前缀避免重复）
+  { name: 'iPhone', value: 'device:9:19.5' },
+  { name: 'iPhone SE', value: 'device:16:9' },
+  { name: '安卓旗舰', value: 'device:9:21' },
+  { name: 'iPad', value: 'device:3:4' },
+  { name: '安卓平板', value: 'device:16:10' },
+  // 自定义
+  { name: '自定义', value: 'custom' },
 ];
+
+/** 解析比例字符串，返回宽高比 */
+function parseAspectRatio(
+  ratio: string,
+  customRatio?: { width: number; height: number }
+): number | null {
+  if (ratio === 'auto' || ratio === 'original') return null;
+  
+  // 自定义比例
+  if (ratio === 'custom' && customRatio) {
+    if (customRatio.width > 0 && customRatio.height > 0) {
+      return customRatio.width / customRatio.height;
+    }
+    return null;
+  }
+  
+  // 设备比例（带 device: 前缀）
+  let ratioValue = ratio;
+  if (ratio.startsWith('device:')) {
+    ratioValue = ratio.substring(7); // 移除 'device:' 前缀
+  }
+  
+  // 支持 "W:H" 格式，如 "16:9", "4:3", "1.91:1"
+  const parts = ratioValue.split(':');
+  if (parts.length === 2) {
+    const w = parseFloat(parts[0]);
+    const h = parseFloat(parts[1]);
+    if (w > 0 && h > 0) {
+      return w / h;
+    }
+  }
+  return null;
+}
+
+/** 根据比例计算容器尺寸 */
+function calculateAspectRatioSize(
+  aspectRatio: string,
+  imageWidth: number,
+  imageHeight: number,
+  customRatio?: { width: number; height: number }
+): { width: number; height: number } {
+  const ratio = parseAspectRatio(aspectRatio, customRatio);
+  if (!ratio) {
+    // auto 或 original，使用图片原始尺寸
+    return { width: imageWidth, height: imageHeight };
+  }
+  
+  // 根据比例计算容器尺寸
+  // 策略：以图片较大边为基准，按比例计算容器尺寸
+  const imageRatio = imageWidth / imageHeight;
+  
+  if (imageRatio > ratio) {
+    // 图片更宽，以宽度为基准
+    return {
+      width: imageWidth,
+      height: imageWidth / ratio,
+    };
+  } else {
+    // 图片更高，以高度为基准
+    return {
+      width: imageHeight * ratio,
+      height: imageHeight,
+    };
+  }
+}
 
 type EditorSource = 'capture' | 'upload';
 
@@ -2279,6 +2362,44 @@ const FrameSettings: React.FC<{
           options={ASPECT_RATIO_PRESETS}
           onChange={(aspectRatio) => onUpdate({ aspectRatio })}
         />
+        {/* 自定义比例输入 */}
+        {settings.aspectRatio === 'custom' && (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={settings.customAspectRatio.width || ''}
+              onChange={(e) =>
+                onUpdate({
+                  customAspectRatio: {
+                    ...settings.customAspectRatio,
+                    width: parseInt(e.target.value) || 0,
+                  },
+                })
+              }
+              placeholder="宽"
+              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body bg-transparent text-foreground outline-none text-center"
+            />
+            <span className="text-[11px] text-[var(--color-editor-hint)] font-body">:</span>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={settings.customAspectRatio.height || ''}
+              onChange={(e) =>
+                onUpdate({
+                  customAspectRatio: {
+                    ...settings.customAspectRatio,
+                    height: parseInt(e.target.value) || 0,
+                  },
+                })
+              }
+              placeholder="高"
+              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body bg-transparent text-foreground outline-none text-center"
+            />
+          </div>
+        )}
       </CollapsibleSection>
 
       {/* 窗口控件设置 */}
@@ -2900,15 +3021,26 @@ const App: React.FC = () => {
       if (!container) return;
       const containerW = container.clientWidth;
       const containerH = container.clientHeight;
+      
+      // 计算容器总尺寸（图片 + padding）
+      const padW = frameSettings.padding.linked
+        ? frameSettings.padding.top * 2
+        : frameSettings.padding.left + frameSettings.padding.right;
+      const padH = frameSettings.padding.linked
+        ? frameSettings.padding.top * 2
+        : frameSettings.padding.top + frameSettings.padding.bottom;
+      const totalW = w + padW;
+      const totalH = h + padH;
+      
       // 计算居中偏移
       const newOffset = {
-        x: (containerW - w) / 2,
-        y: (containerH - h) / 2,
+        x: (containerW - totalW) / 2,
+        y: (containerH - totalH) / 2,
       };
       offsetRef.current = newOffset;
       setOffset(newOffset);
     },
-    [],
+    [frameSettings.padding],
   );
 
   // 图片原始尺寸变化（用于裁剪）
@@ -3003,6 +3135,61 @@ const App: React.FC = () => {
     width: number;
     height: number;
   } | null>(null);
+
+  // 比例变化时重新居中显示
+  const prevAspectRatioRef = useRef(frameSettings.aspectRatio);
+  const prevCustomRatioRef = useRef(frameSettings.customAspectRatio);
+  
+  useEffect(() => {
+    if (!imageData || !imageDisplaySize) return;
+    
+    // 检查比例是否真的变化了
+    const aspectChanged = prevAspectRatioRef.current !== frameSettings.aspectRatio;
+    const customChanged = 
+      prevCustomRatioRef.current.width !== frameSettings.customAspectRatio.width ||
+      prevCustomRatioRef.current.height !== frameSettings.customAspectRatio.height;
+    
+    if (!aspectChanged && !customChanged) return;
+    
+    prevAspectRatioRef.current = frameSettings.aspectRatio;
+    prevCustomRatioRef.current = frameSettings.customAspectRatio;
+    
+    const container = canvasRef.current;
+    if (!container) return;
+    
+    const containerW = container.clientWidth;
+    const containerH = container.clientHeight;
+    
+    // 计算新的容器尺寸
+    const newContainerSize = calculateAspectRatioSize(
+      frameSettings.aspectRatio,
+      imageDisplaySize.width,
+      imageDisplaySize.height,
+      frameSettings.customAspectRatio
+    );
+    
+    // 计算容器总尺寸（加上 padding）
+    const padW = frameSettings.padding.linked
+      ? frameSettings.padding.top * 2
+      : frameSettings.padding.left + frameSettings.padding.right;
+    const padH = frameSettings.padding.linked
+      ? frameSettings.padding.top * 2
+      : frameSettings.padding.top + frameSettings.padding.bottom;
+    const totalW = newContainerSize.width + padW;
+    const totalH = newContainerSize.height + padH;
+    
+    // 计算居中偏移
+    const newOffset = {
+      x: (containerW - totalW) / 2,
+      y: (containerH - totalH) / 2,
+    };
+    offsetRef.current = newOffset;
+    setOffset(newOffset);
+    // 重置缩放
+    scaleRef.current = 1;
+    setScale(1);
+  }, [frameSettings.aspectRatio, frameSettings.customAspectRatio, frameSettings.padding, imageData, imageDisplaySize]);
+
   const drawingCrop = useRef<{
     startX: number;
     startY: number;
@@ -5009,48 +5196,125 @@ const App: React.FC = () => {
                 transformOrigin: '0 0',
               }}
             >
-              {/* Frame Container - 背景和图片 */}
-              <div
-                style={{
-                  ...getBackgroundStyle(frameSettings.background),
-                  borderRadius: `${
-                    frameSettings.borderRadius.topLeft
-                  }${frameSettings.borderRadius.unit} ${
-                    frameSettings.borderRadius.topRight
-                  }${frameSettings.borderRadius.unit} ${
-                    frameSettings.borderRadius.bottomRight
-                  }${frameSettings.borderRadius.unit} ${
-                    frameSettings.borderRadius.bottomLeft
-                  }${frameSettings.borderRadius.unit}`,
-                  padding: frameSettings.padding.linked
-                    ? frameSettings.padding.top
-                    : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
-                  display: 'inline-block',
-                  boxShadow: frameSettings.shadow.enabled
-                    ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
-                    : 'none',
-                  overflow: 'hidden',
-                }}
-              >
-                <div style={{
-                  borderRadius: `${
-                    frameSettings.imageRadius.topLeft
-                  }${frameSettings.imageRadius.unit} ${
-                    frameSettings.imageRadius.topRight
-                  }${frameSettings.imageRadius.unit} ${
-                    frameSettings.imageRadius.bottomRight
-                  }${frameSettings.imageRadius.unit} ${
-                    frameSettings.imageRadius.bottomLeft
-                  }${frameSettings.imageRadius.unit}`,
-                  overflow: 'hidden',
-                  display: 'inline-block',
-                  boxShadow: frameSettings.imageShadow.enabled
-                    ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
-                    : 'none',
-                }}>
-                  <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
-                </div>
-              </div>
+              {/* 计算比例约束后的容器尺寸 */}
+              {(() => {
+                const imgDisplaySize = imageDisplaySizeRef.current || imageDisplaySize;
+                
+                // 图片未加载时，使用默认渲染（不应用比例约束）
+                if (!imgDisplaySize) {
+                  return (
+                    <div
+                      style={{
+                        ...getBackgroundStyle(frameSettings.background),
+                        borderRadius: `${
+                          frameSettings.borderRadius.topLeft
+                        }${frameSettings.borderRadius.unit} ${
+                          frameSettings.borderRadius.topRight
+                        }${frameSettings.borderRadius.unit} ${
+                          frameSettings.borderRadius.bottomRight
+                        }${frameSettings.borderRadius.unit} ${
+                          frameSettings.borderRadius.bottomLeft
+                        }${frameSettings.borderRadius.unit}`,
+                        padding: frameSettings.padding.linked
+                          ? frameSettings.padding.top
+                          : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
+                        display: 'inline-block',
+                        boxShadow: frameSettings.shadow.enabled
+                          ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
+                          : 'none',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div style={{
+                        borderRadius: `${
+                          frameSettings.imageRadius.topLeft
+                        }${frameSettings.imageRadius.unit} ${
+                          frameSettings.imageRadius.topRight
+                        }${frameSettings.imageRadius.unit} ${
+                          frameSettings.imageRadius.bottomRight
+                        }${frameSettings.imageRadius.unit} ${
+                          frameSettings.imageRadius.bottomLeft
+                        }${frameSettings.imageRadius.unit}`,
+                        overflow: 'hidden',
+                        display: 'inline-block',
+                        boxShadow: frameSettings.imageShadow.enabled
+                          ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
+                          : 'none',
+                      }}>
+                        <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
+                      </div>
+                    </div>
+                  );
+                }
+                
+                const containerSize = calculateAspectRatioSize(
+                  frameSettings.aspectRatio,
+                  imgDisplaySize.width,
+                  imgDisplaySize.height,
+                  frameSettings.customAspectRatio
+                );
+                
+                // auto 模式：不设置容器尺寸，让容器自适应图片大小
+                const isAuto = frameSettings.aspectRatio === 'auto';
+                
+                return (
+                  <div
+                    style={{
+                      ...getBackgroundStyle(frameSettings.background),
+                      borderRadius: `${
+                        frameSettings.borderRadius.topLeft
+                      }${frameSettings.borderRadius.unit} ${
+                        frameSettings.borderRadius.topRight
+                      }${frameSettings.borderRadius.unit} ${
+                        frameSettings.borderRadius.bottomRight
+                      }${frameSettings.borderRadius.unit} ${
+                        frameSettings.borderRadius.bottomLeft
+                      }${frameSettings.borderRadius.unit}`,
+                      padding: frameSettings.padding.linked
+                        ? frameSettings.padding.top
+                        : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
+                      display: 'inline-block',
+                      boxShadow: frameSettings.shadow.enabled
+                        ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
+                        : 'none',
+                      overflow: 'hidden',
+                      // 仅在非 auto 模式下设置容器尺寸
+                      ...(isAuto ? {} : {
+                        width: containerSize.width,
+                        height: containerSize.height,
+                      }),
+                    }}
+                  >
+                    <div style={{
+                      position: 'relative',
+                      width: isAuto ? 'auto' : '100%',
+                      height: isAuto ? 'auto' : '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <div style={{
+                        borderRadius: `${
+                          frameSettings.imageRadius.topLeft
+                        }${frameSettings.imageRadius.unit} ${
+                          frameSettings.imageRadius.topRight
+                        }${frameSettings.imageRadius.unit} ${
+                          frameSettings.imageRadius.bottomRight
+                        }${frameSettings.imageRadius.unit} ${
+                          frameSettings.imageRadius.bottomLeft
+                        }${frameSettings.imageRadius.unit}`,
+                        overflow: 'hidden',
+                        display: 'inline-block',
+                        boxShadow: frameSettings.imageShadow.enabled
+                          ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
+                          : 'none',
+                      }}>
+                        <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Annotation Canvas Layer */}

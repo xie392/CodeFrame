@@ -24,7 +24,10 @@ import {
   Plus,
   RotateCcw,
   ChevronRight,
+  Loader2,
+  Check,
 } from 'lucide-react';
+import { snapdom } from '@zumer/snapdom';
 import { STORAGE_KEYS } from '@shared/constants';
 import { useEditorHistory } from './hooks/useEditorHistory';
 import type {
@@ -2626,7 +2629,12 @@ const PropertiesPanel: React.FC<{
   onUpdateMosaic: (updates: Partial<MosaicShape>) => void;
   frameSettings: ImageFrameSettings;
   onUpdateFrameSettings: (updates: Partial<ImageFrameSettings>) => void;
-}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings }) => {
+  onExportImage: () => void;
+  onCopyToClipboard: () => void;
+  isExporting: boolean;
+  copied: boolean;
+  exportError: string | null;
+}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings, onExportImage, onCopyToClipboard, isExporting, copied, exportError }) => {
   // 选中类型：arrow, rect, text, mosaic 或 none
   const selectionType: 'arrow' | 'rect' | 'text' | 'mosaic' | 'none' = selectedArrow
     ? 'arrow'
@@ -2936,21 +2944,43 @@ const PropertiesPanel: React.FC<{
 
       {/* 操作按钮 */}
       <div className="flex flex-col gap-2 mt-auto">
-        <button className="export-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer">
-          <Download size={16} style={{ color: '#0D0D0D' }} />
+        <button
+          className="export-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onExportImage}
+          disabled={isExporting}
+        >
+          {isExporting ? (
+            <Loader2 size={16} className="animate-spin" style={{ color: '#0D0D0D' }} />
+          ) : (
+            <Download size={16} style={{ color: '#0D0D0D' }} />
+          )}
           <span
             className="text-[12px] font-body font-semibold leading-none"
             style={{ color: '#0D0D0D' }}
           >
-            导出图片
+            {isExporting ? '导出中...' : '导出图片'}
           </span>
         </button>
-        <button className="copy-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer">
-          <ClipboardCopy size={16} className="text-[var(--color-editor-hint)]" />
-          <span className="text-[12px] font-body font-semibold leading-none text-[var(--color-editor-hint)]">
-            复制到剪贴板
+        <button
+          className="copy-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onCopyToClipboard}
+          disabled={isExporting}
+        >
+          {copied ? (
+            <Check size={16} className="text-emerald-500" />
+          ) : (
+            <ClipboardCopy size={16} className="text-[var(--color-editor-hint)]" />
+          )}
+          <span className={`text-[12px] font-body font-semibold leading-none ${copied ? 'text-emerald-500' : 'text-[var(--color-editor-hint)]'}`}>
+            {copied ? '已复制' : '复制到剪贴板'}
           </span>
         </button>
+        {/* 错误提示 */}
+        {exportError && (
+          <div className="text-[11px] text-red-500 text-center mt-1">
+            {exportError}
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -3202,6 +3232,10 @@ const App: React.FC = () => {
   const scaleRef = useRef(scale);
   const offsetRef = useRef(offset);
 
+  // 导出状态
+  const [isExporting, setIsExporting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   // 图片加载后计算居中偏移
   const handleImageSizeChange = useCallback(
     (w: number, h: number) => {
@@ -3400,6 +3434,8 @@ const App: React.FC = () => {
   // Canvas 引用
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
+  // 导出容器引用（指向实际的图片容器，而非 Transform Layer）
+  const exportContainerRef = useRef<HTMLDivElement>(null);
 
   // 默认箭头样式（用于创建新箭头）
   const arrowStyleRef = useRef(DEFAULT_ARROW_STYLE);
@@ -3550,6 +3586,158 @@ const App: React.FC = () => {
     }
     updateHistoryButtons();
   }, [historyActions, imageData, updateHistoryButtons]);
+
+  // ---------------------------------------------------------------------------
+  // 导出功能
+  // ---------------------------------------------------------------------------
+
+  // 导出错误状态
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  // 准备导出：创建标注图层并叠加到图片容器上
+  const prepareExport = useCallback(() => {
+    const container = exportContainerRef.current;
+    if (!container || !imageData) return null;
+
+    // 获取图片显示尺寸（包含 padding）
+    const displaySize = imageDisplaySizeRef.current;
+    if (!displaySize) return null;
+
+    // 计算容器总尺寸（图片 + padding）
+    const padW = frameSettings.padding.linked
+      ? frameSettings.padding.top * 2
+      : frameSettings.padding.left + frameSettings.padding.right;
+    const padH = frameSettings.padding.linked
+      ? frameSettings.padding.top * 2
+      : frameSettings.padding.top + frameSettings.padding.bottom;
+    const totalW = displaySize.width + padW;
+    const totalH = displaySize.height + padH;
+
+    // 创建临时 canvas 用于绘制标注
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = totalW;
+    tempCanvas.height = totalH;
+    const tempCtx = tempCanvas.getContext('2d');
+    let annotationImg: HTMLImageElement | null = null;
+
+    if (tempCtx) {
+      // 标注坐标是相对于图片左上角的，需要偏移 padding
+      tempCtx.translate(frameSettings.padding.linked ? frameSettings.padding.top : frameSettings.padding.left, frameSettings.padding.linked ? frameSettings.padding.top : frameSettings.padding.top);
+
+      // 绘制标注（不带选中状态）
+      rectsRef.current.forEach((rect) => {
+        drawRect(tempCtx, rect, false);
+      });
+      arrowsRef.current.forEach((arrow) => {
+        drawArrow(tempCtx, arrow, false);
+      });
+      textsRef.current.forEach((text) => {
+        drawText(tempCtx, text, false);
+      });
+      mosaicsRef.current.forEach((mosaic) => {
+        drawMosaic(tempCtx, mosaic, false);
+      });
+
+      // 创建标注图片并叠加到容器
+      annotationImg = document.createElement('img');
+      annotationImg.src = tempCanvas.toDataURL('image/png');
+      annotationImg.style.position = 'absolute';
+      annotationImg.style.top = '0';
+      annotationImg.style.left = '0';
+      annotationImg.style.width = '100%';
+      annotationImg.style.height = '100%';
+      annotationImg.style.pointerEvents = 'none';
+      annotationImg.style.zIndex = '10';
+      container.appendChild(annotationImg);
+    }
+
+    return { container, annotationImg };
+  }, [imageData, frameSettings.padding]);
+
+  // 清理导出：移除临时元素
+  const cleanupExport = useCallback((annotationImg: HTMLImageElement | null) => {
+    if (annotationImg && annotationImg.parentNode) {
+      annotationImg.parentNode.removeChild(annotationImg);
+    }
+  }, []);
+
+  // 等待 DOM 渲染完成
+  const waitForRender = useCallback(() => {
+    return new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+  }, []);
+
+  // 导出图片
+  const handleExportImage = useCallback(async () => {
+    const prepared = prepareExport();
+    if (!prepared) return;
+
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      await waitForRender();
+
+      // 使用 snapdom 导出图片容器
+      const img = await snapdom.toPng(prepared.container, {
+        scale: 2,
+      });
+
+      // 触发下载
+      const a = document.createElement('a');
+      a.href = img.src;
+      a.download = `codeframe-${Date.now()}.png`;
+      a.click();
+    } catch (err) {
+      console.error('导出失败:', err);
+      setExportError('导出失败，请重试');
+      setTimeout(() => setExportError(null), 3000);
+    } finally {
+      cleanupExport(prepared.annotationImg);
+      setIsExporting(false);
+    }
+  }, [prepareExport, waitForRender, cleanupExport]);
+
+  // 复制到剪贴板
+  const handleCopyToClipboard = useCallback(async () => {
+    if (!navigator.clipboard?.write) {
+      setExportError('当前浏览器不支持复制图片到剪贴板');
+      setTimeout(() => setExportError(null), 3000);
+      return;
+    }
+
+    const prepared = prepareExport();
+    if (!prepared) return;
+
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      await waitForRender();
+
+      // 使用 snapdom 导出
+      const blob = await snapdom.toBlob(prepared.container, {
+        scale: 2,
+        type: 'png',
+      });
+
+      // 写入剪贴板
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('复制失败:', err);
+      setExportError('复制失败，请重试');
+      setTimeout(() => setExportError(null), 3000);
+    } finally {
+      cleanupExport(prepared.annotationImg);
+      setIsExporting(false);
+    }
+  }, [prepareExport, waitForRender, cleanupExport]);
 
   // 将屏幕坐标转换为图片坐标
   const screenToImageCoord = useCallback(
@@ -5395,6 +5583,7 @@ const App: React.FC = () => {
                 if (!imgDisplaySize) {
                   return (
                     <div
+                      ref={exportContainerRef}
                       style={{
                         ...getBackgroundStyle(frameSettings.background),
                         borderRadius: `${
@@ -5453,6 +5642,7 @@ const App: React.FC = () => {
                 
                 return (
                   <div
+                    ref={exportContainerRef}
                     style={{
                       ...getBackgroundStyle(frameSettings.background),
                       borderRadius: `${
@@ -5691,6 +5881,11 @@ const App: React.FC = () => {
         onUpdateFrameSettings={(updates) =>
           setFrameSettings((prev) => ({ ...prev, ...updates }))
         }
+        onExportImage={handleExportImage}
+        onCopyToClipboard={handleCopyToClipboard}
+        isExporting={isExporting}
+        copied={copied}
+        exportError={exportError}
       />
     </div>
   );

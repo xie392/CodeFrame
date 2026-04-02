@@ -88,11 +88,11 @@ export interface EditorState {
   // 视图状态
   view: ViewState;
 
-  // 选中状态
-  selectedArrowId: string | null;
-  selectedRectId: string | null;
-  selectedTextId: string | null;
-  selectedMosaicId: string | null;
+  // 选中状态（支持多选）
+  selectedArrowIds: string[];
+  selectedRectIds: string[];
+  selectedTextIds: string[];
+  selectedMosaicIds: string[];
 }
 
 // 历史记录状态

@@ -15,10 +15,10 @@ export const createEmptyEditorState = (): EditorState => ({
     scale: 1,
     offset: { x: 0, y: 0 },
   },
-  selectedArrowId: null,
-  selectedRectId: null,
-  selectedTextId: null,
-  selectedMosaicId: null,
+  selectedArrowIds: [],
+  selectedRectIds: [],
+  selectedTextIds: [],
+  selectedMosaicIds: [],
 });
 
 /**

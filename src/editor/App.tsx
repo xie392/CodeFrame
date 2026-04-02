@@ -187,8 +187,8 @@ function generateMosaicId(): string {
 // 控制点半径
 const HANDLE_RADIUS = 6;
 
-// 箭头拖拽类型
-type DragType = 'none' | 'move' | 'start' | 'end';
+// 箭头拖拽类型（起点、终点、中点、移动）
+type DragType = 'none' | 'move' | 'start' | 'end' | 'middle';
 
 // 矩形拖拽类型（8个控制点 + 移动）
 type RectDragType =
@@ -329,6 +329,18 @@ function drawArrow(
     ctx.fill();
     ctx.stroke();
 
+    // 中点控制点（箭头长度足够时才显示）
+    const arrowLength = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+    const minArrowLengthForMidHandle = HANDLE_RADIUS * 4;
+    if (arrowLength >= minArrowLengthForMidHandle) {
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      ctx.beginPath();
+      ctx.arc(midX, midY, HANDLE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
     // 终点控制点
     ctx.beginPath();
     ctx.arc(endX, endY, HANDLE_RADIUS, 0, Math.PI * 2);
@@ -380,6 +392,10 @@ function getDragTypeAtPoint(
   const { startX, startY, endX, endY } = arrow;
   const threshold = HANDLE_RADIUS + 2;
 
+  // 计算中点
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+
   // 检测终点控制点
   const distEnd = Math.sqrt((x - endX) ** 2 + (y - endY) ** 2);
   if (distEnd <= threshold) return 'end';
@@ -387,6 +403,14 @@ function getDragTypeAtPoint(
   // 检测起点控制点
   const distStart = Math.sqrt((x - startX) ** 2 + (y - startY) ** 2);
   if (distStart <= threshold) return 'start';
+
+  // 检测中点控制点（箭头长度足够时才显示）
+  const arrowLength = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+  const minArrowLengthForMidHandle = HANDLE_RADIUS * 4; // 最小长度为控制点半径的 4 倍
+  if (arrowLength >= minArrowLengthForMidHandle) {
+    const distMid = Math.sqrt((x - midX) ** 2 + (y - midY) ** 2);
+    if (distMid <= threshold) return 'middle';
+  }
 
   // 检测箭头主体
   if (isPointNearArrow(x, y, arrow)) return 'move';
@@ -777,6 +801,78 @@ function getMosaicHandles(mosaic: MosaicShape): { x: number; y: number }[] {
 function isPointInMosaic(x: number, y: number, mosaic: MosaicShape): boolean {
   const { x: mx, y: my, width, height } = mosaic;
   return x >= mx && x <= mx + width && y >= my && y <= my + height;
+}
+
+// ---------------------------------------------------------------------------
+// 框选相关函数
+// ---------------------------------------------------------------------------
+
+// 检测对象是否完全在框选区域内
+function isArrowInRect(arrow: ArrowShape, rect: { x1: number; y1: number; x2: number; y2: number }): boolean {
+  const minX = Math.min(rect.x1, rect.x2);
+  const maxX = Math.max(rect.x1, rect.x2);
+  const minY = Math.min(rect.y1, rect.y2);
+  const maxY = Math.max(rect.y1, rect.y2);
+  // 箭头的两个端点都必须在矩形内
+  return (
+    arrow.startX >= minX && arrow.startX <= maxX &&
+    arrow.startY >= minY && arrow.startY <= maxY &&
+    arrow.endX >= minX && arrow.endX <= maxX &&
+    arrow.endY >= minY && arrow.endY <= maxY
+  );
+}
+
+function isRectInRect(rect: RectShape, selectRect: { x1: number; y1: number; x2: number; y2: number }): boolean {
+  const minX = Math.min(selectRect.x1, selectRect.x2);
+  const maxX = Math.max(selectRect.x1, selectRect.x2);
+  const minY = Math.min(selectRect.y1, selectRect.y2);
+  const maxY = Math.max(selectRect.y1, selectRect.y2);
+  // 矩形的四个角都必须在选区内
+  return (
+    rect.x >= minX && rect.x + rect.width <= maxX &&
+    rect.y >= minY && rect.y + rect.height <= maxY
+  );
+}
+
+function isTextInRect(text: TextShape, rect: { x1: number; y1: number; x2: number; y2: number }, ctx: CanvasRenderingContext2D): boolean {
+  const minX = Math.min(rect.x1, rect.x2);
+  const maxX = Math.max(rect.x1, rect.x2);
+  const minY = Math.min(rect.y1, rect.y2);
+  const maxY = Math.max(rect.y1, rect.y2);
+  const bounds = getTextBounds(text, ctx);
+  return (
+    bounds.x >= minX && bounds.x + bounds.width <= maxX &&
+    bounds.y >= minY && bounds.y + bounds.height <= maxY
+  );
+}
+
+function isMosaicInRect(mosaic: MosaicShape, rect: { x1: number; y1: number; x2: number; y2: number }): boolean {
+  const minX = Math.min(rect.x1, rect.x2);
+  const maxX = Math.max(rect.x1, rect.x2);
+  const minY = Math.min(rect.y1, rect.y2);
+  const maxY = Math.max(rect.y1, rect.y2);
+  return (
+    mosaic.x >= minX && mosaic.x + mosaic.width <= maxX &&
+    mosaic.y >= minY && mosaic.y + mosaic.height <= maxY
+  );
+}
+
+// 绘制框选矩形
+function drawMarqueeRect(ctx: CanvasRenderingContext2D, rect: { x1: number; y1: number; x2: number; y2: number }): void {
+  const x = Math.min(rect.x1, rect.x2);
+  const y = Math.min(rect.y1, rect.y2);
+  const width = Math.abs(rect.x2 - rect.x1);
+  const height = Math.abs(rect.y2 - rect.y1);
+
+  ctx.save();
+  // 半透明蓝色填充
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+  ctx.fillRect(x, y, width, height);
+  // 蓝色边框
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, width, height);
+  ctx.restore();
 }
 
 // 检测点击位置返回马赛克拖拽类型
@@ -1810,7 +1906,7 @@ const App: React.FC = () => {
 
   // 箭头相关状态
   const [arrows, setArrows] = useState<ArrowShape[]>([]);
-  const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null);
+  const [selectedArrowIds, setSelectedArrowIds] = useState<string[]>([]);
   const drawingArrow = useRef<{
     startX: number;
     startY: number;
@@ -1831,7 +1927,7 @@ const App: React.FC = () => {
 
   // 矩形相关状态
   const [rects, setRects] = useState<RectShape[]>([]);
-  const [selectedRectId, setSelectedRectId] = useState<string | null>(null);
+  const [selectedRectIds, setSelectedRectIds] = useState<string[]>([]);
   const drawingRect = useRef<{
     startX: number;
     startY: number;
@@ -1851,7 +1947,7 @@ const App: React.FC = () => {
 
   // 文字相关状态
   const [texts, setTexts] = useState<TextShape[]>([]);
-  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [selectedTextIds, setSelectedTextIds] = useState<string[]>([]);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingTextValue, setEditingTextValue] = useState('');
   const textInputRef = useRef<HTMLInputElement>(null);
@@ -1867,7 +1963,7 @@ const App: React.FC = () => {
 
   // 马赛克相关状态
   const [mosaics, setMosaics] = useState<MosaicShape[]>([]);
-  const [selectedMosaicId, setSelectedMosaicId] = useState<string | null>(null);
+  const [selectedMosaicIds, setSelectedMosaicIds] = useState<string[]>([]);
   const drawingMosaic = useRef<{
     startX: number;
     startY: number;
@@ -1944,17 +2040,22 @@ const App: React.FC = () => {
   mosaicsRef.current = mosaics;
 
   // 选中 ID ref（避免事件处理中的闭包问题）
-  const selectedArrowIdRef = useRef(selectedArrowId);
-  selectedArrowIdRef.current = selectedArrowId;
+  const selectedArrowIdsRef = useRef(selectedArrowIds);
+  selectedArrowIdsRef.current = selectedArrowIds;
 
-  const selectedRectIdRef = useRef(selectedRectId);
-  selectedRectIdRef.current = selectedRectId;
+  const selectedRectIdsRef = useRef(selectedRectIds);
+  selectedRectIdsRef.current = selectedRectIds;
 
-  const selectedTextIdRef = useRef(selectedTextId);
-  selectedTextIdRef.current = selectedTextId;
+  const selectedTextIdsRef = useRef(selectedTextIds);
+  selectedTextIdsRef.current = selectedTextIds;
 
-  const selectedMosaicIdRef = useRef(selectedMosaicId);
-  selectedMosaicIdRef.current = selectedMosaicId;
+  const selectedMosaicIdsRef = useRef(selectedMosaicIds);
+  selectedMosaicIdsRef.current = selectedMosaicIds;
+
+  // 框选状态
+  const isMarqueeSelecting = useRef(false);
+  const marqueeStart = useRef<{ x: number; y: number } | null>(null);
+  const marqueeEnd = useRef<{ x: number; y: number } | null>(null);
 
   // 裁剪区域 ref
   const cropAreaRef = useRef(cropArea);
@@ -1995,10 +2096,10 @@ const App: React.FC = () => {
         scale: scaleRef.current,
         offset: { ...offsetRef.current },
       },
-      selectedArrowId: selectedArrowIdRef.current,
-      selectedRectId: selectedRectIdRef.current,
-      selectedTextId: selectedTextIdRef.current,
-      selectedMosaicId: selectedMosaicIdRef.current,
+      selectedArrowIds: [...selectedArrowIdsRef.current],
+      selectedRectIds: [...selectedRectIdsRef.current],
+      selectedTextIds: [...selectedTextIdsRef.current],
+      selectedMosaicIds: [...selectedMosaicIdsRef.current],
     };
     historyActions.pushState(state);
     updateHistoryButtons();
@@ -2024,10 +2125,10 @@ const App: React.FC = () => {
       setOffset(prevState.view.offset);
       scaleRef.current = prevState.view.scale;
       offsetRef.current = prevState.view.offset;
-      setSelectedArrowId(prevState.selectedArrowId);
-      setSelectedRectId(prevState.selectedRectId);
-      setSelectedTextId(prevState.selectedTextId);
-      setSelectedMosaicId(prevState.selectedMosaicId);
+      setSelectedArrowIds(prevState.selectedArrowIds);
+      setSelectedRectIds(prevState.selectedRectIds);
+      setSelectedTextIds(prevState.selectedTextIds);
+      setSelectedMosaicIds(prevState.selectedMosaicIds);
     }
     updateHistoryButtons();
   }, [historyActions, imageData, updateHistoryButtons]);
@@ -2052,10 +2153,10 @@ const App: React.FC = () => {
       setOffset(nextState.view.offset);
       scaleRef.current = nextState.view.scale;
       offsetRef.current = nextState.view.offset;
-      setSelectedArrowId(nextState.selectedArrowId);
-      setSelectedRectId(nextState.selectedRectId);
-      setSelectedTextId(nextState.selectedTextId);
-      setSelectedMosaicId(nextState.selectedMosaicId);
+      setSelectedArrowIds(nextState.selectedArrowIds);
+      setSelectedRectIds(nextState.selectedRectIds);
+      setSelectedTextIds(nextState.selectedTextIds);
+      setSelectedMosaicIds(nextState.selectedMosaicIds);
     }
     updateHistoryButtons();
   }, [historyActions, imageData, updateHistoryButtons]);
@@ -2093,7 +2194,7 @@ const App: React.FC = () => {
 
     // 绘制已保存的矩形
     rects.forEach((rect) => {
-      drawRect(ctx, rect, rect.id === selectedRectId);
+      drawRect(ctx, rect, selectedRectIds.includes(rect.id));
     });
 
     // 绘制正在绘制的矩形
@@ -2112,7 +2213,7 @@ const App: React.FC = () => {
 
     // 绘制已保存的箭头
     arrows.forEach((arrow) => {
-      drawArrow(ctx, arrow, arrow.id === selectedArrowId);
+      drawArrow(ctx, arrow, selectedArrowIds.includes(arrow.id));
     });
 
     // 绘制正在绘制的箭头
@@ -2132,12 +2233,12 @@ const App: React.FC = () => {
     texts.forEach((text) => {
       // 如果正在编辑此文字，则跳过绘制（用 input 替代）
       if (editingTextId === text.id) return;
-      drawText(ctx, text, text.id === selectedTextId);
+      drawText(ctx, text, selectedTextIds.includes(text.id));
     });
 
     // 绘制已保存的马赛克
     mosaics.forEach((mosaic) => {
-      drawMosaic(ctx, mosaic, mosaic.id === selectedMosaicId);
+      drawMosaic(ctx, mosaic, selectedMosaicIds.includes(mosaic.id));
     });
 
     // 绘制正在绘制的马赛克
@@ -2173,13 +2274,24 @@ const App: React.FC = () => {
       }
     }
 
-    ctx.restore();
-  }, [arrows, rects, texts, mosaics, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, cropArea, imageDisplaySize, activeTool]);
+    // 绘制框选矩形
+    if (isMarqueeSelecting.current && marqueeStart.current && marqueeEnd.current) {
+      drawMarqueeRect(ctx, {
+        x1: marqueeStart.current.x,
+        y1: marqueeStart.current.y,
+        x2: marqueeEnd.current.x,
+        y2: marqueeEnd.current.y,
+      });
+    }
 
-  // 更新箭头属性
+    ctx.restore();
+  }, [arrows, rects, texts, mosaics, selectedArrowIds, selectedRectIds, selectedTextIds, selectedMosaicIds, editingTextId, cropArea, imageDisplaySize, activeTool]);
+
+  // 更新箭头属性（仅支持单选时使用）
   const updateArrow = useCallback(
     (updates: Partial<ArrowShape>) => {
-      if (!selectedArrowId) return;
+      if (selectedArrowIds.length !== 1) return;
+      const selectedArrowId = selectedArrowIds[0];
       // 修改前保存历史
       pushHistory();
       setArrows((prev) =>
@@ -2188,13 +2300,14 @@ const App: React.FC = () => {
         ),
       );
     },
-    [selectedArrowId, pushHistory],
+    [selectedArrowIds, pushHistory],
   );
 
-  // 更新矩形属性
+  // 更新矩形属性（仅支持单选时使用）
   const updateRect = useCallback(
     (updates: Partial<RectShape>) => {
-      if (!selectedRectId) return;
+      if (selectedRectIds.length !== 1) return;
+      const selectedRectId = selectedRectIds[0];
       // 修改前保存历史
       pushHistory();
       setRects((prev) =>
@@ -2203,13 +2316,14 @@ const App: React.FC = () => {
         ),
       );
     },
-    [selectedRectId, pushHistory],
+    [selectedRectIds, pushHistory],
   );
 
-  // 更新文字属性
+  // 更新文字属性（仅支持单选时使用）
   const updateText = useCallback(
     (updates: Partial<TextShape>) => {
-      if (!selectedTextId) return;
+      if (selectedTextIds.length !== 1) return;
+      const selectedTextId = selectedTextIds[0];
       // 修改前保存历史
       pushHistory();
       setTexts((prev) =>
@@ -2218,13 +2332,14 @@ const App: React.FC = () => {
         ),
       );
     },
-    [selectedTextId, pushHistory],
+    [selectedTextIds, pushHistory],
   );
 
-  // 更新马赛克属性
+  // 更新马赛克属性（仅支持单选时使用）
   const updateMosaic = useCallback(
     (updates: Partial<MosaicShape>) => {
-      if (!selectedMosaicId) return;
+      if (selectedMosaicIds.length !== 1) return;
+      const selectedMosaicId = selectedMosaicIds[0];
       // 修改前保存历史
       pushHistory();
       setMosaics((prev) =>
@@ -2233,31 +2348,31 @@ const App: React.FC = () => {
         ),
       );
     },
-    [selectedMosaicId, pushHistory],
+    [selectedMosaicIds, pushHistory],
   );
 
-  // 选中的箭头
+  // 选中的箭头（仅支持单选时使用）
   const selectedArrow = useMemo(
-    () => arrows.find((a) => a.id === selectedArrowId) || null,
-    [arrows, selectedArrowId],
+    () => selectedArrowIds.length === 1 ? arrows.find((a) => a.id === selectedArrowIds[0]) || null : null,
+    [arrows, selectedArrowIds],
   );
 
-  // 选中的矩形
+  // 选中的矩形（仅支持单选时使用）
   const selectedRect = useMemo(
-    () => rects.find((r) => r.id === selectedRectId) || null,
-    [rects, selectedRectId],
+    () => selectedRectIds.length === 1 ? rects.find((r) => r.id === selectedRectIds[0]) || null : null,
+    [rects, selectedRectIds],
   );
 
-  // 选中的文字
+  // 选中的文字（仅支持单选时使用）
   const selectedText = useMemo(
-    () => texts.find((t) => t.id === selectedTextId) || null,
-    [texts, selectedTextId],
+    () => selectedTextIds.length === 1 ? texts.find((t) => t.id === selectedTextIds[0]) || null : null,
+    [texts, selectedTextIds],
   );
 
-  // 选中的马赛克
+  // 选中的马赛克（仅支持单选时使用）
   const selectedMosaic = useMemo(
-    () => mosaics.find((m) => m.id === selectedMosaicId) || null,
-    [mosaics, selectedMosaicId],
+    () => selectedMosaicIds.length === 1 ? mosaics.find((m) => m.id === selectedMosaicIds[0]) || null : null,
+    [mosaics, selectedMosaicIds],
   );
 
   // 标注绘制与编辑事件处理
@@ -2316,10 +2431,10 @@ const App: React.FC = () => {
           ...textStyleRef.current,
         };
         setTexts((prev) => [...prev, newText]);
-        setSelectedTextId(newText.id);
-        setSelectedArrowId(null);
-        setSelectedRectId(null);
-        setSelectedMosaicId(null);
+        setSelectedTextIds([newText.id]);
+        setSelectedArrowIds([]);
+        setSelectedRectIds([]);
+        setSelectedMosaicIds([]);
         // 不自动进入编辑模式，让用户双击编辑
         setActiveTool('select');
         return;
@@ -2378,213 +2493,296 @@ const App: React.FC = () => {
         const currentArrows = arrowsRef.current;
         const currentRects = rectsRef.current;
         const currentTexts = textsRef.current;
+        const currentMosaics = mosaicsRef.current;
         const canvas = annotationCanvasRef.current;
         const ctx = canvas?.getContext('2d');
 
-        // 如果已选中文字，优先检测文字控制点
-        if (selectedTextId && ctx) {
-          const selectedText = currentTexts.find((t) => t.id === selectedTextId);
-          if (selectedText) {
-            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, selectedText, ctx);
+        // 辅助函数：检测对象是否被选中
+        const isArrowSelected = (id: string) => selectedArrowIdsRef.current.includes(id);
+        const isRectSelected = (id: string) => selectedRectIdsRef.current.includes(id);
+        const isTextSelected = (id: string) => selectedTextIdsRef.current.includes(id);
+        const isMosaicSelected = (id: string) => selectedMosaicIdsRef.current.includes(id);
+
+        // 辅助函数：检测控制点
+        const checkTextControlPoint = (textId: string): { found: boolean; dragType: TextDragType } => {
+          const text = currentTexts.find(t => t.id === textId);
+          if (text && ctx) {
+            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, text, ctx);
             if (dragType !== 'none') {
-              setSelectedArrowId(null); // 清除箭头选中
-              setSelectedRectId(null); // 清除矩形选中
-              setSelectedMosaicId(null); // 清除马赛克选中
-              draggingTextRef.current = {
-                type: dragType,
-                textId: selectedTextId,
-                startX: coord.x,
-                startY: coord.y,
-                textOrig: {
-                  x: selectedText.x,
-                  y: selectedText.y,
-                  fontSize: selectedText.fontSize,
-                },
-              };
-              return;
+              return { found: true, dragType };
             }
+          }
+          return { found: false, dragType: 'none' };
+        };
+
+        const checkMosaicControlPoint = (mosaicId: string): { found: boolean; dragType: MosaicDragType } => {
+          const mosaic = currentMosaics.find(m => m.id === mosaicId);
+          if (mosaic) {
+            const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, mosaic);
+            if (dragType !== 'none') {
+              return { found: true, dragType };
+            }
+          }
+          return { found: false, dragType: 'none' };
+        };
+
+        const checkRectControlPoint = (rectId: string): { found: boolean; dragType: RectDragType } => {
+          const rect = currentRects.find(r => r.id === rectId);
+          if (rect) {
+            const dragType = getRectDragTypeAtPoint(coord.x, coord.y, rect);
+            if (dragType !== 'none') {
+              return { found: true, dragType };
+            }
+          }
+          return { found: false, dragType: 'none' };
+        };
+
+        const checkArrowControlPoint = (arrowId: string): { found: boolean; dragType: DragType } => {
+          const arrow = currentArrows.find(a => a.id === arrowId);
+          if (arrow) {
+            const dragType = getDragTypeAtPoint(coord.x, coord.y, arrow);
+            if (dragType !== 'none') {
+              return { found: true, dragType };
+            }
+          }
+          return { found: false, dragType: 'none' };
+        };
+
+        // 检测已选中对象的控制点（用于拖拽）
+        // 遍历所有选中对象，检测控制点
+        for (const textId of selectedTextIdsRef.current) {
+          const result = checkTextControlPoint(textId);
+          if (result.found) {
+            // 单独控制点拖拽：只保留当前对象选中
+            setSelectedTextIds([textId]);
+            setSelectedArrowIds([]);
+            setSelectedRectIds([]);
+            setSelectedMosaicIds([]);
+            draggingTextRef.current = {
+              type: result.dragType,
+              textId,
+              startX: coord.x,
+              startY: coord.y,
+              textOrig: {
+                x: currentTexts.find(t => t.id === textId)!.x,
+                y: currentTexts.find(t => t.id === textId)!.y,
+                fontSize: currentTexts.find(t => t.id === textId)!.fontSize,
+              },
+            };
+            return;
           }
         }
 
-        // 如果已选中马赛克，优先检测马赛克控制点
-        const currentMosaics = mosaicsRef.current;
-        if (selectedMosaicId) {
-          const selectedMosaic = currentMosaics.find((m) => m.id === selectedMosaicId);
-          if (selectedMosaic) {
-            const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, selectedMosaic);
-            if (dragType !== 'none') {
-              setSelectedArrowId(null); // 清除箭头选中
-              setSelectedTextId(null); // 清除文字选中
-              setSelectedRectId(null); // 清除矩形选中
-              draggingMosaicRef.current = {
-                type: dragType,
-                mosaicId: selectedMosaicId,
-                startX: coord.x,
-                startY: coord.y,
-                mosaicOrig: {
-                  x: selectedMosaic.x,
-                  y: selectedMosaic.y,
-                  width: selectedMosaic.width,
-                  height: selectedMosaic.height,
-                },
-              };
-              return;
-            }
-          }
-        }
-
-        // 如果已选中矩形，优先检测矩形控制点
-        if (selectedRectId) {
-          const selectedRect = currentRects.find((r) => r.id === selectedRectId);
-          if (selectedRect) {
-            const dragType = getRectDragTypeAtPoint(coord.x, coord.y, selectedRect);
-            if (dragType !== 'none') {
-              setSelectedArrowId(null); // 清除箭头选中
-              setSelectedTextId(null); // 清除文字选中
-              setSelectedMosaicId(null); // 清除马赛克选中
-              draggingRectRef.current = {
-                type: dragType,
-                rectId: selectedRectId,
-                startX: coord.x,
-                startY: coord.y,
-                rectOrig: {
-                  x: selectedRect.x,
-                  y: selectedRect.y,
-                  width: selectedRect.width,
-                  height: selectedRect.height,
-                },
-              };
-              return;
-            }
-          }
-        }
-
-        // 如果已选中箭头，检测箭头控制点
-        if (selectedArrowId) {
-          const selectedArrow = currentArrows.find((a) => a.id === selectedArrowId);
-          if (selectedArrow) {
-            const dragType = getDragTypeAtPoint(coord.x, coord.y, selectedArrow);
-            if (dragType !== 'none') {
-              setSelectedRectId(null); // 清除矩形选中
-              setSelectedTextId(null); // 清除文字选中
-              setSelectedMosaicId(null); // 清除马赛克选中
-              draggingRef.current = {
-                type: dragType,
-                arrowId: selectedArrowId,
-                startX: coord.x,
-                startY: coord.y,
-                arrowStart: { x: selectedArrow.startX, y: selectedArrow.startY },
-                arrowEnd: { x: selectedArrow.endX, y: selectedArrow.endY },
-              };
-              return;
-            }
-          }
-        }
-
-        // 检测是否点击到文字（从后往前遍历，先检测最上层）
-        if (ctx) {
-          for (let i = currentTexts.length - 1; i >= 0; i--) {
-            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, currentTexts[i], ctx);
-            if (dragType !== 'none') {
-              setSelectedTextId(currentTexts[i].id);
-              setSelectedArrowId(null);
-              setSelectedRectId(null);
-              setSelectedMosaicId(null);
-              draggingTextRef.current = {
-                type: dragType,
-                textId: currentTexts[i].id,
-                startX: coord.x,
-                startY: coord.y,
-                textOrig: {
-                  x: currentTexts[i].x,
-                  y: currentTexts[i].y,
-                  fontSize: currentTexts[i].fontSize,
-                },
-              };
-              return;
-            }
-          }
-        }
-
-        // 检测是否点击到马赛克（从后往前遍历，先检测最上层）
-        for (let i = currentMosaics.length - 1; i >= 0; i--) {
-          const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, currentMosaics[i]);
-          if (dragType !== 'none') {
-            setSelectedMosaicId(currentMosaics[i].id);
-            setSelectedArrowId(null);
-            setSelectedRectId(null);
-            setSelectedTextId(null);
+        for (const mosaicId of selectedMosaicIdsRef.current) {
+          const result = checkMosaicControlPoint(mosaicId);
+          if (result.found) {
+            setSelectedMosaicIds([mosaicId]);
+            setSelectedArrowIds([]);
+            setSelectedRectIds([]);
+            setSelectedTextIds([]);
             draggingMosaicRef.current = {
-              type: dragType,
-              mosaicId: currentMosaics[i].id,
+              type: result.dragType,
+              mosaicId,
               startX: coord.x,
               startY: coord.y,
               mosaicOrig: {
-                x: currentMosaics[i].x,
-                y: currentMosaics[i].y,
-                width: currentMosaics[i].width,
-                height: currentMosaics[i].height,
+                x: currentMosaics.find(m => m.id === mosaicId)!.x,
+                y: currentMosaics.find(m => m.id === mosaicId)!.y,
+                width: currentMosaics.find(m => m.id === mosaicId)!.width,
+                height: currentMosaics.find(m => m.id === mosaicId)!.height,
               },
             };
             return;
           }
         }
 
-        // 检测是否点击到矩形（从后往前遍历，先检测最上层）
-        for (let i = currentRects.length - 1; i >= 0; i--) {
-          const dragType = getRectDragTypeAtPoint(coord.x, coord.y, currentRects[i]);
-          if (dragType !== 'none') {
-            setSelectedRectId(currentRects[i].id);
-            setSelectedArrowId(null);
-            setSelectedTextId(null);
-            setSelectedMosaicId(null);
+        for (const rectId of selectedRectIdsRef.current) {
+          const result = checkRectControlPoint(rectId);
+          if (result.found) {
+            setSelectedRectIds([rectId]);
+            setSelectedArrowIds([]);
+            setSelectedTextIds([]);
+            setSelectedMosaicIds([]);
             draggingRectRef.current = {
-              type: dragType,
-              rectId: currentRects[i].id,
+              type: result.dragType,
+              rectId,
               startX: coord.x,
               startY: coord.y,
               rectOrig: {
-                x: currentRects[i].x,
-                y: currentRects[i].y,
-                width: currentRects[i].width,
-                height: currentRects[i].height,
+                x: currentRects.find(r => r.id === rectId)!.x,
+                y: currentRects.find(r => r.id === rectId)!.y,
+                width: currentRects.find(r => r.id === rectId)!.width,
+                height: currentRects.find(r => r.id === rectId)!.height,
               },
             };
             return;
           }
         }
 
-        // 检测是否点击到箭头
-        for (let i = currentArrows.length - 1; i >= 0; i--) {
-          const dragType = getDragTypeAtPoint(coord.x, coord.y, currentArrows[i]);
-          if (dragType !== 'none') {
-            setSelectedArrowId(currentArrows[i].id);
-            setSelectedRectId(null);
-            setSelectedTextId(null);
-            setSelectedMosaicId(null);
+        for (const arrowId of selectedArrowIdsRef.current) {
+          const result = checkArrowControlPoint(arrowId);
+          if (result.found) {
+            setSelectedArrowIds([arrowId]);
+            setSelectedRectIds([]);
+            setSelectedTextIds([]);
+            setSelectedMosaicIds([]);
             draggingRef.current = {
-              type: dragType,
-              arrowId: currentArrows[i].id,
+              type: result.dragType,
+              arrowId,
               startX: coord.x,
               startY: coord.y,
-              arrowStart: { x: currentArrows[i].startX, y: currentArrows[i].startY },
-              arrowEnd: { x: currentArrows[i].endX, y: currentArrows[i].endY },
+              arrowStart: { x: currentArrows.find(a => a.id === arrowId)!.startX, y: currentArrows.find(a => a.id === arrowId)!.startY },
+              arrowEnd: { x: currentArrows.find(a => a.id === arrowId)!.endX, y: currentArrows.find(a => a.id === arrowId)!.endY },
             };
             return;
           }
         }
 
-        // 点击空白区域，清除选中
-        setSelectedArrowId(null);
-        setSelectedRectId(null);
-        setSelectedTextId(null);
-        setSelectedMosaicId(null);
+        // 检测是否点击到对象（用于选择）
+        // 从后往前遍历，先检测最上层
+        if (ctx) {
+          for (let i = currentTexts.length - 1; i >= 0; i--) {
+            const text = currentTexts[i];
+            if (isPointInText(coord.x, coord.y, text, ctx)) {
+              if (e.shiftKey) {
+                // Shift+点击：切换选中状态
+                if (isTextSelected(text.id)) {
+                  setSelectedTextIds(prev => prev.filter(id => id !== text.id));
+                } else {
+                  setSelectedTextIds(prev => [...prev, text.id]);
+                }
+              } else {
+                // 普通点击：单选或开始拖拽
+                if (isTextSelected(text.id)) {
+                  // 已选中，准备拖拽
+                  draggingTextRef.current = {
+                    type: 'move',
+                    textId: text.id,
+                    startX: coord.x,
+                    startY: coord.y,
+                    textOrig: { x: text.x, y: text.y, fontSize: text.fontSize },
+                  };
+                } else {
+                  // 未选中，单选
+                  setSelectedTextIds([text.id]);
+                  setSelectedArrowIds([]);
+                  setSelectedRectIds([]);
+                  setSelectedMosaicIds([]);
+                }
+              }
+              return;
+            }
+          }
+        }
+
+        for (let i = currentMosaics.length - 1; i >= 0; i--) {
+          const mosaic = currentMosaics[i];
+          if (isPointInMosaic(coord.x, coord.y, mosaic)) {
+            if (e.shiftKey) {
+              if (isMosaicSelected(mosaic.id)) {
+                setSelectedMosaicIds(prev => prev.filter(id => id !== mosaic.id));
+              } else {
+                setSelectedMosaicIds(prev => [...prev, mosaic.id]);
+              }
+            } else {
+              if (isMosaicSelected(mosaic.id)) {
+                draggingMosaicRef.current = {
+                  type: 'move',
+                  mosaicId: mosaic.id,
+                  startX: coord.x,
+                  startY: coord.y,
+                  mosaicOrig: { x: mosaic.x, y: mosaic.y, width: mosaic.width, height: mosaic.height },
+                };
+              } else {
+                setSelectedMosaicIds([mosaic.id]);
+                setSelectedArrowIds([]);
+                setSelectedRectIds([]);
+                setSelectedTextIds([]);
+              }
+            }
+            return;
+          }
+        }
+
+        for (let i = currentRects.length - 1; i >= 0; i--) {
+          const rect = currentRects[i];
+          if (isPointInRect(coord.x, coord.y, rect)) {
+            if (e.shiftKey) {
+              if (isRectSelected(rect.id)) {
+                setSelectedRectIds(prev => prev.filter(id => id !== rect.id));
+              } else {
+                setSelectedRectIds(prev => [...prev, rect.id]);
+              }
+            } else {
+              if (isRectSelected(rect.id)) {
+                draggingRectRef.current = {
+                  type: 'move',
+                  rectId: rect.id,
+                  startX: coord.x,
+                  startY: coord.y,
+                  rectOrig: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                };
+              } else {
+                setSelectedRectIds([rect.id]);
+                setSelectedArrowIds([]);
+                setSelectedTextIds([]);
+                setSelectedMosaicIds([]);
+              }
+            }
+            return;
+          }
+        }
+
+        for (let i = currentArrows.length - 1; i >= 0; i--) {
+          const arrow = currentArrows[i];
+          if (isPointNearArrow(coord.x, coord.y, arrow)) {
+            if (e.shiftKey) {
+              if (isArrowSelected(arrow.id)) {
+                setSelectedArrowIds(prev => prev.filter(id => id !== arrow.id));
+              } else {
+                setSelectedArrowIds(prev => [...prev, arrow.id]);
+              }
+            } else {
+              if (isArrowSelected(arrow.id)) {
+                draggingRef.current = {
+                  type: 'move',
+                  arrowId: arrow.id,
+                  startX: coord.x,
+                  startY: coord.y,
+                  arrowStart: { x: arrow.startX, y: arrow.startY },
+                  arrowEnd: { x: arrow.endX, y: arrow.endY },
+                };
+              } else {
+                setSelectedArrowIds([arrow.id]);
+                setSelectedRectIds([]);
+                setSelectedTextIds([]);
+                setSelectedMosaicIds([]);
+              }
+            }
+            return;
+          }
+        }
+
+        // 点击空白区域，开始框选或清除选中
+        // 普通点击空白区域拖拽时开始框选，Shift+框选则添加到已有选择
+        isMarqueeSelecting.current = true;
+        marqueeStart.current = { x: coord.x, y: coord.y };
+        marqueeEnd.current = { x: coord.x, y: coord.y };
       }
     };
 
     const onMove = (e: MouseEvent) => {
       const coord = screenToImageCoord(e.clientX, e.clientY);
       if (!coord) return;
+
+      // 处理框选
+      if (isMarqueeSelecting.current && activeTool === 'select') {
+        if (marqueeStart.current) {
+          marqueeEnd.current = { x: coord.x, y: coord.y };
+          renderShapes();
+        }
+        return;
+      }
 
       // 处理箭头绘制
       if (isDrawingArrow.current && activeTool === 'arrow') {
@@ -2675,6 +2873,8 @@ const App: React.FC = () => {
 
             switch (drag.type) {
               case 'move':
+              case 'middle':
+                // 中点拖拽和整体移动效果相同
                 return {
                   ...a,
                   startX: drag.arrowStart.x + dx,
@@ -2923,6 +3123,12 @@ const App: React.FC = () => {
 
       // 更新光标样式
       if (activeTool === 'select') {
+        // 如果正在进行框选，显示 crosshair 光标
+        if (isMarqueeSelecting.current) {
+          el.style.cursor = 'crosshair';
+          return;
+        }
+
         const currentRects = rectsRef.current;
         const currentArrows = arrowsRef.current;
         const currentTexts = textsRef.current;
@@ -2930,56 +3136,90 @@ const App: React.FC = () => {
         const canvas = annotationCanvasRef.current;
         const ctx = canvas?.getContext('2d');
 
-        // 检测文字光标
-        if (selectedTextIdRef.current && ctx) {
-          const selectedText = currentTexts.find(
-            (t) => t.id === selectedTextIdRef.current,
-          );
-          if (selectedText) {
+        // 检测文字光标（已选中对象）
+        for (const textId of selectedTextIdsRef.current) {
+          const selectedText = currentTexts.find((t) => t.id === textId);
+          if (selectedText && ctx) {
             const dragType = getTextDragTypeAtPoint(coord.x, coord.y, selectedText, ctx);
-            el.style.cursor = TEXT_CURSOR_MAP[dragType];
-            return;
+            if (dragType !== 'none') {
+              el.style.cursor = TEXT_CURSOR_MAP[dragType];
+              return;
+            }
           }
         }
 
-        // 检测马赛克光标
-        if (selectedMosaicIdRef.current) {
-          const selectedMosaic = currentMosaics.find(
-            (m) => m.id === selectedMosaicIdRef.current,
-          );
+        // 检测马赛克光标（已选中对象）
+        for (const mosaicId of selectedMosaicIdsRef.current) {
+          const selectedMosaic = currentMosaics.find((m) => m.id === mosaicId);
           if (selectedMosaic) {
             const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, selectedMosaic);
-            el.style.cursor = MOSAIC_CURSOR_MAP[dragType];
-            return;
+            if (dragType !== 'none') {
+              el.style.cursor = MOSAIC_CURSOR_MAP[dragType];
+              return;
+            }
           }
         }
 
-        // 检测矩形光标
-        if (selectedRectIdRef.current) {
-          const selectedRect = currentRects.find(
-            (r) => r.id === selectedRectIdRef.current,
-          );
+        // 检测矩形光标（已选中对象）
+        for (const rectId of selectedRectIdsRef.current) {
+          const selectedRect = currentRects.find((r) => r.id === rectId);
           if (selectedRect) {
             const dragType = getRectDragTypeAtPoint(coord.x, coord.y, selectedRect);
-            el.style.cursor = RECT_CURSOR_MAP[dragType];
+            if (dragType !== 'none') {
+              el.style.cursor = RECT_CURSOR_MAP[dragType];
+              return;
+            }
+          }
+        }
+
+        // 检测箭头光标（已选中对象）
+        for (const arrowId of selectedArrowIdsRef.current) {
+          const selectedArrow = currentArrows.find((a) => a.id === arrowId);
+          if (selectedArrow) {
+            const dragType = getDragTypeAtPoint(coord.x, coord.y, selectedArrow);
+            if (dragType !== 'none') {
+              // 控制点和移动都使用 move 光标
+              el.style.cursor = 'move';
+              return;
+            }
+          }
+        }
+
+        // 检测悬停在未选中对象上（显示 pointer 光标）
+        if (ctx) {
+          // 检测文字
+          for (let i = currentTexts.length - 1; i >= 0; i--) {
+            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, currentTexts[i], ctx);
+            if (dragType !== 'none') {
+              el.style.cursor = 'pointer';
+              return;
+            }
+          }
+        }
+
+        // 检测马赛克
+        for (let i = currentMosaics.length - 1; i >= 0; i--) {
+          const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, currentMosaics[i]);
+          if (dragType !== 'none') {
+            el.style.cursor = 'pointer';
             return;
           }
         }
 
-        // 检测箭头光标
-        if (selectedArrowIdRef.current) {
-          const selectedArrow = currentArrows.find(
-            (a) => a.id === selectedArrowIdRef.current,
-          );
-          if (selectedArrow) {
-            const dragType = getDragTypeAtPoint(coord.x, coord.y, selectedArrow);
-            if (dragType === 'start' || dragType === 'end') {
-              el.style.cursor = 'crosshair';
-            } else if (dragType === 'move') {
-              el.style.cursor = 'move';
-            } else {
-              el.style.cursor = 'default';
-            }
+        // 检测矩形
+        for (let i = currentRects.length - 1; i >= 0; i--) {
+          const dragType = getRectDragTypeAtPoint(coord.x, coord.y, currentRects[i]);
+          if (dragType !== 'none') {
+            el.style.cursor = 'pointer';
+            return;
+          }
+        }
+
+        // 检测箭头
+        for (let i = currentArrows.length - 1; i >= 0; i--) {
+          const dragType = getDragTypeAtPoint(coord.x, coord.y, currentArrows[i]);
+          if (dragType !== 'none') {
+            el.style.cursor = 'pointer';
             return;
           }
         }
@@ -2999,7 +3239,84 @@ const App: React.FC = () => {
       }
     };
 
-    const onUp = () => {
+    const onUp = (e: MouseEvent) => {
+      // 结束框选
+      if (isMarqueeSelecting.current && marqueeStart.current && marqueeEnd.current) {
+        const canvas = annotationCanvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        const rect = {
+          x1: marqueeStart.current.x,
+          y1: marqueeStart.current.y,
+          x2: marqueeEnd.current.x,
+          y2: marqueeEnd.current.y,
+        };
+
+        // 计算框选区域尺寸
+        const width = Math.abs(rect.x2 - rect.x1);
+        const height = Math.abs(rect.y2 - rect.y1);
+        const minSelectSize = 5;
+
+        // 如果框选区域太小（只是点击），清除选中
+        if (width < minSelectSize && height < minSelectSize) {
+          setSelectedArrowIds([]);
+          setSelectedRectIds([]);
+          setSelectedTextIds([]);
+          setSelectedMosaicIds([]);
+        } else {
+          // 找出框选区域内的所有对象
+          const newSelectedArrowIds: string[] = [];
+          const newSelectedRectIds: string[] = [];
+          const newSelectedTextIds: string[] = [];
+          const newSelectedMosaicIds: string[] = [];
+
+          arrowsRef.current.forEach(arrow => {
+            if (isArrowInRect(arrow, rect)) {
+              newSelectedArrowIds.push(arrow.id);
+            }
+          });
+
+          rectsRef.current.forEach(rectItem => {
+            if (isRectInRect(rectItem, rect)) {
+              newSelectedRectIds.push(rectItem.id);
+            }
+          });
+
+          if (ctx) {
+            textsRef.current.forEach(text => {
+              if (isTextInRect(text, rect, ctx)) {
+                newSelectedTextIds.push(text.id);
+              }
+            });
+          }
+
+          mosaicsRef.current.forEach(mosaic => {
+            if (isMosaicInRect(mosaic, rect)) {
+              newSelectedMosaicIds.push(mosaic.id);
+            }
+          });
+
+          // 设置选中状态（替换之前的选择）
+          // 如果 Shift 键按下，则添加到已有选择
+          if (e.shiftKey) {
+            setSelectedArrowIds(prev => [...new Set([...prev, ...newSelectedArrowIds])]);
+            setSelectedRectIds(prev => [...new Set([...prev, ...newSelectedRectIds])]);
+            setSelectedTextIds(prev => [...new Set([...prev, ...newSelectedTextIds])]);
+            setSelectedMosaicIds(prev => [...new Set([...prev, ...newSelectedMosaicIds])]);
+          } else {
+            setSelectedArrowIds(newSelectedArrowIds);
+            setSelectedRectIds(newSelectedRectIds);
+            setSelectedTextIds(newSelectedTextIds);
+            setSelectedMosaicIds(newSelectedMosaicIds);
+          }
+        }
+
+        isMarqueeSelecting.current = false;
+        marqueeStart.current = null;
+        marqueeEnd.current = null;
+        renderShapes();
+        return;
+      }
+
       // 结束箭头绘制
       if (isDrawingArrow.current && drawingArrow.current) {
         const { startX, startY, endX, endY } = drawingArrow.current;
@@ -3017,7 +3334,7 @@ const App: React.FC = () => {
             ...arrowStyleRef.current,
           };
           setArrows((prev) => [...prev, newArrow]);
-          setSelectedArrowId(newArrow.id);
+          setSelectedArrowIds([newArrow.id]);
           setActiveTool('select');
         }
       }
@@ -3042,7 +3359,7 @@ const App: React.FC = () => {
             ...rectStyleRef.current,
           };
           setRects((prev) => [...prev, newRect]);
-          setSelectedRectId(newRect.id);
+          setSelectedRectIds([newRect.id]);
           setActiveTool('select');
         }
       }
@@ -3067,7 +3384,7 @@ const App: React.FC = () => {
             ...mosaicStyleRef.current,
           };
           setMosaics((prev) => [...prev, newMosaic]);
-          setSelectedMosaicId(newMosaic.id);
+          setSelectedMosaicIds([newMosaic.id]);
           setActiveTool('select');
         }
       }
@@ -3122,12 +3439,12 @@ const App: React.FC = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [activeTool, imageData, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, editingTextId, screenToImageCoord, renderShapes, cropArea, pushHistory]);
+  }, [activeTool, imageData, selectedArrowIds, selectedRectIds, selectedTextIds, selectedMosaicIds, editingTextId, screenToImageCoord, renderShapes, cropArea, pushHistory]);
 
   // 标注变化时重新渲染
   useEffect(() => {
     renderShapes();
-  }, [arrows, rects, texts, mosaics, selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, renderShapes]);
+  }, [arrows, rects, texts, mosaics, selectedArrowIds, selectedRectIds, selectedTextIds, selectedMosaicIds, renderShapes]);
 
   // 缩放/平移变化时重新渲染
   useEffect(() => {
@@ -3208,10 +3525,10 @@ const App: React.FC = () => {
       setMosaics([]);
 
       // 清除选中状态
-      setSelectedArrowId(null);
-      setSelectedRectId(null);
-      setSelectedTextId(null);
-      setSelectedMosaicId(null);
+      setSelectedArrowIds([]);
+      setSelectedRectIds([]);
+      setSelectedTextIds([]);
+      setSelectedMosaicIds([]);
 
       // 清除裁剪状态
       setCropArea(null);
@@ -3236,7 +3553,7 @@ const App: React.FC = () => {
     setActiveTool('select');
   }, []);
 
-  // Delete 键删除选中的箭头、矩形或文字 / Ctrl+Z 撤销 / Ctrl+Shift+Z 重做
+  // Delete 键删除选中的箭头、矩形或文字 / Ctrl+Z 撤销 / Ctrl+Shift+Z 重做 / Ctrl+A 全选 / Escape 取消选择
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 撤销快捷键：Ctrl+Z / Cmd+Z
@@ -3270,6 +3587,49 @@ const App: React.FC = () => {
         return;
       }
 
+      // 全选快捷键：Ctrl+A / Cmd+A
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        // 避免在输入框中触发
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+        e.preventDefault();
+        // 选中所有对象
+        setSelectedArrowIds(arrowsRef.current.map(a => a.id));
+        setSelectedRectIds(rectsRef.current.map(r => r.id));
+        setSelectedTextIds(textsRef.current.map(t => t.id));
+        setSelectedMosaicIds(mosaicsRef.current.map(m => m.id));
+        return;
+      }
+
+      // Escape 取消选择或取消框选
+      if (e.key === 'Escape') {
+        // 避免在输入框中触发
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+        // 如果正在框选，取消框选
+        if (isMarqueeSelecting.current) {
+          isMarqueeSelecting.current = false;
+          marqueeStart.current = null;
+          marqueeEnd.current = null;
+          renderShapes();
+          return;
+        }
+        // 否则取消所有选择
+        setSelectedArrowIds([]);
+        setSelectedRectIds([]);
+        setSelectedTextIds([]);
+        setSelectedMosaicIds([]);
+        return;
+      }
+
       // 裁剪工具快捷键
       if (activeTool === 'crop') {
         if (e.key === 'Enter' && cropArea) {
@@ -3295,40 +3655,41 @@ const App: React.FC = () => {
 
         // 删除前保存历史
         const hasSelection =
-          selectedArrowId || selectedRectId || selectedTextId || selectedMosaicId;
+          selectedArrowIds.length > 0 || selectedRectIds.length > 0 ||
+          selectedTextIds.length > 0 || selectedMosaicIds.length > 0;
         if (hasSelection) {
           pushHistory();
         }
 
-        // 删除选中的箭头
-        if (selectedArrowId) {
-          setArrows((prev) => prev.filter((a) => a.id !== selectedArrowId));
-          setSelectedArrowId(null);
+        // 批量删除选中的箭头
+        if (selectedArrowIds.length > 0) {
+          setArrows((prev) => prev.filter((a) => !selectedArrowIds.includes(a.id)));
+          setSelectedArrowIds([]);
         }
 
-        // 删除选中的矩形
-        if (selectedRectId) {
-          setRects((prev) => prev.filter((r) => r.id !== selectedRectId));
-          setSelectedRectId(null);
+        // 批量删除选中的矩形
+        if (selectedRectIds.length > 0) {
+          setRects((prev) => prev.filter((r) => !selectedRectIds.includes(r.id)));
+          setSelectedRectIds([]);
         }
 
-        // 删除选中的文字
-        if (selectedTextId) {
-          setTexts((prev) => prev.filter((t) => t.id !== selectedTextId));
-          setSelectedTextId(null);
+        // 批量删除选中的文字
+        if (selectedTextIds.length > 0) {
+          setTexts((prev) => prev.filter((t) => !selectedTextIds.includes(t.id)));
+          setSelectedTextIds([]);
         }
 
-        // 删除选中的马赛克
-        if (selectedMosaicId) {
-          setMosaics((prev) => prev.filter((m) => m.id !== selectedMosaicId));
-          setSelectedMosaicId(null);
+        // 批量删除选中的马赛克
+        if (selectedMosaicIds.length > 0) {
+          setMosaics((prev) => prev.filter((m) => !selectedMosaicIds.includes(m.id)));
+          setSelectedMosaicIds([]);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedArrowId, selectedRectId, selectedTextId, selectedMosaicId, activeTool, cropArea, applyCrop, cancelCrop, handleUndo, handleRedo, pushHistory]);
+  }, [selectedArrowIds, selectedRectIds, selectedTextIds, selectedMosaicIds, activeTool, cropArea, applyCrop, cancelCrop, handleUndo, handleRedo, pushHistory, renderShapes]);
 
   // 双击文字进入编辑模式 / 双击确认裁剪
   useEffect(() => {
@@ -3361,7 +3722,7 @@ const App: React.FC = () => {
         if (isPointInText(coord.x, coord.y, text, ctx)) {
           setEditingTextId(text.id);
           setEditingTextValue(text.text);
-          setSelectedTextId(text.id);
+          setSelectedTextIds([text.id]);
           // 聚焦输入框
           setTimeout(() => {
             textInputRef.current?.focus();
@@ -3571,10 +3932,10 @@ const App: React.FC = () => {
         mosaics: [],
         imageData,
         view: { scale: 1, offset: { x: 0, y: 0 } },
-        selectedArrowId: null,
-        selectedRectId: null,
-        selectedTextId: null,
-        selectedMosaicId: null,
+        selectedArrowIds: [],
+        selectedRectIds: [],
+        selectedTextIds: [],
+        selectedMosaicIds: [],
       });
       updateHistoryButtons();
     }

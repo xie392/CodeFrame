@@ -39,6 +39,7 @@ import type {
   RectBorderStyle,
   ImageFrameSettings,
 } from './types';
+import { BORDER_RADIUS_PRESETS } from './types';
 
 // ---------------------------------------------------------------------------
 // 常量与类型
@@ -132,7 +133,19 @@ const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
     linked: true,
   },
   borderRadius: {
-    value: 12,
+    unit: 'px' as const,
+    topLeft: 12,
+    topRight: 12,
+    bottomRight: 12,
+    bottomLeft: 12,
+    linked: true,
+  },
+  imageRadius: {
+    unit: 'px' as const,
+    topLeft: 0,
+    topRight: 0,
+    bottomRight: 0,
+    bottomLeft: 0,
     linked: true,
   },
   shadow: {
@@ -1854,17 +1867,250 @@ const FrameSettings: React.FC<{
         </div>
       </CollapsibleSection>
 
-      {/* 圆角设置 */}
-      <CollapsibleSection title="圆角">
-        <SliderControl
-          label="圆角"
-          value={settings.borderRadius.value}
-          min={0}
-          max={100}
-          onChange={(value) =>
-            onUpdate({ borderRadius: { ...settings.borderRadius, value } })
-          }
-        />
+      {/* 容器圆角设置 */}
+      <CollapsibleSection title="容器圆角">
+        {/* 圆角预设 */}
+        <div className="mb-3">
+          <div className="flex gap-1 flex-wrap">
+            {BORDER_RADIUS_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                onClick={() => {
+                  onUpdate({
+                    borderRadius: {
+                      ...settings.borderRadius,
+                      unit: 'px',
+                      topLeft: preset.value,
+                      topRight: preset.value,
+                      bottomRight: preset.value,
+                      bottomLeft: preset.value,
+                      linked: true,
+                    },
+                  });
+                }}
+                className={`px-2 py-1 text-[10px] rounded transition-colors ${
+                  settings.borderRadius.linked &&
+                  settings.borderRadius.unit === 'px' &&
+                  settings.borderRadius.topLeft === preset.value
+                    ? 'bg-[var(--color-accent)] text-black'
+                    : 'prop-field-sm hover:bg-[var(--color-surface-hover)]'
+                }`}
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 单位切换 */}
+        <div className="flex gap-1 mb-3">
+          <button
+            onClick={() => {
+              const newUnit = settings.borderRadius.unit === 'px' ? '%' : 'px';
+              onUpdate({ borderRadius: { ...settings.borderRadius, unit: newUnit } });
+            }}
+            className="prop-field-sm px-2 py-1 text-[10px] flex items-center gap-1"
+          >
+            <span>单位:</span>
+            <span className="text-[var(--color-accent)]">{settings.borderRadius.unit}</span>
+          </button>
+        </div>
+
+        {/* 统一/独立模式切换 */}
+        <div className="flex items-center gap-2 mb-2">
+          <button
+            onClick={() =>
+              onUpdate({ borderRadius: { ...settings.borderRadius, linked: !settings.borderRadius.linked } })
+            }
+            className={`w-6 h-6 flex items-center justify-center rounded text-[10px] transition-colors ${
+              settings.borderRadius.linked
+                ? 'bg-[var(--color-accent)] text-black'
+                : 'prop-field-sm'
+            }`}
+            title={settings.borderRadius.linked ? '切换为独立模式' : '切换为统一模式'}
+          >
+            {settings.borderRadius.linked ? '🔗' : '⛓️‍💥'}
+          </button>
+        </div>
+
+        {/* 圆角值输入 */}
+        {settings.borderRadius.linked ? (
+          <SliderControl
+            label="圆角"
+            value={settings.borderRadius.topLeft}
+            min={0}
+            max={settings.borderRadius.unit === 'px' ? 100 : 50}
+            onChange={(value) =>
+              onUpdate({
+                borderRadius: {
+                  ...settings.borderRadius,
+                  topLeft: value,
+                  topRight: value,
+                  bottomRight: value,
+                  bottomLeft: value,
+                },
+              })
+            }
+          />
+        ) : (
+          <div className="space-y-1">
+            <div className="flex gap-1">
+              <EditableField
+                label="左上"
+                value={settings.borderRadius.topLeft}
+                onChange={(topLeft) =>
+                  onUpdate({ borderRadius: { ...settings.borderRadius, topLeft } })
+                }
+              />
+              <EditableField
+                label="右上"
+                value={settings.borderRadius.topRight}
+                onChange={(topRight) =>
+                  onUpdate({ borderRadius: { ...settings.borderRadius, topRight } })
+                }
+              />
+            </div>
+            <div className="flex gap-1 pl-7">
+              <EditableField
+                label="左下"
+                value={settings.borderRadius.bottomLeft}
+                onChange={(bottomLeft) =>
+                  onUpdate({ borderRadius: { ...settings.borderRadius, bottomLeft } })
+                }
+              />
+              <EditableField
+                label="右下"
+                value={settings.borderRadius.bottomRight}
+                onChange={(bottomRight) =>
+                  onUpdate({ borderRadius: { ...settings.borderRadius, bottomRight } })
+                }
+              />
+            </div>
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* 图片圆角设置 */}
+      <CollapsibleSection title="图片圆角">
+        {/* 圆角预设 */}
+        <div className="mb-3">
+          <div className="flex gap-1 flex-wrap">
+            {BORDER_RADIUS_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                onClick={() => {
+                  onUpdate({
+                    imageRadius: {
+                      ...settings.imageRadius,
+                      unit: 'px',
+                      topLeft: preset.value,
+                      topRight: preset.value,
+                      bottomRight: preset.value,
+                      bottomLeft: preset.value,
+                      linked: true,
+                    },
+                  });
+                }}
+                className={`px-2 py-1 text-[10px] rounded transition-colors ${
+                  settings.imageRadius.linked &&
+                  settings.imageRadius.unit === 'px' &&
+                  settings.imageRadius.topLeft === preset.value
+                    ? 'bg-[var(--color-accent)] text-black'
+                    : 'prop-field-sm hover:bg-[var(--color-surface-hover)]'
+                }`}
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 单位切换 */}
+        <div className="flex gap-1 mb-3">
+          <button
+            onClick={() => {
+              const newUnit = settings.imageRadius.unit === 'px' ? '%' : 'px';
+              onUpdate({ imageRadius: { ...settings.imageRadius, unit: newUnit } });
+            }}
+            className="prop-field-sm px-2 py-1 text-[10px] flex items-center gap-1"
+          >
+            <span>单位:</span>
+            <span className="text-[var(--color-accent)]">{settings.imageRadius.unit}</span>
+          </button>
+        </div>
+
+        {/* 统一/独立模式切换 */}
+        <div className="flex items-center gap-2 mb-2">
+          <button
+            onClick={() =>
+              onUpdate({ imageRadius: { ...settings.imageRadius, linked: !settings.imageRadius.linked } })
+            }
+            className={`w-6 h-6 flex items-center justify-center rounded text-[10px] transition-colors ${
+              settings.imageRadius.linked
+                ? 'bg-[var(--color-accent)] text-black'
+                : 'prop-field-sm'
+            }`}
+            title={settings.imageRadius.linked ? '切换为独立模式' : '切换为统一模式'}
+          >
+            {settings.imageRadius.linked ? '🔗' : '⛓️‍💥'}
+          </button>
+        </div>
+
+        {/* 圆角值输入 */}
+        {settings.imageRadius.linked ? (
+          <SliderControl
+            label="圆角"
+            value={settings.imageRadius.topLeft}
+            min={0}
+            max={settings.imageRadius.unit === 'px' ? 100 : 50}
+            onChange={(value) =>
+              onUpdate({
+                imageRadius: {
+                  ...settings.imageRadius,
+                  topLeft: value,
+                  topRight: value,
+                  bottomRight: value,
+                  bottomLeft: value,
+                },
+              })
+            }
+          />
+        ) : (
+          <div className="space-y-1">
+            <div className="flex gap-1">
+              <EditableField
+                label="左上"
+                value={settings.imageRadius.topLeft}
+                onChange={(topLeft) =>
+                  onUpdate({ imageRadius: { ...settings.imageRadius, topLeft } })
+                }
+              />
+              <EditableField
+                label="右上"
+                value={settings.imageRadius.topRight}
+                onChange={(topRight) =>
+                  onUpdate({ imageRadius: { ...settings.imageRadius, topRight } })
+                }
+              />
+            </div>
+            <div className="flex gap-1 pl-7">
+              <EditableField
+                label="左下"
+                value={settings.imageRadius.bottomLeft}
+                onChange={(bottomLeft) =>
+                  onUpdate({ imageRadius: { ...settings.imageRadius, bottomLeft } })
+                }
+              />
+              <EditableField
+                label="右下"
+                value={settings.imageRadius.bottomRight}
+                onChange={(bottomRight) =>
+                  onUpdate({ imageRadius: { ...settings.imageRadius, bottomRight } })
+                }
+              />
+            </div>
+          </div>
+        )}
       </CollapsibleSection>
 
       {/* 阴影设置 */}
@@ -4672,7 +4918,15 @@ const App: React.FC = () => {
               <div
                 style={{
                   ...getBackgroundStyle(frameSettings.background),
-                  borderRadius: frameSettings.borderRadius.value,
+                  borderRadius: `${
+                    frameSettings.borderRadius.topLeft
+                  }${frameSettings.borderRadius.unit} ${
+                    frameSettings.borderRadius.topRight
+                  }${frameSettings.borderRadius.unit} ${
+                    frameSettings.borderRadius.bottomRight
+                  }${frameSettings.borderRadius.unit} ${
+                    frameSettings.borderRadius.bottomLeft
+                  }${frameSettings.borderRadius.unit}`,
                   padding: frameSettings.padding.linked
                     ? frameSettings.padding.top
                     : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
@@ -4680,9 +4934,24 @@ const App: React.FC = () => {
                   boxShadow: frameSettings.shadow.enabled
                     ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
                     : 'none',
+                  overflow: 'hidden',
                 }}
               >
-                <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
+                <div style={{
+                  borderRadius: `${
+                    frameSettings.imageRadius.topLeft
+                  }${frameSettings.imageRadius.unit} ${
+                    frameSettings.imageRadius.topRight
+                  }${frameSettings.imageRadius.unit} ${
+                    frameSettings.imageRadius.bottomRight
+                  }${frameSettings.imageRadius.unit} ${
+                    frameSettings.imageRadius.bottomLeft
+                  }${frameSettings.imageRadius.unit}`,
+                  overflow: 'hidden',
+                  display: 'inline-block',
+                }}>
+                  <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
+                </div>
               </div>
             </div>
 

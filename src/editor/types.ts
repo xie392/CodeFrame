@@ -68,6 +68,25 @@ export interface CropArea {
   height: number;
 }
 
+// 圆角单位类型
+export type BorderRadiusUnit = 'px' | '%';
+
+// 圆角预设
+export interface BorderRadiusPreset {
+  name: string;
+  value: number;
+  unit: 'px';
+}
+
+// 圆角预设常量
+export const BORDER_RADIUS_PRESETS: BorderRadiusPreset[] = [
+  { name: '无圆角', value: 0, unit: 'px' },
+  { name: '小圆角', value: 8, unit: 'px' },
+  { name: '中等圆角', value: 16, unit: 'px' },
+  { name: '大圆角', value: 24, unit: 'px' },
+  { name: '胶囊形', value: 9999, unit: 'px' },
+];
+
 // 图片容器设置
 export interface ImageFrameSettings {
   // 背景
@@ -85,9 +104,22 @@ export interface ImageFrameSettings {
     left: number;
     linked: boolean;
   };
-  // 圆角
+  // 圆角（容器）
   borderRadius: {
-    value: number;
+    unit: BorderRadiusUnit;
+    topLeft: number;
+    topRight: number;
+    bottomRight: number;
+    bottomLeft: number;
+    linked: boolean;
+  };
+  // 图片圆角
+  imageRadius: {
+    unit: BorderRadiusUnit;
+    topLeft: number;
+    topRight: number;
+    bottomRight: number;
+    bottomLeft: number;
     linked: boolean;
   };
   // 阴影

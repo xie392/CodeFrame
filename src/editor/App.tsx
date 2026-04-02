@@ -158,35 +158,35 @@ const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
 
 // 背景预设
 const BACKGROUND_PRESETS = [
-  { name: 'Transparent', type: 'solid' as const, color: 'transparent' },
-  { name: 'White', type: 'solid' as const, color: '#FFFFFF' },
-  { name: 'Black', type: 'solid' as const, color: '#000000' },
+  { name: '透明', type: 'solid' as const, color: 'transparent' },
+  { name: '白色', type: 'solid' as const, color: '#FFFFFF' },
+  { name: '黑色', type: 'solid' as const, color: '#000000' },
   {
-    name: 'Sunset',
+    name: '日落',
     type: 'linear' as const,
     gradientColors: ['#FF512F', '#DD2476'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: 'Ocean',
+    name: '海洋',
     type: 'linear' as const,
     gradientColors: ['#2193b0', '#6dd5ed'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: 'Forest',
+    name: '森林',
     type: 'linear' as const,
     gradientColors: ['#134E5E', '#71B280'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: 'Purple',
+    name: '紫色',
     type: 'linear' as const,
     gradientColors: ['#667eea', '#764ba2'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: 'Peach',
+    name: '蜜桃',
     type: 'linear' as const,
     gradientColors: ['#FFB88C', '#DE6262'] as [string, string],
     gradientAngle: 135,
@@ -195,15 +195,15 @@ const BACKGROUND_PRESETS = [
 
 // 阴影预设
 const SHADOW_PRESETS = [
-  { name: 'None', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
-  { name: 'Subtle', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
-  { name: 'Medium', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
-  { name: 'Strong', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
+  { name: '无', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
+  { name: '轻微', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
+  { name: '中等', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
+  { name: '强烈', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
 ];
 
 // 比例预设
 const ASPECT_RATIO_PRESETS = [
-  { name: 'Original', value: 'original' },
+  { name: '原始', value: 'original' },
   { name: '1:1', value: '1:1' },
   { name: '4:3', value: '4:3' },
   { name: '16:9', value: '16:9' },
@@ -1629,15 +1629,15 @@ const FrameSettings: React.FC<{
 }> = ({ settings, onUpdate }) => {
   return (
     <div className="flex flex-col gap-3">
-      <span
-        className="text-[11px] font-body font-semibold"
-        style={{ color: 'var(--color-accent-orange)' }}
-      >
-        [frame]
-      </span>
+        <span
+          className="text-[11px] font-body font-semibold"
+          style={{ color: 'var(--color-accent-orange)' }}
+        >
+          图片容器
+        </span>
 
       {/* 背景设置 */}
-      <CollapsibleSection title="background" defaultOpen={true}>
+      <CollapsibleSection title="背景" defaultOpen={true}>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
             type:
@@ -1645,9 +1645,9 @@ const FrameSettings: React.FC<{
           <SelectControl
             value={settings.background.type}
             options={[
-              { name: 'Solid', value: 'solid' },
-              { name: 'Linear', value: 'linear' },
-              { name: 'Radial', value: 'radial' },
+              { name: '纯色', value: 'solid' },
+              { name: '线性渐变', value: 'linear' },
+              { name: '径向渐变', value: 'radial' },
             ]}
             onChange={(type) =>
               onUpdate({
@@ -1667,7 +1667,7 @@ const FrameSettings: React.FC<{
           <>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-                from:
+                起始色:
               </span>
               <div className="flex gap-1">
                 {PRESET_COLORS.slice(0, 4).map((color) => (
@@ -1702,7 +1702,7 @@ const FrameSettings: React.FC<{
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-                to:
+                结束色:
               </span>
               <div className="flex gap-1">
                 {PRESET_COLORS.slice(0, 4).map((color) => (
@@ -1736,7 +1736,7 @@ const FrameSettings: React.FC<{
               </div>
             </div>
             <SliderControl
-              label="angle"
+              label="角度"
               value={settings.background.gradientAngle}
               min={0}
               max={360}
@@ -1784,7 +1784,7 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 边距设置 */}
-      <CollapsibleSection title="padding">
+      <CollapsibleSection title="边距">
         <div className="flex items-center gap-2">
           <button
             onClick={() =>
@@ -1805,7 +1805,7 @@ const FrameSettings: React.FC<{
           </button>
           <div className="flex gap-1 flex-1">
             <EditableField
-              label="t"
+              label="上"
               value={settings.padding.top}
               onChange={(top) =>
                 onUpdate({
@@ -1816,7 +1816,7 @@ const FrameSettings: React.FC<{
               }
             />
             <EditableField
-              label="r"
+              label="右"
               value={settings.padding.right}
               onChange={(right) =>
                 onUpdate({
@@ -1830,7 +1830,7 @@ const FrameSettings: React.FC<{
         </div>
         <div className="flex gap-1 pl-7">
           <EditableField
-            label="b"
+            label="下"
             value={settings.padding.bottom}
             onChange={(bottom) =>
               onUpdate({
@@ -1841,7 +1841,7 @@ const FrameSettings: React.FC<{
             }
           />
           <EditableField
-            label="l"
+            label="左"
             value={settings.padding.left}
             onChange={(left) =>
               onUpdate({
@@ -1855,9 +1855,9 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 圆角设置 */}
-      <CollapsibleSection title="border-radius">
+      <CollapsibleSection title="圆角">
         <SliderControl
-          label="radius"
+          label="圆角"
           value={settings.borderRadius.value}
           min={0}
           max={100}
@@ -1869,7 +1869,7 @@ const FrameSettings: React.FC<{
 
       {/* 阴影设置 */}
       <CollapsibleSection
-        title="shadow"
+        title="阴影"
         enabled={settings.shadow.enabled}
         onToggle={(enabled) =>
           onUpdate({ shadow: { ...settings.shadow, enabled } })
@@ -1882,7 +1882,7 @@ const FrameSettings: React.FC<{
           }
         />
         <SliderControl
-          label="blur"
+          label="模糊"
           value={settings.shadow.blur}
           min={0}
           max={100}
@@ -1892,14 +1892,14 @@ const FrameSettings: React.FC<{
         />
         <div className="flex gap-2">
           <EditableField
-            label="x"
+            label="X"
             value={settings.shadow.offsetX}
             onChange={(offsetX) =>
               onUpdate({ shadow: { ...settings.shadow, offsetX } })
             }
           />
           <EditableField
-            label="y"
+            label="Y"
             value={settings.shadow.offsetY}
             onChange={(offsetY) =>
               onUpdate({ shadow: { ...settings.shadow, offsetY } })
@@ -1932,7 +1932,7 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 比例设置 */}
-      <CollapsibleSection title="aspect-ratio">
+      <CollapsibleSection title="比例">
         <SelectControl
           value={settings.aspectRatio}
           options={ASPECT_RATIO_PRESETS}
@@ -1942,7 +1942,7 @@ const FrameSettings: React.FC<{
 
       {/* 窗口控件设置 */}
       <CollapsibleSection
-        title="window-control"
+        title="窗口控件"
         enabled={settings.windowControl.enabled}
         onToggle={(enabled) =>
           onUpdate({ windowControl: { ...settings.windowControl, enabled } })
@@ -1950,7 +1950,7 @@ const FrameSettings: React.FC<{
       >
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            style:
+            样式:
           </span>
           <div className="flex gap-1">
             <button
@@ -1965,7 +1965,7 @@ const FrameSettings: React.FC<{
                   : 'prop-field-sm'
               }`}
             >
-              <span className="text-[11px] font-body leading-none">macOS</span>
+              <span className="text-[11px] font-body leading-none">macOS 风格</span>
             </button>
             <button
               onClick={() =>
@@ -1979,7 +1979,7 @@ const FrameSettings: React.FC<{
                   : 'prop-field-sm'
               }`}
             >
-              <span className="text-[11px] font-body leading-none">Windows</span>
+              <span className="text-[11px] font-body leading-none">Windows 风格</span>
             </button>
           </div>
         </div>
@@ -1987,7 +1987,7 @@ const FrameSettings: React.FC<{
 
       {/* 水印设置 */}
       <CollapsibleSection
-        title="watermark"
+        title="水印"
         enabled={settings.watermark.enabled}
         onToggle={(enabled) =>
           onUpdate({ watermark: { ...settings.watermark, enabled } })
@@ -1995,7 +1995,7 @@ const FrameSettings: React.FC<{
       >
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            text:
+            文字:
           </span>
           <input
             type="text"
@@ -2005,22 +2005,22 @@ const FrameSettings: React.FC<{
                 watermark: { ...settings.watermark, text: e.target.value },
               })
             }
-            placeholder="Watermark text"
+            placeholder="水印文字"
             className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body bg-transparent text-foreground outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            position:
+            位置:
           </span>
           <SelectControl
             value={settings.watermark.position}
             options={[
-              { name: 'Bottom Right', value: 'bottom-right' },
-              { name: 'Bottom Left', value: 'bottom-left' },
-              { name: 'Top Right', value: 'top-right' },
-              { name: 'Top Left', value: 'top-left' },
-              { name: 'Center', value: 'center' },
+              { name: '右下', value: 'bottom-right' },
+              { name: '左下', value: 'bottom-left' },
+              { name: '右上', value: 'top-right' },
+              { name: '左上', value: 'top-left' },
+              { name: '居中', value: 'center' },
             ]}
             onChange={(position) =>
               onUpdate({
@@ -2033,7 +2033,7 @@ const FrameSettings: React.FC<{
           />
         </div>
         <SliderControl
-          label="opacity"
+          label="透明度"
           value={settings.watermark.opacity}
           min={0}
           max={100}
@@ -2043,7 +2043,7 @@ const FrameSettings: React.FC<{
           }
         />
         <SliderControl
-          label="size"
+          label="大小"
           value={settings.watermark.fontSize}
           min={8}
           max={48}
@@ -2132,40 +2132,36 @@ const PropertiesPanel: React.FC<{
 
   return (
     <aside className="properties-panel w-[350px] h-full flex flex-col gap-4 p-5 shrink-0 overflow-y-auto">
-      <span className="text-[12px] text-[var(--color-editor-comment)] font-body">
-        // properties
-      </span>
-
-      {/* [position] 区域 */}
+      {/* 位置区域 */}
       <div className="flex flex-col gap-[10px]">
         <span
           className="text-[11px] font-body font-semibold"
           style={{ color: 'var(--color-accent-orange)' }}
         >
-          [position]
+          位置
         </span>
         {selectionType === 'arrow' && selectedArrow ? (
           <>
             <div className="flex gap-2">
               <EditableField
-                label="x1"
+                label="起点 X"
                 value={selectedArrow.startX}
                 onChange={(val) => onUpdateArrow({ startX: val })}
               />
               <EditableField
-                label="y1"
+                label="起点 Y"
                 value={selectedArrow.startY}
                 onChange={(val) => onUpdateArrow({ startY: val })}
               />
             </div>
             <div className="flex gap-2">
               <EditableField
-                label="x2"
+                label="终点 X"
                 value={selectedArrow.endX}
                 onChange={(val) => onUpdateArrow({ endX: val })}
               />
               <EditableField
-                label="y2"
+                label="终点 Y"
                 value={selectedArrow.endY}
                 onChange={(val) => onUpdateArrow({ endY: val })}
               />
@@ -2175,24 +2171,24 @@ const PropertiesPanel: React.FC<{
           <>
             <div className="flex gap-2">
               <EditableField
-                label="x"
+                label="X"
                 value={selectedRect.x}
                 onChange={(val) => onUpdateRect({ x: val })}
               />
               <EditableField
-                label="y"
+                label="Y"
                 value={selectedRect.y}
                 onChange={(val) => onUpdateRect({ y: val })}
               />
             </div>
             <div className="flex gap-2">
               <EditableField
-                label="w"
+                label="宽"
                 value={selectedRect.width}
                 onChange={(val) => onUpdateRect({ width: val })}
               />
               <EditableField
-                label="h"
+                label="高"
                 value={selectedRect.height}
                 onChange={(val) => onUpdateRect({ height: val })}
               />
@@ -2202,12 +2198,12 @@ const PropertiesPanel: React.FC<{
           <>
             <div className="flex gap-2">
               <EditableField
-                label="x"
+                label="X"
                 value={selectedText.x}
                 onChange={(val) => onUpdateText({ x: val })}
               />
               <EditableField
-                label="y"
+                label="Y"
                 value={selectedText.y}
                 onChange={(val) => onUpdateText({ y: val })}
               />
@@ -2217,24 +2213,24 @@ const PropertiesPanel: React.FC<{
           <>
             <div className="flex gap-2">
               <EditableField
-                label="x"
+                label="X"
                 value={selectedMosaic.x}
                 onChange={(val) => onUpdateMosaic({ x: val })}
               />
               <EditableField
-                label="y"
+                label="Y"
                 value={selectedMosaic.y}
                 onChange={(val) => onUpdateMosaic({ y: val })}
               />
             </div>
             <div className="flex gap-2">
               <EditableField
-                label="w"
+                label="宽"
                 value={selectedMosaic.width}
                 onChange={(val) => onUpdateMosaic({ width: val })}
               />
               <EditableField
-                label="h"
+                label="高"
                 value={selectedMosaic.height}
                 onChange={(val) => onUpdateMosaic({ height: val })}
               />
@@ -2243,12 +2239,12 @@ const PropertiesPanel: React.FC<{
         ) : (
           <>
             <div className="flex gap-2">
-              <PropField label="x" value="0" />
-              <PropField label="y" value="0" />
+              <PropField label="X" value="0" />
+              <PropField label="Y" value="0" />
             </div>
             <div className="flex gap-2">
-              <PropField label="w" value="0" />
-              <PropField label="h" value="0" />
+              <PropField label="宽" value="0" />
+              <PropField label="高" value="0" />
             </div>
           </>
         )}
@@ -2261,21 +2257,21 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            [arrow_style]
+            箭头样式
           </span>
           <ColorPicker
             color={selectedArrow.color}
             onChange={handleArrowColorChange}
           />
           <SliderControl
-            label="stroke"
+            label="线宽"
             value={selectedArrow.strokeWidth}
             min={1}
             max={10}
             onChange={handleArrowStrokeWidthChange}
           />
           <SliderControl
-            label="head"
+            label="箭头大小"
             value={selectedArrow.headSize}
             min={5}
             max={30}
@@ -2292,21 +2288,21 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            [rect_style]
+            矩形样式
           </span>
           <ColorPicker
             color={selectedRect.color}
             onChange={handleRectColorChange}
           />
           <SliderControl
-            label="stroke"
+            label="线宽"
             value={selectedRect.strokeWidth}
             min={1}
             max={10}
             onChange={handleRectStrokeWidthChange}
           />
           <SliderControl
-            label="fill"
+            label="填充"
             value={selectedRect.fillOpacity}
             min={0}
             max={100}
@@ -2324,14 +2320,14 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            [text_style]
+            文字样式
           </span>
           <ColorPicker
             color={selectedText.color}
             onChange={handleTextColorChange}
           />
           <SliderControl
-            label="size"
+            label="字号"
             value={selectedText.fontSize}
             min={8}
             max={120}
@@ -2352,17 +2348,17 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            [mosaic_style]
+            马赛克样式
           </span>
           <SliderControl
-            label="block"
+            label="方块大小"
             value={selectedMosaic.blockSize}
             min={5}
             max={50}
             onChange={handleBlockSizeChange}
           />
           <SliderControl
-            label="opacity"
+            label="透明度"
             value={selectedMosaic.opacity}
             min={0}
             max={100}
@@ -2388,13 +2384,13 @@ const PropertiesPanel: React.FC<{
             className="text-[12px] font-body font-semibold leading-none"
             style={{ color: '#0D0D0D' }}
           >
-            $ export_image
+            导出图片
           </span>
         </button>
         <button className="copy-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer">
           <ClipboardCopy size={16} className="text-[var(--color-editor-hint)]" />
           <span className="text-[12px] font-body font-semibold leading-none text-[var(--color-editor-hint)]">
-            $ copy_to_clipboard
+            复制到剪贴板
           </span>
         </button>
       </div>

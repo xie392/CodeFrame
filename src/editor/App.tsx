@@ -1319,25 +1319,6 @@ const Toolbar: React.FC<{
   </aside>
 );
 
-/** 数值输入字段（只读显示） */
-const PropField: React.FC<{
-  label: string;
-  value: string;
-}> = ({ label, value }) => (
-  <div className="flex flex-col gap-1 flex-1">
-    <span className="text-[10px] text-[var(--color-editor-hint)] font-body leading-none">
-      {label}
-    </span>
-    <div
-      className="prop-field h-[32px] rounded-[8px] px-[10px] flex items-center"
-    >
-      <span className="text-[12px] text-foreground font-body leading-none">
-        {value}
-      </span>
-    </div>
-  </div>
-);
-
 /** 可编辑的数值输入字段 */
 const EditableField: React.FC<{
   label: string;
@@ -1761,13 +1742,6 @@ const FrameSettings: React.FC<{
 }> = ({ settings, onUpdate }) => {
   return (
     <div className="flex flex-col gap-3">
-        <span
-          className="text-[11px] font-body font-semibold"
-          style={{ color: 'var(--color-accent-orange)' }}
-        >
-          图片容器
-        </span>
-
       {/* 背景设置 */}
       <CollapsibleSection title="背景" defaultOpen={true}>
         <div className="flex items-center gap-2">
@@ -2700,124 +2674,6 @@ const PropertiesPanel: React.FC<{
     <aside className="properties-panel w-[350px] h-full flex flex-col shrink-0">
       {/* 可滚动内容区域 */}
       <div className="flex-1 flex flex-col gap-4 p-5 overflow-y-auto overflow-x-hidden">
-      {/* 位置区域 */}
-      <div className="flex flex-col gap-[10px]">
-        <span
-          className="text-[11px] font-body font-semibold"
-          style={{ color: 'var(--color-accent-orange)' }}
-        >
-          位置
-        </span>
-        {selectionType === 'arrow' && selectedArrow ? (
-          <>
-            <div className="flex gap-2">
-              <EditableField
-                label="起点 X"
-                value={selectedArrow.startX}
-                onChange={(val) => onUpdateArrow({ startX: val })}
-              />
-              <EditableField
-                label="起点 Y"
-                value={selectedArrow.startY}
-                onChange={(val) => onUpdateArrow({ startY: val })}
-              />
-            </div>
-            <div className="flex gap-2">
-              <EditableField
-                label="终点 X"
-                value={selectedArrow.endX}
-                onChange={(val) => onUpdateArrow({ endX: val })}
-              />
-              <EditableField
-                label="终点 Y"
-                value={selectedArrow.endY}
-                onChange={(val) => onUpdateArrow({ endY: val })}
-              />
-            </div>
-          </>
-        ) : selectionType === 'rect' && selectedRect ? (
-          <>
-            <div className="flex gap-2">
-              <EditableField
-                label="X"
-                value={selectedRect.x}
-                onChange={(val) => onUpdateRect({ x: val })}
-              />
-              <EditableField
-                label="Y"
-                value={selectedRect.y}
-                onChange={(val) => onUpdateRect({ y: val })}
-              />
-            </div>
-            <div className="flex gap-2">
-              <EditableField
-                label="宽"
-                value={selectedRect.width}
-                onChange={(val) => onUpdateRect({ width: val })}
-              />
-              <EditableField
-                label="高"
-                value={selectedRect.height}
-                onChange={(val) => onUpdateRect({ height: val })}
-              />
-            </div>
-          </>
-        ) : selectionType === 'text' && selectedText ? (
-          <>
-            <div className="flex gap-2">
-              <EditableField
-                label="X"
-                value={selectedText.x}
-                onChange={(val) => onUpdateText({ x: val })}
-              />
-              <EditableField
-                label="Y"
-                value={selectedText.y}
-                onChange={(val) => onUpdateText({ y: val })}
-              />
-            </div>
-          </>
-        ) : selectionType === 'mosaic' && selectedMosaic ? (
-          <>
-            <div className="flex gap-2">
-              <EditableField
-                label="X"
-                value={selectedMosaic.x}
-                onChange={(val) => onUpdateMosaic({ x: val })}
-              />
-              <EditableField
-                label="Y"
-                value={selectedMosaic.y}
-                onChange={(val) => onUpdateMosaic({ y: val })}
-              />
-            </div>
-            <div className="flex gap-2">
-              <EditableField
-                label="宽"
-                value={selectedMosaic.width}
-                onChange={(val) => onUpdateMosaic({ width: val })}
-              />
-              <EditableField
-                label="高"
-                value={selectedMosaic.height}
-                onChange={(val) => onUpdateMosaic({ height: val })}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex gap-2">
-              <PropField label="X" value="0" />
-              <PropField label="Y" value="0" />
-            </div>
-            <div className="flex gap-2">
-              <PropField label="宽" value="0" />
-              <PropField label="高" value="0" />
-            </div>
-          </>
-        )}
-      </div>
-
       {/* [style] 区域 */}
       {selectionType === 'arrow' && selectedArrow ? (
         <div className="flex flex-col gap-[10px]">

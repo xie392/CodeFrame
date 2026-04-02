@@ -174,6 +174,8 @@ const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
     position: 'bottom-right',
     opacity: 50,
     fontSize: 14,
+    imageUrl: null,
+    imageSize: 64,
   },
 };
 
@@ -2455,22 +2457,104 @@ const FrameSettings: React.FC<{
           onUpdate({ watermark: { ...settings.watermark, enabled } })
         }
       >
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            文字:
-          </span>
-          <input
-            type="text"
-            value={settings.watermark.text}
-            onChange={(e) =>
-              onUpdate({
-                watermark: { ...settings.watermark, text: e.target.value },
-              })
-            }
-            placeholder="水印文字"
-            className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body bg-transparent text-foreground outline-none"
-          />
+        {/* 图片水印上传区域 */}
+        <div className="mb-2">
+          <div
+            className={`relative border border-dashed rounded-[6px] p-2 text-center cursor-pointer transition-colors ${
+              settings.watermark.imageUrl
+                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
+                : 'border-[var(--color-editor-border)] hover:border-[var(--color-accent)]'
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const file = e.dataTransfer.files[0];
+              if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  onUpdate({
+                    watermark: {
+                      ...settings.watermark,
+                      imageUrl: ev.target?.result as string,
+                    },
+                  });
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/png,image/jpeg,image/webp';
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    onUpdate({
+                      watermark: {
+                        ...settings.watermark,
+                        imageUrl: ev.target?.result as string,
+                      },
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              };
+              input.click();
+            }}
+          >
+            {settings.watermark.imageUrl ? (
+              <div className="flex items-center justify-center gap-2">
+                <img
+                  src={settings.watermark.imageUrl}
+                  alt="水印图片"
+                  className="h-8 max-w-16 object-contain"
+                />
+                <button
+                  className="text-[11px] text-red-400 hover:text-red-300"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdate({
+                      watermark: { ...settings.watermark, imageUrl: null },
+                    });
+                  }}
+                >
+                  删除
+                </button>
+              </div>
+            ) : (
+              <span className="text-[11px] text-[var(--color-editor-hint)] font-body">
+                点击或拖拽上传图片水印
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* 文字水印输入（仅在没有图片水印时显示） */}
+        {!settings.watermark.imageUrl && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+              文字:
+            </span>
+            <input
+              type="text"
+              value={settings.watermark.text}
+              onChange={(e) =>
+                onUpdate({
+                  watermark: { ...settings.watermark, text: e.target.value },
+                })
+              }
+              placeholder="水印文字"
+              className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body bg-transparent text-foreground outline-none"
+            />
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
             位置:
@@ -2482,7 +2566,6 @@ const FrameSettings: React.FC<{
               { name: '左下', value: 'bottom-left' },
               { name: '右上', value: 'top-right' },
               { name: '左上', value: 'top-left' },
-              { name: '居中', value: 'center' },
             ]}
             onChange={(position) =>
               onUpdate({
@@ -2504,15 +2587,28 @@ const FrameSettings: React.FC<{
             onUpdate({ watermark: { ...settings.watermark, opacity } })
           }
         />
-        <SliderControl
-          label="大小"
-          value={settings.watermark.fontSize}
-          min={8}
-          max={48}
-          onChange={(fontSize) =>
-            onUpdate({ watermark: { ...settings.watermark, fontSize } })
-          }
-        />
+        {settings.watermark.imageUrl ? (
+          <SliderControl
+            label="大小"
+            value={settings.watermark.imageSize}
+            min={32}
+            max={200}
+            unit="px"
+            onChange={(imageSize) =>
+              onUpdate({ watermark: { ...settings.watermark, imageSize } })
+            }
+          />
+        ) : (
+          <SliderControl
+            label="大小"
+            value={settings.watermark.fontSize}
+            min={8}
+            max={48}
+            onChange={(fontSize) =>
+              onUpdate({ watermark: { ...settings.watermark, fontSize } })
+            }
+          />
+        )}
       </CollapsibleSection>
     </div>
   );
@@ -2953,6 +3049,101 @@ const getBackgroundStyle = (bg: ImageFrameSettings['background']): React.CSSProp
     };
   }
   return {};
+};
+
+/** 根据背景颜色计算水印颜色（自动适配） */
+const getWatermarkColor = (bg: ImageFrameSettings['background']): string => {
+  let r = 0, g = 0, b = 0;
+  
+  if (bg.type === 'solid' && bg.color !== 'transparent') {
+    // 解析纯色
+    const hex = bg.color.replace('#', '');
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  } else if (bg.type === 'linear' || bg.type === 'radial') {
+    // 取渐变色的平均值
+    const c1 = bg.gradientColors[0].replace('#', '');
+    const c2 = bg.gradientColors[1].replace('#', '');
+    const r1 = parseInt(c1.substring(0, 2), 16);
+    const g1 = parseInt(c1.substring(2, 4), 16);
+    const b1 = parseInt(c1.substring(4, 6), 16);
+    const r2 = parseInt(c2.substring(0, 2), 16);
+    const g2 = parseInt(c2.substring(2, 4), 16);
+    const b2 = parseInt(c2.substring(4, 6), 16);
+    r = (r1 + r2) / 2;
+    g = (g1 + g2) / 2;
+    b = (b1 + b2) / 2;
+  }
+  
+  // 计算亮度
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
+  
+  // 深色背景用白色，浅色背景用黑色
+  return luminance < 128 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
+};
+
+/** 水印渲染组件 */
+const WatermarkRenderer: React.FC<{
+  watermark: ImageFrameSettings['watermark'];
+  bgColor: ImageFrameSettings['background'];
+}> = ({ watermark, bgColor }) => {
+  if (!watermark.enabled) return null;
+  
+  const opacity = watermark.opacity / 100;
+  
+  // 位置样式映射
+  const positionStyles: Record<string, React.CSSProperties> = {
+    'top-left': { top: '8px', left: '8px' },
+    'top-right': { top: '8px', right: '8px' },
+    'bottom-left': { bottom: '8px', left: '8px' },
+    'bottom-right': { bottom: '8px', right: '8px' },
+  };
+  
+  const positionStyle = positionStyles[watermark.position] || positionStyles['bottom-right'];
+  
+  // 图片水印
+  if (watermark.imageUrl) {
+    return (
+      <img
+        src={watermark.imageUrl}
+        alt="水印"
+        style={{
+          position: 'absolute',
+          ...positionStyle,
+          width: watermark.imageSize,
+          height: watermark.imageSize,
+          objectFit: 'contain',
+          opacity,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      />
+    );
+  }
+  
+  // 文字水印
+  if (!watermark.text) return null;
+  
+  const textColor = getWatermarkColor(bgColor);
+  
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        ...positionStyle,
+        fontSize: watermark.fontSize,
+        fontFamily: 'JetBrains Mono, IBM Plex Mono, monospace',
+        color: textColor,
+        opacity,
+        pointerEvents: 'none',
+        userSelect: 'none',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {watermark.text}
+    </div>
+  );
 };
 
 /** 画布中显示的图片 */
@@ -5223,6 +5414,7 @@ const App: React.FC = () => {
                           ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
                           : 'none',
                         overflow: 'hidden',
+                        position: 'relative',
                       }}
                     >
                       <div style={{
@@ -5243,6 +5435,8 @@ const App: React.FC = () => {
                       }}>
                         <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
                       </div>
+                      {/* 水印 */}
+                      <WatermarkRenderer watermark={frameSettings.watermark} bgColor={frameSettings.background} />
                     </div>
                   );
                 }
@@ -5278,6 +5472,7 @@ const App: React.FC = () => {
                         ? `0 ${frameSettings.shadow.offsetY}px ${frameSettings.shadow.blur}px ${frameSettings.shadow.color}40`
                         : 'none',
                       overflow: 'hidden',
+                      position: 'relative',
                       // 仅在非 auto 模式下设置容器尺寸
                       ...(isAuto ? {} : {
                         width: containerSize.width,
@@ -5312,6 +5507,8 @@ const App: React.FC = () => {
                         <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
                       </div>
                     </div>
+                    {/* 水印 */}
+                    <WatermarkRenderer watermark={frameSettings.watermark} bgColor={frameSettings.background} />
                   </div>
                 );
               })()}

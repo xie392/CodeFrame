@@ -151,9 +151,12 @@ export interface ImageFrameSettings {
   watermark: {
     enabled: boolean;
     text: string;
-    position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
+    position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
     opacity: number;
     fontSize: number;
+    // 图片水印
+    imageUrl: string | null;
+    imageSize: number; // 图片水印大小，32-200px
   };
 }
 

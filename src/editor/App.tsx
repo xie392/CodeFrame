@@ -1364,7 +1364,8 @@ const EditableField: React.FC<{
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="prop-field h-[32px] rounded-[8px] px-[10px] flex items-center bg-transparent text-[12px] text-foreground font-body leading-none outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+        className="prop-field h-[32px] rounded-[8px] px-[10px] flex items-center text-[12px] text-foreground font-body leading-none outline-none focus:ring-1 focus:ring-[var(--color-field-focus)]"
+        style={{ backgroundColor: '#FAFAFA' }}
       />
     </div>
   );
@@ -1387,19 +1388,23 @@ const ColorPicker: React.FC<{
           <button
             key={presetColor}
             onClick={() => onChange(presetColor)}
-            className={`w-[20px] h-[20px] rounded-[4px] shrink-0 cursor-pointer transition-transform hover:scale-110 ${
-              color === presetColor ? 'ring-2 ring-blue-500 ring-offset-1' : ''
-            }`}
-            style={{ backgroundColor: presetColor }}
+            className="w-6 h-6 rounded-full shrink-0 cursor-pointer transition-transform hover:scale-110"
+            style={{
+              backgroundColor: presetColor,
+              border: color === presetColor
+                ? '2px solid var(--color-field-focus)'
+                : '1px solid #d1d5db',
+            }}
           />
         ))}
         {/* 自定义颜色选择器 */}
         <button
           onClick={() => colorInputRef.current?.click()}
-          className="w-[20px] h-[20px] rounded-[4px] shrink-0 cursor-pointer overflow-hidden border border-[var(--color-editor-separator)]"
+          className="w-6 h-6 rounded-full shrink-0 cursor-pointer overflow-hidden"
           style={{
             background:
               'linear-gradient(135deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080)',
+            border: '1px solid #d1d5db',
           }}
         >
           <input
@@ -1434,7 +1439,8 @@ const SliderControl: React.FC<{
       max={max}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="flex-1 h-1 accent-emerald-500 cursor-pointer"
+      className="flex-1 h-1 cursor-pointer"
+      style={{ accentColor: 'var(--color-field-focus)' }}
     />
     <span className="text-[11px] text-foreground font-body leading-none w-10 text-right tabular-nums">
       {value}
@@ -1639,16 +1645,18 @@ const ToggleSwitch: React.FC<{
 }> = ({ enabled, onChange }) => (
   <button
     onClick={() => onChange(!enabled)}
-    className={`w-[36px] h-[20px] rounded-full relative cursor-pointer transition-colors border ${
-      enabled
-        ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-        : 'bg-transparent border-[var(--color-editor-hint)]'
-    }`}
+    className="w-9 h-5 rounded-full relative cursor-pointer transition-colors shrink-0"
+    style={{
+      backgroundColor: enabled ? 'var(--color-switch-on)' : 'var(--color-switch-off)',
+    }}
   >
     <div
-      className={`w-[16px] h-[16px] rounded-full absolute top-[1px] transition-transform ${
-        enabled ? 'translate-x-[18px] bg-black' : 'translate-x-[1px] bg-[var(--color-editor-hint)]'
-      }`}
+      className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+      style={{
+        backgroundColor: '#fff',
+        left: enabled ? '18px' : '2px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+      }}
     />
   </button>
 );
@@ -1662,10 +1670,11 @@ const SelectControl: React.FC<{
   <select
     value={value}
     onChange={(e) => onChange(e.target.value)}
-    className="prop-field-sm h-[28px] px-2 rounded-[6px] text-[11px] font-body bg-transparent text-foreground cursor-pointer outline-none"
+    className="prop-field-sm h-[28px] px-2 rounded-[6px] text-[11px] font-body text-foreground cursor-pointer outline-none"
+    style={{ backgroundColor: '#FAFAFA' }}
   >
     {options.map((opt) => (
-      <option key={opt.value} value={opt.value} className="bg-[var(--color-bg)]">
+      <option key={opt.value} value={opt.value} className="bg-white">
         {opt.name}
       </option>
     ))}
@@ -2358,7 +2367,8 @@ const FrameSettings: React.FC<{
                 })
               }
               placeholder="宽"
-              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body bg-transparent text-foreground outline-none text-center"
+              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body text-foreground outline-none text-center"
+              style={{ backgroundColor: '#FAFAFA' }}
             />
             <span className="text-[11px] text-[var(--color-editor-hint)] font-body">:</span>
             <input
@@ -2375,7 +2385,8 @@ const FrameSettings: React.FC<{
                 })
               }
               placeholder="高"
-              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body bg-transparent text-foreground outline-none text-center"
+              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body text-foreground outline-none text-center"
+              style={{ backgroundColor: '#FAFAFA' }}
             />
           </div>
         )}
@@ -2527,7 +2538,8 @@ const FrameSettings: React.FC<{
                 })
               }
               placeholder="水印文字"
-              className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body bg-transparent text-foreground outline-none"
+              className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body text-foreground outline-none"
+              style={{ backgroundColor: '#FAFAFA' }}
             />
           </div>
         )}
@@ -2671,7 +2683,7 @@ const PropertiesPanel: React.FC<{
   };
 
   return (
-    <aside className="properties-panel w-[350px] h-full flex flex-col shrink-0">
+    <aside className="properties-panel w-[400px] h-full flex flex-col shrink-0">
       {/* 可滚动内容区域 */}
       <div className="flex-1 flex flex-col gap-4 p-5 overflow-y-auto overflow-x-hidden">
       {/* [style] 区域 */}
@@ -2810,13 +2822,13 @@ const PropertiesPanel: React.FC<{
           disabled={isExporting}
         >
           {isExporting ? (
-            <Loader2 size={16} className="animate-spin" style={{ color: '#0D0D0D' }} />
+            <Loader2 size={16} className="animate-spin" style={{ color: '#FFFFFF' }} />
           ) : (
-            <Download size={16} style={{ color: '#0D0D0D' }} />
+            <Download size={16} style={{ color: '#FFFFFF' }} />
           )}
           <span
             className="text-[12px] font-body font-semibold leading-none"
-            style={{ color: '#0D0D0D' }}
+            style={{ color: '#FFFFFF' }}
           >
             {isExporting ? '导出中...' : '导出图片'}
           </span>
@@ -2827,11 +2839,14 @@ const PropertiesPanel: React.FC<{
           disabled={isExporting}
         >
           {copied ? (
-            <Check size={16} className="text-emerald-500" />
+            <Check size={16} style={{ color: 'var(--color-field-focus)' }} />
           ) : (
             <ClipboardCopy size={16} className="text-[var(--color-editor-hint)]" />
           )}
-          <span className={`text-[12px] font-body font-semibold leading-none ${copied ? 'text-emerald-500' : 'text-[var(--color-editor-hint)]'}`}>
+          <span
+            className="text-[12px] font-body font-semibold leading-none"
+            style={{ color: copied ? 'var(--color-field-focus)' : 'var(--color-editor-hint)' }}
+          >
             {copied ? '已复制' : '复制到剪贴板'}
           </span>
         </button>
@@ -5653,7 +5668,7 @@ const App: React.FC = () => {
                 <span className="text-[12px] text-white">
                   {cropArea ? '拖拽调整裁剪区域，' : '拖拽绘制裁剪区域，'}
                 </span>
-                <span className="text-[12px] text-emerald-400">
+                <span className="text-[12px]" style={{ color: '#a5b4fc' }}>
                   Enter
                 </span>
                 <span className="text-[12px] text-white">确认</span>
@@ -5698,7 +5713,8 @@ const App: React.FC = () => {
                 onChange={(e) =>
                   handleSlider(parseFloat(e.target.value))
                 }
-                className="w-20 accent-emerald-500"
+                className="w-20"
+                style={{ accentColor: 'var(--color-field-focus)' }}
               />
               <button
                 onClick={zoomIn}

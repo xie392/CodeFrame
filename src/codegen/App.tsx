@@ -31,6 +31,10 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@shared/components/ui/popover';
+import { Input } from '@shared/components/ui/input';
+import { Select } from '@shared/components/ui/select';
+import { Slider } from '@shared/components/ui/slider';
+import { Switch } from '@shared/components/ui/switch';
 import {
   THEMES,
   type ThemeConfig,
@@ -125,11 +129,17 @@ const PaddingInput: React.FC<{
         );
         onChange(v);
       }}
-      onFocus={(e) => e.target.select()}
-      className="w-full h-6 text-center text-[11px] tabular-nums border rounded outline-none focus:border-emerald-400 transition-colors"
+      onFocus={(e) => {
+        e.target.select();
+        e.target.style.borderColor = 'var(--color-field-focus)';
+      }}
+      onBlur={(e) => {
+        e.target.style.borderColor = '#d1d5db';
+      }}
+      className="w-full h-6 text-center text-[11px] tabular-nums border rounded outline-none transition-colors"
       style={{
         backgroundColor: '#FAFAFA',
-        borderColor: 'rgba(0,0,0,0.1)',
+        borderColor: '#d1d5db',
         color: '#333',
       }}
     />
@@ -147,30 +157,6 @@ const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 );
 
 // ---------------------------------------------------------------------------
-// ToggleSwitch 子组件
-// ---------------------------------------------------------------------------
-
-const ToggleSwitch: React.FC<{
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}> = ({ checked, onChange }) => (
-  <button
-    className="w-9 h-5 rounded-full relative transition-colors shrink-0"
-    style={{
-      backgroundColor: checked ? '#00D4AA' : '#D1D5DB',
-    }}
-    onClick={() => onChange(!checked)}
-  >
-    <div
-      className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
-      style={{
-        backgroundColor: '#fff',
-        left: checked ? '18px' : '2px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-      }}
-    />
-  </button>
-);
 
 // ---------------------------------------------------------------------------
 // SliderControl 子组件
@@ -192,7 +178,8 @@ const SliderControl: React.FC<{
       step={step}
       value={value}
       onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="flex-1 accent-emerald-500 h-1"
+      className="flex-1 h-1"
+      style={{ accentColor: 'var(--color-field-focus)' }}
     />
     <span
       className="text-[10px] w-8 text-right tabular-nums shrink-0"
@@ -527,33 +514,24 @@ const App: React.FC = () => {
       <aside
         className="w-[240px] h-full shrink-0 flex flex-col gap-3 p-4 overflow-y-auto"
         style={{
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.33) 100%)',
-          border: '1px solid rgba(255,255,255,0.44)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid rgba(0,0,0,0.06)',
         }}
       >
         {/* Theme Selector */}
         <div className="flex flex-col gap-2 shrink-0">
           <SectionLabel>主题</SectionLabel>
-          <select
+          <Select
             value={selectedTheme}
             onChange={(e) => setSelectedTheme(e.target.value)}
-            className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
-            style={{
-              backgroundColor: '#FAFAFA',
-              borderColor: 'rgba(0,0,0,0.1)',
-              color: '#333',
-            }}
+            selectSize="sm"
           >
             {THEMES.map((theme) => (
               <option key={theme.id} value={theme.id}>
                 {theme.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Background Selector */}
@@ -565,13 +543,13 @@ const App: React.FC = () => {
                 <Tooltip key={bg.id}>
                   <TooltipTrigger asChild>
                     <button
-                      className="w-full aspect-square shrink-0 rounded-md relative overflow-hidden"
+                      className="w-full aspect-square shrink-0 rounded-full relative overflow-hidden"
                       style={{
                         background: bg.preview,
                         border:
                           selectedBg === bg.id
-                            ? '2px solid #FF6B35'
-                            : '2px solid transparent',
+                            ? '2px solid var(--color-field-focus)'
+                            : '2px solid #d1d5db',
                       }}
                       onClick={() => setSelectedBg(bg.id)}
                     >
@@ -596,12 +574,12 @@ const App: React.FC = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <label
-                    className="w-full aspect-square shrink-0 rounded-md flex items-center justify-center cursor-pointer relative overflow-hidden"
+                    className="w-full aspect-square shrink-0 rounded-full flex items-center justify-center cursor-pointer relative overflow-hidden"
                     style={{
                       border:
                         selectedBg === 'custom'
-                          ? '2px solid #FF6B35'
-                          : '2px solid rgba(0,0,0,0.08)',
+                          ? '2px solid var(--color-field-focus)'
+                          : '2px solid #d1d5db',
                     }}
                   >
                     <Palette size={12} style={{ color: '#999', pointerEvents: 'none' }} />
@@ -725,13 +703,13 @@ const App: React.FC = () => {
             <span className="text-[10px]" style={{ color: '#999' }}>
               标题栏
             </span>
-            <ToggleSwitch checked={showHeader} onChange={setShowHeader} />
+            <Switch checked={showHeader} onChange={setShowHeader} />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[10px]" style={{ color: '#999' }}>
               行号
             </span>
-            <ToggleSwitch
+            <Switch
               checked={showLineNumbers}
               onChange={setShowLineNumbers}
             />
@@ -740,15 +718,15 @@ const App: React.FC = () => {
             <span className="text-[10px]" style={{ color: '#999' }}>
               阴影
             </span>
-            <ToggleSwitch checked={shadowEnabled} onChange={setShadowEnabled} />
+            <Switch checked={shadowEnabled} onChange={setShadowEnabled} />
           </div>
           {shadowEnabled && (
-            <SliderControl
+            <Slider
+              value={shadowIntensity}
+              onChange={setShadowIntensity}
               min={0}
               max={100}
-              value={shadowIntensity}
-              displayValue={`${shadowIntensity}%`}
-              onChange={setShadowIntensity}
+              unit="%"
             />
           )}
         </div>
@@ -867,28 +845,20 @@ const App: React.FC = () => {
         <div className="flex flex-col gap-2 shrink-0">
           <SectionLabel>字体</SectionLabel>
           <div className="w-full flex flex-col gap-1.5">
-            <select
+            <Select
               value={selectedFont}
               onChange={(e) => setSelectedFont(e.target.value)}
-              className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
-              style={{
-                backgroundColor: '#FAFAFA',
-                borderColor: 'rgba(0,0,0,0.1)',
-                color: '#333',
-                fontFamily: selectedFontConfig.family,
-              }}
+              selectSize="sm"
+              style={{ fontFamily: selectedFontConfig.family }}
             >
               {FONT_OPTIONS.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.label}
                 </option>
               ))}
-            </select>
-            <SliderControl
-              min={12}
-              max={24}
+            </Select>
+            <Slider
               value={fontSize}
-              displayValue={`${fontSize}px`}
               onChange={(v) => {
                 setFontSize(v);
                 if (!manualResized.current) {
@@ -898,6 +868,9 @@ const App: React.FC = () => {
                   }));
                 }
               }}
+              min={12}
+              max={24}
+              unit="px"
             />
           </div>
         </div>
@@ -906,31 +879,26 @@ const App: React.FC = () => {
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
             <SectionLabel>水印</SectionLabel>
-            <ToggleSwitch
+            <Switch
               checked={watermarkEnabled}
               onChange={setWatermarkEnabled}
             />
           </div>
           {watermarkEnabled && (
             <>
-              <input
+              <Input
                 type="text"
                 value={watermarkText}
                 onChange={(e) => setWatermarkText(e.target.value)}
                 placeholder="水印文字..."
-                className="w-full h-7 text-[11px] border rounded px-2 outline-none focus:border-emerald-400 transition-colors"
-                style={{
-                  backgroundColor: '#FAFAFA',
-                  borderColor: 'rgba(0,0,0,0.1)',
-                  color: '#333',
-                }}
+                inputSize="sm"
               />
-              <SliderControl
+              <Slider
+                value={watermarkOpacity}
+                onChange={setWatermarkOpacity}
                 min={10}
                 max={90}
-                value={watermarkOpacity}
-                displayValue={`${watermarkOpacity}%`}
-                onChange={setWatermarkOpacity}
+                unit="%"
               />
             </>
           )}
@@ -945,12 +913,12 @@ const App: React.FC = () => {
             onClick={handleExportImage}
             disabled={isExporting}
             className="flex-1 h-11 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60"
-            style={{ backgroundColor: '#00D4AA' }}
+            style={{ backgroundColor: 'var(--color-field-focus)' }}
           >
-            <Image size={16} style={{ color: '#0D0D0D' }} />
+            <Image size={16} style={{ color: '#FFFFFF' }} />
             <span
               className="text-[13px] font-semibold leading-none"
-              style={{ color: '#0D0D0D' }}
+              style={{ color: '#FFFFFF' }}
             >
               {isExporting ? '导出中...' : '导出图片'}
             </span>
@@ -964,9 +932,9 @@ const App: React.FC = () => {
                   style={{ backgroundColor: 'rgba(0,0,0,0.08)' }}
                 >
                   {copied ? (
-                    <Check size={16} style={{ color: '#00D4AA' }} />
+                    <Check size={16} style={{ color: 'var(--color-field-focus)' }} />
                   ) : (
-                    <ClipboardCopy size={16} style={{ color: '#00D4AA' }} />
+                    <ClipboardCopy size={16} style={{ color: 'var(--color-field-focus)' }} />
                   )}
                 </button>
               </TooltipTrigger>
@@ -1172,7 +1140,8 @@ const App: React.FC = () => {
             step={0.01}
             value={scale}
             onChange={(e) => handleSlider(parseFloat(e.target.value))}
-            className="w-20 accent-emerald-500"
+            className="w-20"
+            style={{ accentColor: 'var(--color-field-focus)' }}
           />
           <button
             onClick={zoomIn}

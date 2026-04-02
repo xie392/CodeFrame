@@ -3475,30 +3475,50 @@ const App: React.FC = () => {
     const container = exportContainerRef.current;
     if (!container || !imageData) return null;
 
-    // 获取图片显示尺寸（包含 padding）
+    // 获取图片显示尺寸
     const displaySize = imageDisplaySizeRef.current;
     if (!displaySize) return null;
 
-    // 计算容器总尺寸（图片 + padding）
-    const padW = frameSettings.padding.linked
-      ? frameSettings.padding.top * 2
-      : frameSettings.padding.left + frameSettings.padding.right;
-    const padH = frameSettings.padding.linked
-      ? frameSettings.padding.top * 2
-      : frameSettings.padding.top + frameSettings.padding.bottom;
-    const totalW = displaySize.width + padW;
-    const totalH = displaySize.height + padH;
+    // 计算 padding
+    const padLeft = frameSettings.padding.linked
+      ? frameSettings.padding.top
+      : frameSettings.padding.left;
+    const padTop = frameSettings.padding.linked
+      ? frameSettings.padding.top
+      : frameSettings.padding.top;
+    const padRight = frameSettings.padding.linked
+      ? frameSettings.padding.top
+      : frameSettings.padding.right;
+    const padBottom = frameSettings.padding.linked
+      ? frameSettings.padding.top
+      : frameSettings.padding.bottom;
+    const padW = padLeft + padRight;
+    const padH = padTop + padBottom;
+
+    // 计算容器尺寸（考虑 aspectRatio）
+    const containerSize = calculateAspectRatioSize(
+      frameSettings.aspectRatio,
+      displaySize.width,
+      displaySize.height,
+      frameSettings.customAspectRatio
+    );
+
+    // auto 模式下，容器尺寸 = 图片尺寸 + padding（由内容撑开）
+    // 非 auto 模式下，容器尺寸 = containerSize（已含 padding，因为 box-sizing: border-box）
+    const isAuto = frameSettings.aspectRatio === 'auto';
+    const canvasWidth = isAuto ? containerSize.width + padW : containerSize.width;
+    const canvasHeight = isAuto ? containerSize.height + padH : containerSize.height;
 
     // 创建临时 canvas 用于绘制标注
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = totalW;
-    tempCanvas.height = totalH;
+    tempCanvas.width = canvasWidth;
+    tempCanvas.height = canvasHeight;
     const tempCtx = tempCanvas.getContext('2d');
     let annotationImg: HTMLImageElement | null = null;
 
     if (tempCtx) {
-      // 标注坐标是相对于图片左上角的，需要偏移 padding
-      tempCtx.translate(frameSettings.padding.linked ? frameSettings.padding.top : frameSettings.padding.left, frameSettings.padding.linked ? frameSettings.padding.top : frameSettings.padding.top);
+      // 标注坐标是相对于图片容器左上角的（已包含 padding 和居中偏移）
+      // 不需要额外的 translate 偏移
 
       // 绘制标注（不带选中状态）
       rectsRef.current.forEach((rect) => {
@@ -3528,7 +3548,7 @@ const App: React.FC = () => {
     }
 
     return { container, annotationImg };
-  }, [imageData, frameSettings.padding]);
+  }, [imageData, frameSettings.padding, frameSettings.aspectRatio, frameSettings.customAspectRatio]);
 
   // 清理导出：移除临时元素
   const cleanupExport = useCallback((annotationImg: HTMLImageElement | null) => {

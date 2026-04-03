@@ -8,7 +8,7 @@
  */
 
 import { useCallback } from 'react';
-import type { CropArea } from '../types';
+import type { CropArea, ArrowShape, RectShape, TextShape, MosaicShape, ToolId } from '../types';
 
 /**
  * 尺寸信息
@@ -24,10 +24,10 @@ interface Size {
 interface CropCallbacks {
   pushHistory: () => void;
   setImageData: (data: string) => void;
-  setArrows: (updater: (prev: unknown[]) => unknown[]) => void;
-  setRects: (updater: (prev: unknown[]) => unknown[]) => void;
-  setTexts: (updater: (prev: unknown[]) => unknown[]) => void;
-  setMosaics: (updater: (prev: unknown[]) => unknown[]) => void;
+  setArrows: (updater: (prev: ArrowShape[]) => ArrowShape[]) => void;
+  setRects: (updater: (prev: RectShape[]) => RectShape[]) => void;
+  setTexts: (updater: (prev: TextShape[]) => TextShape[]) => void;
+  setMosaics: (updater: (prev: MosaicShape[]) => MosaicShape[]) => void;
   setSelectedArrowIds: (ids: string[]) => void;
   setSelectedRectIds: (ids: string[]) => void;
   setSelectedTextIds: (ids: string[]) => void;
@@ -35,7 +35,7 @@ interface CropCallbacks {
   setCropArea: (area: CropArea | null) => void;
   setImageNaturalSize: (size: Size) => void;
   setImageDisplaySize: (size: Size | null) => void;
-  setActiveTool: (tool: string) => void;
+  setActiveTool: (tool: ToolId) => void;
   setScale: (scale: number) => void;
   setOffset: (offset: { x: number; y: number }) => void;
 }

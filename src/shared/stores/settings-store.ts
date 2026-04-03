@@ -48,24 +48,66 @@ const defaultSettings: UserSettings = {
 
 const defaultOperationHistory: OperationHistory = {};
 
-// Chrome 存储适配器
-const chromeStorage = {
-  getItem: async (name: string) => {
-    const result = await chrome.storage.local.get(name);
-    const raw = result[name];
-    return raw ? JSON.stringify(raw) : null;
-  },
-  setItem: async (name: string, value: string) => {
-    try {
-      await chrome.storage.local.set({ [name]: JSON.parse(value) });
-    } catch (error) {
-      console.error('[CodeFrame] 保存设置失败:', error);
-    }
-  },
-  removeItem: async (name: string) => {
-    await chrome.storage.local.remove(name);
-  },
+// 检测是否在 Chrome Extension 环境中
+const isChromeExtension = typeof chrome !== 'undefined' && 
+  chrome.storage && 
+  typeof chrome.storage.local !== 'undefined';
+
+// 统一存储适配器 - 自动选择 Chrome Storage 或 localStorage
+const createStorageAdapter = () => {
+  if (isChromeExtension) {
+    // Chrome Extension 环境 - 使用 chrome.storage.local
+    return {
+      getItem: async (name: string): Promise<string | null> => {
+        try {
+          const result = await chrome.storage.local.get(name);
+          const raw = result[name];
+          return raw ? JSON.stringify(raw) : null;
+        } catch (error) {
+          console.error('[CodeFrame] Chrome Storage 读取失败，降级到 localStorage:', error);
+          // 降级到 localStorage
+          return localStorage.getItem(name);
+        }
+      },
+      setItem: async (name: string, value: string): Promise<void> => {
+        try {
+          await chrome.storage.local.set({ [name]: JSON.parse(value) });
+          // 同时保存到 localStorage 作为备份
+          localStorage.setItem(name, value);
+        } catch (error) {
+          console.error('[CodeFrame] Chrome Storage 写入失败，降级到 localStorage:', error);
+          // 降级到 localStorage
+          localStorage.setItem(name, value);
+        }
+      },
+      removeItem: async (name: string): Promise<void> => {
+        try {
+          await chrome.storage.local.remove(name);
+          localStorage.removeItem(name);
+        } catch (error) {
+          console.error('[CodeFrame] Chrome Storage 删除失败，降级到 localStorage:', error);
+          localStorage.removeItem(name);
+        }
+      },
+    };
+  } else {
+    // Web 环境 - 使用 localStorage
+    console.log('[CodeFrame] 非 Chrome Extension 环境，使用 localStorage');
+    return {
+      getItem: (name: string): string | null => {
+        return localStorage.getItem(name);
+      },
+      setItem: (name: string, value: string): void => {
+        localStorage.setItem(name, value);
+      },
+      removeItem: (name: string): void => {
+        localStorage.removeItem(name);
+      },
+    };
+  }
 };
+
+const storageAdapter = createStorageAdapter();
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -99,7 +141,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: STORAGE_KEYS.SETTINGS,
-      storage: createJSONStorage(() => chromeStorage),
+      storage: createJSONStorage(() => storageAdapter),
       partialize: (state) => ({
         settings: state.settings,
         operationHistory: state.operationHistory,

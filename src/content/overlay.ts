@@ -2,6 +2,10 @@
 
 import { REGION_CAPTURE } from '@shared/constants';
 import { createMessage } from '@shared/messages';
+import { initContentI18n, t } from '@shared/i18n/content';
+
+// 初始化 i18n（模块加载时）
+initContentI18n().catch(console.error);
 
 interface Selection {
   startX: number;
@@ -168,8 +172,8 @@ function createOverlay(): ShadowRoot {
     <div class="cf-label"></div>
     <div class="cf-error-tip"></div>
     <div class="cf-actions">
-      <button class="cf-btn cf-btn--confirm">确认截图</button>
-      <button class="cf-btn cf-btn--cancel">取消</button>
+      <button class="cf-btn cf-btn--confirm">${t('confirmScreenshot')}</button>
+      <button class="cf-btn cf-btn--cancel">${t('cancel')}</button>
     </div>
   `;
   container.appendChild(selection);
@@ -177,7 +181,7 @@ function createOverlay(): ShadowRoot {
   // 提示
   const hint = document.createElement('div');
   hint.className = 'cf-hint';
-  hint.textContent = '拖拽选择截图区域';
+  hint.textContent = t('dragToSelect');
   container.appendChild(hint);
 
   overlayHost = host;
@@ -221,7 +225,7 @@ function updateSelectionUI(
 
   // 太小提示
   errorTip.style.display = isTooSmall ? 'block' : 'none';
-  errorTip.textContent = '选区太小，请重新选择';
+  errorTip.textContent = t('selectionTooSmall');
 
   // 操作按钮：上方空间不足时显示在选区内部
   if (rect.width > 0 && rect.height > 0) {

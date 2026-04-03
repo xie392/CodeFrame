@@ -1,0 +1,28 @@
+{
+  "header": {
+    "title": "CodeFrame",
+    "settings": "设置"
+  },
+  "action": {
+    "visible": "可视截图",
+    "region": "选择区域",
+    "fullpage": "整页截图"
+  },
+  "feature": {
+    "delayed": "延时截取可视区域",
+    "desktop": "桌面截图",
+    "editImage": "编辑本地或粘贴图片",
+    "codeEditor": "代码编辑器"
+  },
+  "hint": {
+    "restrictedPage": "当前页面不支持截图（浏览器限制）"
+  },
+  "error": {
+    "captureFailed": "截图失败",
+    "fullPageFailed": "整页截图失败",
+    "desktopFailed": "桌面截图失败"
+  },
+  "footer": {
+    "shortcuts": "快捷键: Alt+Shift+S 可视截图, R 选择区域, C 代码编辑器"
+  }
+}

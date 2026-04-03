@@ -1,6 +1,10 @@
 // CodeFrame - 延时截图倒计时组件（右上角小型）
 
 import { createMessage } from '@shared/messages';
+import { initContentI18n, t } from '@shared/i18n/content';
+
+// 初始化 i18n（模块加载时）
+initContentI18n().catch(console.error);
 
 let countdownHost: HTMLElement | null = null;
 let countdownInterval: ReturnType<typeof setInterval> | null = null;
@@ -77,12 +81,12 @@ function createCountdownBadge(delay: number): ShadowRoot {
 
   const label = document.createElement('span');
   label.className = 'cf-countdown-label';
-  label.textContent = '秒后截图';
+  label.textContent = t('screenshotAfter');
   badge.appendChild(label);
 
   const hint = document.createElement('span');
   hint.className = 'cf-countdown-hint';
-  hint.textContent = '(Esc 取消)';
+  hint.textContent = t('escToCancel');
   badge.appendChild(hint);
 
   root.appendChild(badge);

@@ -1,0 +1,60 @@
+{
+  "header": {
+    "title": "Code Editor"
+  },
+  "label": {
+    "theme": "Theme",
+    "font": "Font",
+    "fontSize": "Font Size",
+    "lineNumbers": "Line Numbers",
+    "padding": "Padding",
+    "borderRadius": "Border Radius",
+    "background": "Background",
+    "windowStyle": "Window Style",
+    "outerRadius": "Outer Radius",
+    "innerRadius": "Inner Radius",
+    "window": "Window",
+    "titleBar": "Title Bar",
+    "shadow": "Shadow",
+    "watermark": "Watermark",
+    "customColor": "Custom Color",
+    "uniformAs": "Uniform as"
+  },
+  "error": {
+    "clipboardNotSupported": "Your browser does not support copying images to clipboard"
+  },
+  "action": {
+    "copy": "Copy",
+    "download": "Download",
+    "reset": "Reset",
+    "copyToClipboard": "Copy to Clipboard",
+    "export": "Export Image",
+    "exporting": "Exporting..."
+  },
+  "hint": {
+    "copied": "Copied",
+    "downloaded": "Downloaded",
+    "processing": "Processing...",
+    "watermarkPlaceholder": "Watermark text..."
+  },
+  "lineNumbers": {
+    "show": "Show",
+    "hide": "Hide"
+  },
+  "windowStyle": {
+    "macos": "macOS",
+    "windows": "Windows",
+    "none": "None"
+  },
+  "padding": {
+    "top": "Top",
+    "right": "Right",
+    "bottom": "Bottom",
+    "left": "Left"
+  },
+  "export": {
+    "png": "PNG",
+    "jpg": "JPG",
+    "webp": "WEBP"
+  }
+}

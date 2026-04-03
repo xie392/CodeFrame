@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Check,
   ClipboardCopy,
@@ -198,6 +199,9 @@ const SliderControl: React.FC<{
 // ---------------------------------------------------------------------------
 
 const App: React.FC = () => {
+  // 国际化
+  const { t } = useTranslation('codegen');
+
   // ---- 主题 & 背景 & 样式 ----
   const [code, setCode] = useState(DEFAULT_CODE);
   const [selectedTheme, setSelectedTheme] = useState('vscode-dark');
@@ -456,7 +460,7 @@ const App: React.FC = () => {
     const el = exportRef.current;
     if (!el) return;
     if (!navigator.clipboard?.write) {
-      alert('当前浏览器不支持复制图片到剪贴板');
+      alert(t('error.clipboardNotSupported'));
       return;
     }
     try {
@@ -566,7 +570,7 @@ const App: React.FC = () => {
       >
         {/* Theme Selector */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>主题</SectionLabel>
+          <SectionLabel>{t('label.theme')}</SectionLabel>
           <Select
             value={selectedTheme}
             onChange={(e) => setSelectedTheme(e.target.value)}
@@ -582,7 +586,7 @@ const App: React.FC = () => {
 
         {/* Background Selector */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>背景</SectionLabel>
+          <SectionLabel>{t('label.background')}</SectionLabel>
           <TooltipProvider delayDuration={300}>
             <div className="w-full grid grid-cols-6 gap-1.5">
               {BACKGROUNDS.map((bg) => (
@@ -640,7 +644,7 @@ const App: React.FC = () => {
                     />
                   </label>
                 </TooltipTrigger>
-                <TooltipContent>自定义颜色</TooltipContent>
+                <TooltipContent>{t('label.customColor')}</TooltipContent>
               </Tooltip>
             </div>
           </TooltipProvider>
@@ -649,7 +653,7 @@ const App: React.FC = () => {
         {/* Padding Selector */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>内边距</SectionLabel>
+            <SectionLabel>{t('label.padding')}</SectionLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -677,13 +681,13 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 w-[140px]">
                   <div />
                   <PaddingInput
-                    label="上"
+                    label={t('padding.top')}
                     value={padding.top}
                     onChange={(v) => setPadding((p) => ({ ...p, top: v }))}
                   />
                   <div />
                   <PaddingInput
-                    label="左"
+                    label={t('padding.left')}
                     value={padding.left}
                     onChange={(v) => setPadding((p) => ({ ...p, left: v }))}
                   />
@@ -697,13 +701,13 @@ const App: React.FC = () => {
                     0
                   </button>
                   <PaddingInput
-                    label="右"
+                    label={t('padding.right')}
                     value={padding.right}
                     onChange={(v) => setPadding((p) => ({ ...p, right: v }))}
                   />
                   <div />
                   <PaddingInput
-                    label="下"
+                    label={t('padding.bottom')}
                     value={padding.bottom}
                     onChange={(v) => setPadding((p) => ({ ...p, bottom: v }))}
                   />
@@ -725,7 +729,7 @@ const App: React.FC = () => {
                       })
                     }
                   >
-                    统一为 {padding.top}
+                    {t('label.uniformAs')} {padding.top}
                   </button>
                 )}
               </PopoverContent>
@@ -744,16 +748,16 @@ const App: React.FC = () => {
 
         {/* Window Visual Controls */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>窗口</SectionLabel>
+          <SectionLabel>{t('label.window')}</SectionLabel>
           <div className="flex items-center justify-between">
             <span className="text-[10px]" style={{ color: '#999' }}>
-              标题栏
+              {t('label.titleBar')}
             </span>
             <Switch checked={showHeader} onChange={setShowHeader} />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[10px]" style={{ color: '#999' }}>
-              行号
+              {t('label.lineNumbers')}
             </span>
             <Switch
               checked={showLineNumbers}
@@ -762,7 +766,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[10px]" style={{ color: '#999' }}>
-              阴影
+              {t('label.shadow')}
             </span>
             <Switch checked={shadowEnabled} onChange={setShadowEnabled} />
           </div>
@@ -780,7 +784,7 @@ const App: React.FC = () => {
         {/* Border Radius Controls */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>圆角</SectionLabel>
+            <SectionLabel>{t('label.borderRadius')}</SectionLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -812,7 +816,7 @@ const App: React.FC = () => {
                       className="text-[9px] leading-none"
                       style={{ color: '#999' }}
                     >
-                      外圆角
+                      {t('label.outerRadius')}
                     </span>
                     <SliderControl
                       min={0}
@@ -829,7 +833,7 @@ const App: React.FC = () => {
                       className="text-[9px] leading-none"
                       style={{ color: '#999' }}
                     >
-                      内圆角
+                      {t('label.innerRadius')}
                     </span>
                     <SliderControl
                       min={0}
@@ -855,7 +859,7 @@ const App: React.FC = () => {
                         setBorderRadiusState({ outer: avg, inner: avg });
                       }}
                     >
-                      统一为{' '}
+                      {t('label.uniformAs')}{' '}
                       {Math.round(
                         (outerBorderRadius + innerBorderRadius) / 2,
                       )}
@@ -889,7 +893,7 @@ const App: React.FC = () => {
 
         {/* Font Selector */}
         <div className="flex flex-col gap-2 shrink-0">
-          <SectionLabel>字体</SectionLabel>
+          <SectionLabel>{t('label.font')}</SectionLabel>
           <div className="w-full flex flex-col gap-1.5">
             <Select
               value={selectedFont}
@@ -924,7 +928,7 @@ const App: React.FC = () => {
         {/* Watermark */}
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>水印</SectionLabel>
+            <SectionLabel>{t('label.watermark')}</SectionLabel>
             <Switch
               checked={watermarkEnabled}
               onChange={setWatermarkEnabled}
@@ -936,7 +940,7 @@ const App: React.FC = () => {
                 type="text"
                 value={watermarkText}
                 onChange={(e) => setWatermarkText(e.target.value)}
-                placeholder="水印文字..."
+                placeholder={t('hint.watermarkPlaceholder')}
                 inputSize="sm"
               />
               <Slider
@@ -966,7 +970,7 @@ const App: React.FC = () => {
               className="text-[13px] font-semibold leading-none"
               style={{ color: '#FFFFFF' }}
             >
-              {isExporting ? '导出中...' : '导出图片'}
+              {isExporting ? t('action.exporting') : t('action.export')}
             </span>
           </button>
           <TooltipProvider delayDuration={300}>
@@ -985,7 +989,7 @@ const App: React.FC = () => {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8}>
-                <p className="text-[12px]">{copied ? '已复制' : '复制到剪贴板'}</p>
+                <p className="text-[12px]">{copied ? t('hint.copied') : t('action.copyToClipboard')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

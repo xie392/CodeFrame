@@ -1,0 +1,28 @@
+{
+  "header": {
+    "title": "CodeFrame",
+    "settings": "Settings"
+  },
+  "action": {
+    "visible": "Visible Area",
+    "region": "Select Region",
+    "fullpage": "Full Page"
+  },
+  "feature": {
+    "delayed": "Delayed Capture",
+    "desktop": "Desktop Screenshot",
+    "editImage": "Edit Local or Paste Image",
+    "codeEditor": "Code Editor"
+  },
+  "hint": {
+    "restrictedPage": "Screenshot not supported on this page (browser restriction)"
+  },
+  "error": {
+    "captureFailed": "Screenshot failed",
+    "fullPageFailed": "Full page screenshot failed",
+    "desktopFailed": "Desktop screenshot failed"
+  },
+  "footer": {
+    "shortcuts": "Shortcuts: Alt+Shift+S Visible, R Region, C Code Editor"
+  }
+}

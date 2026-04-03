@@ -1,0 +1,171 @@
+{
+  "tool": {
+    "select": "Select",
+    "move": "Move",
+    "arrow": "Arrow",
+    "rectangle": "Rectangle",
+    "text": "Text",
+    "mosaic": "Mosaic",
+    "crop": "Crop"
+  },
+  "action": {
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Shift+Z)",
+    "upload": "Upload",
+    "download": "Download",
+    "copy": "Copy",
+    "export": "Export Image",
+    "exporting": "Exporting...",
+    "copyToClipboard": "Copy to Clipboard",
+    "delete": "Delete"
+  },
+  "label": {
+    "strokeWidth": "Stroke Width",
+    "color": "Color",
+    "fontSize": "Font Size",
+    "blockSize": "Block Size",
+    "opacity": "Opacity",
+    "padding": "Padding",
+    "borderRadius": "Border Radius",
+    "background": "Background",
+    "imageRadius": "Image Radius",
+    "shadow": "Shadow",
+    "imageShadow": "Image Shadow",
+    "windowControls": "Window Controls",
+    "watermark": "Watermark",
+    "customColor": "Custom Color",
+    "blur": "Blur",
+    "position": "Position",
+    "text": "Text",
+    "style": "Style",
+    "mosaicStyle": "Mosaic Style",
+    "blockSizeLabel": "Block Size",
+    "opacityLabel": "Opacity",
+    "unit": "Unit",
+    "size": "Size",
+    "aspectRatio": "Aspect Ratio",
+    "angle": "Angle",
+    "width": "W",
+    "height": "H",
+    "arrowStyle": "Arrow Style",
+    "arrowSize": "Arrow Size",
+    "rectStyle": "Rectangle Style",
+    "textStyle": "Text Style",
+    "fill": "Fill"
+  },
+  "hint": {
+    "dropImage": "Drop image here",
+    "pasteImage": "Paste image or click to upload",
+    "uploadImage": "Upload Image",
+    "copied": "Copied to clipboard",
+    "downloaded": "Downloaded",
+    "processing": "Processing...",
+    "uploadWatermark": "Click or drag to upload watermark image",
+    "watermarkPlaceholder": "Watermark text"
+  },
+  "error": {
+    "loadFailed": "Image load failed",
+    "exportFailed": "Export failed",
+    "invalidImage": "Invalid image format"
+  },
+  "arrowStyle": {
+    "single": "Single Arrow",
+    "double": "Double Arrow",
+    "line": "Line"
+  },
+  "borderStyle": {
+    "solid": "Solid",
+    "dashed": "Dashed",
+    "dotted": "Dotted"
+  },
+  "backgroundType": {
+    "solid": "Solid",
+    "gradient": "Gradient",
+    "image": "Image",
+    "startColor": "Start Color",
+    "endColor": "End Color"
+  },
+  "backgroundPreset": {
+    "transparent": "Transparent",
+    "white": "White",
+    "black": "Black",
+    "sunset": "Sunset",
+    "ocean": "Ocean",
+    "forest": "Forest",
+    "purple": "Purple",
+    "peach": "Peach"
+  },
+  "shadowPreset": {
+    "none": "None",
+    "light": "Light",
+    "medium": "Medium",
+    "strong": "Strong"
+  },
+  "crop": {
+    "title": "Crop",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "confirm": "Confirm",
+    "adjustHint": "Drag to adjust crop area, ",
+    "drawHint": "Drag to draw crop area, "
+  },
+  "frame": {
+    "padding": "Padding",
+    "radius": "Radius",
+    "background": "Background"
+  },
+  "export": {
+    "png": "PNG",
+    "jpg": "JPG",
+    "webp": "WEBP"
+  },
+  "borderRadiusPreset": {
+    "none": "No Radius",
+    "small": "Small Radius",
+    "medium": "Medium Radius",
+    "large": "Large Radius",
+    "capsule": "Capsule"
+  },
+  "aspectRatio": {
+    "auto": "Auto",
+    "custom": "Custom",
+    "androidFlagship": "Android Flagship",
+    "androidTablet": "Android Tablet"
+  },
+  "windowStyle": {
+    "macos": "macOS Style",
+    "windows": "Windows Style",
+    "none": "None"
+  },
+  "section": {
+    "shadow": "Shadow",
+    "imageShadow": "Image Shadow",
+    "windowControls": "Window Controls",
+    "watermark": "Watermark"
+  },
+  "watermarkPosition": {
+    "bottomRight": "Bottom Right",
+    "bottomLeft": "Bottom Left",
+    "topRight": "Top Right",
+    "topLeft": "Top Left"
+  },
+  "corner": {
+    "topLeft": "Top Left",
+    "topRight": "Top Right",
+    "bottomLeft": "Bottom Left",
+    "bottomRight": "Bottom Right"
+  },
+  "position": {
+    "bottomRight": "Bottom Right",
+    "bottomLeft": "Bottom Left",
+    "topRight": "Top Right",
+    "topLeft": "Top Left"
+  },
+  "direction": {
+    "top": "Top",
+    "right": "Right",
+    "bottom": "Bottom",
+    "left": "Left"
+  }
+}

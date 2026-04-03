@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Eye,
   Scissors,
@@ -207,6 +208,7 @@ const FeatureItem: React.FC<FeatureItemProps> = ({
 )
 
 const App: React.FC = () => {
+  const { t } = useTranslation('popup')
   const [isRestricted, setIsRestricted] = useState(false)
 
   useEffect(() => {
@@ -234,12 +236,12 @@ const App: React.FC = () => {
             </span>
           </div>
           <span className="text-[16px] font-semibold leading-none text-foreground font-heading">
-            CodeFrame
+            {t('header.title')}
           </span>
         </div>
         <div className="flex items-center">
           <button
-            aria-label="设置"
+            aria-label={t('header.settings')}
             className="w-[32px] h-[32px] rounded-[8px] flex items-center justify-center cursor-pointer transition-colors duration-200 hover:brightness-125"
             style={{ backgroundColor: 'var(--color-header-btn)' }}
             onClick={handleOpenSettings}
@@ -258,7 +260,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
             <AlertCircle size={14} className="text-amber-600" />
             <span className="text-[11px] text-amber-700 font-body">
-              当前页面不支持截图（浏览器限制）
+              {t('hint.restrictedPage')}
             </span>
           </div>
         </div>
@@ -268,19 +270,19 @@ const App: React.FC = () => {
       <div className="flex items-center justify-center gap-2 px-3 py-3">
         <ActionBtn
           icon={<Eye size={26} style={{ color: 'var(--color-accent-orange)' }} />}
-          label="可视截图"
+          label={t('action.visible')}
           onClick={handleVisibleCapture}
           disabled={isRestricted}
         />
         <ActionBtn
           icon={<Scissors size={26} style={{ color: 'var(--color-accent-teal)' }} />}
-          label="选择区域"
+          label={t('action.region')}
           onClick={handleRegionCapture}
           disabled={isRestricted}
         />
         <ActionBtn
           icon={<FileText size={26} style={{ color: 'var(--color-accent-orange)' }} />}
-          label="整页截图"
+          label={t('action.fullpage')}
           onClick={handleFullPageCapture}
           disabled={isRestricted}
         />
@@ -290,25 +292,25 @@ const App: React.FC = () => {
       <div className="feature-list px-3 py-2 flex flex-col gap-1">
         <FeatureItem
           icon={<Timer size={18} style={{ color: 'var(--color-accent-orange)' }} />}
-          label="延时截取可视区域"
+          label={t('feature.delayed')}
           suffix={`${DEFAULT_DELAY}s`}
           onClick={handleDelayedCapture}
           disabled={isRestricted}
         />
         <FeatureItem
           icon={<Monitor size={18} style={{ color: 'var(--color-accent-teal)' }} />}
-          label="桌面截图"
+          label={t('feature.desktop')}
           onClick={handleDesktopCapture}
           // 桌面截图功能暂时禁用，见桌面截图实现总结文档
         />
         <FeatureItem
           icon={<ImagePlus size={18} style={{ color: 'var(--color-accent-orange)' }} />}
-          label="编辑本地或粘贴图片"
+          label={t('feature.editImage')}
           onClick={handleOpenEditor}
         />
         <FeatureItem
           icon={<Code size={18} style={{ color: 'var(--color-accent-teal)' }} />}
-          label="代码编辑器"
+          label={t('feature.codeEditor')}
           onClick={handleOpenCodeEditor}
         />
       </div>
@@ -322,7 +324,7 @@ const App: React.FC = () => {
           className="text-[10px] leading-none font-body"
           style={{ color: 'var(--color-footer-text)' }}
         >
-          快捷键: Alt+Shift+S 可视截图, R 选择区域, C 代码编辑器
+          {t('footer.shortcuts')}
         </span>
       </footer>
     </div>

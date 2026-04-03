@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingItem } from './components/SettingItem';
 import { SettingSelect } from './components/SettingSelect';
@@ -33,13 +34,14 @@ import {
 } from 'lucide-react';
 
 const OptionsPage: React.FC = () => {
+  const { t } = useTranslation('options');
   const { settings, isLoading, updateSettings } = useSettingsStore();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center options-container">
         <div className="text-[#777777] text-[13px] font-body">
-          加载中...
+          {t('common:loading')}
         </div>
       </div>
     );
@@ -77,15 +79,15 @@ const OptionsPage: React.FC = () => {
           </div>
           {/* 标题 */}
           <span className="text-[20px] font-semibold font-heading text-[#1A1A1A]">
-            设置
+            {t('header.title')}
           </span>
         </div>
 
         {/* Content */}
         <div className="w-full p-10 flex flex-col gap-6">
           {/* [通用设置] */}
-          <SettingsSection title="通用设置">
-            <SettingItem icon={Image} label="默认导出格式">
+          <SettingsSection title={t('section.general')}>
+            <SettingItem icon={Image} label={t('label.defaultFormat')}>
               <SettingSelect
                 value={settings.defaultFormat}
                 options={Object.entries(EXPORT_FORMAT_LABELS).map(([value, label]) => ({
@@ -95,7 +97,7 @@ const OptionsPage: React.FC = () => {
                 onChange={(value) => updateSettings('defaultFormat', value as typeof settings.defaultFormat)}
               />
             </SettingItem>
-            <SettingItem icon={Maximize2} label="截图质量">
+            <SettingItem icon={Maximize2} label={t('label.quality')}>
               <SettingSelect
                 value={settings.quality}
                 options={Object.entries(QUALITY_LABELS).map(([value, label]) => ({
@@ -105,7 +107,7 @@ const OptionsPage: React.FC = () => {
                 onChange={(value) => updateSettings('quality', value as typeof settings.quality)}
               />
             </SettingItem>
-            <SettingItem icon={Languages} label="界面语言">
+            <SettingItem icon={Languages} label={t('label.language')}>
               <SettingSelect
                 value={settings.language}
                 options={Object.entries(LANGUAGE_LABELS).map(([value, label]) => ({
@@ -118,32 +120,32 @@ const OptionsPage: React.FC = () => {
           </SettingsSection>
 
           {/* [操作历史] */}
-          <SettingsSection title="操作历史">
-            <SettingItem icon={History} label="保存操作历史">
+          <SettingsSection title={t('section.history')}>
+            <SettingItem icon={History} label={t('label.saveOperationHistory')}>
               <SettingSwitch
                 checked={settings.saveOperationHistory}
                 onChange={(checked) => updateSettings('saveOperationHistory', checked)}
               />
             </SettingItem>
             <div className="px-5 py-2 text-[11px] text-[#999999] font-body">
-              开启后将记录您在编辑器、代码生成器的设置，下次使用时自动恢复
+              {t('hint.saveOperationHistory')}
             </div>
           </SettingsSection>
 
           {/* [截图设置] */}
-          <SettingsSection title="截图设置">
-            <SettingItem icon={Clock} label="延迟截图时间">
+          <SettingsSection title={t('section.screenshot')}>
+            <SettingItem icon={Clock} label={t('label.delayTime')}>
               <SettingSelect
                 value={String(settings.delayTime)}
                 options={[
-                  { value: '3', label: '3秒' },
-                  { value: '5', label: '5秒' },
-                  { value: '10', label: '10秒' },
+                  { value: '3', label: t('delay.3s') },
+                  { value: '5', label: t('delay.5s') },
+                  { value: '10', label: t('delay.10s') },
                 ]}
                 onChange={(value) => updateSettings('delayTime', Number(value) as typeof settings.delayTime)}
               />
             </SettingItem>
-            <SettingItem icon={Database} label="历史保留天数">
+            <SettingItem icon={Database} label={t('label.historyRetention')}>
               <SettingSelect
                 value={String(settings.historyRetention)}
                 options={Object.entries(HISTORY_RETENTION_LABELS).map(([value, label]) => ({
@@ -156,21 +158,21 @@ const OptionsPage: React.FC = () => {
           </SettingsSection>
 
           {/* [水印设置] */}
-          <SettingsSection title="水印设置">
-            <SettingItem icon={Droplet} label="默认添加水印">
+          <SettingsSection title={t('section.watermark')}>
+            <SettingItem icon={Droplet} label={t('label.watermarkEnabled')}>
               <SettingSwitch
                 checked={settings.watermarkEnabled}
                 onChange={(checked) => updateSettings('watermarkEnabled', checked)}
               />
             </SettingItem>
-            <SettingItem icon={Type} label="水印文字">
+            <SettingItem icon={Type} label={t('label.watermarkText')}>
               <SettingInput
                 value={settings.watermarkText}
                 onChange={(value) => updateSettings('watermarkText', value)}
-                placeholder="输入水印文字"
+                placeholder={t('hint.watermarkPlaceholder')}
               />
             </SettingItem>
-            <SettingItem icon={Droplet} label="水印透明度">
+            <SettingItem icon={Droplet} label={t('label.watermarkOpacity')}>
               <SettingSlider
                 value={settings.watermarkOpacity}
                 onChange={(value) => updateSettings('watermarkOpacity', value)}
@@ -182,8 +184,8 @@ const OptionsPage: React.FC = () => {
           </SettingsSection>
 
           {/* [代码美化] */}
-          <SettingsSection title="代码美化">
-            <SettingItem icon={Code2} label="代码主题">
+          <SettingsSection title={t('section.codeBeautify')}>
+            <SettingItem icon={Code2} label={t('label.codeTheme')}>
               <SettingSelect
                 value={settings.codeTheme}
                 options={CODE_THEME_OPTIONS.map((opt) => ({
@@ -193,7 +195,7 @@ const OptionsPage: React.FC = () => {
                 onChange={(value) => updateSettings('codeTheme', value)}
               />
             </SettingItem>
-            <SettingItem icon={Type} label="字体大小">
+            <SettingItem icon={Type} label={t('label.fontSize')}>
               <SettingSlider
                 value={settings.codeFontSize}
                 onChange={(value) => updateSettings('codeFontSize', value)}
@@ -202,7 +204,7 @@ const OptionsPage: React.FC = () => {
                 unit="px"
               />
             </SettingItem>
-            <SettingItem icon={Hash} label="显示行号">
+            <SettingItem icon={Hash} label={t('label.showLineNumbers')}>
               <SettingSwitch
                 checked={settings.codeShowLineNumbers}
                 onChange={(checked) => updateSettings('codeShowLineNumbers', checked)}
@@ -211,35 +213,35 @@ const OptionsPage: React.FC = () => {
           </SettingsSection>
 
           {/* [快捷键] */}
-          <SettingsSection title="快捷键">
-            <SettingItem icon={Camera} label="截图">
+          <SettingsSection title={t('section.shortcuts')}>
+            <SettingItem icon={Camera} label={t('label.screenshot')}>
               <ShortcutDisplay keys={['Alt', 'Shift', 'S']} />
             </SettingItem>
-            <SettingItem icon={Terminal} label="代码编辑器">
+            <SettingItem icon={Terminal} label={t('label.codeEditor')}>
               <ShortcutDisplay keys={['Alt', 'Shift', 'C']} />
             </SettingItem>
             <div className="px-5 py-2 text-[11px] text-[#999999] font-body">
-              快捷键可在 Chrome 扩展管理页面中自定义配置
+              {t('hint.shortcutsConfig')}
             </div>
           </SettingsSection>
 
           {/* [关于] */}
-          <SettingsSection title="关于">
+          <SettingsSection title={t('section.about')}>
             <div className="px-5 py-4 flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <span className="text-[13px] text-[#999999] font-body">版本</span>
+                <span className="text-[13px] text-[#999999] font-body">{t('about.version')}</span>
                 <span className="text-[13px] text-[#1A1A1A] font-body">
                   {EXTENSION_VERSION}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[13px] text-[#999999] font-body">作者</span>
+                <span className="text-[13px] text-[#999999] font-body">{t('about.author')}</span>
                 <span className="text-[13px] text-[#1A1A1A] font-body">
                   {EXTENSION_AUTHOR}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[13px] text-[#999999] font-body">仓库</span>
+                <span className="text-[13px] text-[#999999] font-body">{t('about.repository')}</span>
                 <a
                   href={REPOSITORY_URL}
                   target="_blank"

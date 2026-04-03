@@ -7,6 +7,7 @@ import React, {
   type DragEvent,
   type ClipboardEvent,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   MousePointer2,
   Move,
@@ -184,63 +185,63 @@ const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
   },
 };
 
-// 背景预设
+// 背景预设（name 使用 i18n key）
 const BACKGROUND_PRESETS = [
-  { name: '透明', type: 'solid' as const, color: 'transparent' },
-  { name: '白色', type: 'solid' as const, color: '#FFFFFF' },
-  { name: '黑色', type: 'solid' as const, color: '#000000' },
+  { name: 'backgroundPreset.transparent', type: 'solid' as const, color: 'transparent' },
+  { name: 'backgroundPreset.white', type: 'solid' as const, color: '#FFFFFF' },
+  { name: 'backgroundPreset.black', type: 'solid' as const, color: '#000000' },
   {
-    name: '日落',
+    name: 'backgroundPreset.sunset',
     type: 'linear' as const,
     gradientColors: ['#FF512F', '#DD2476'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: '海洋',
+    name: 'backgroundPreset.ocean',
     type: 'linear' as const,
     gradientColors: ['#2193b0', '#6dd5ed'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: '森林',
+    name: 'backgroundPreset.forest',
     type: 'linear' as const,
     gradientColors: ['#134E5E', '#71B280'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: '紫色',
+    name: 'backgroundPreset.purple',
     type: 'linear' as const,
     gradientColors: ['#667eea', '#764ba2'] as [string, string],
     gradientAngle: 135,
   },
   {
-    name: '蜜桃',
+    name: 'backgroundPreset.peach',
     type: 'linear' as const,
     gradientColors: ['#FFB88C', '#DE6262'] as [string, string],
     gradientAngle: 135,
   },
 ];
 
-// 阴影预设
+// 阴影预设（name 使用 i18n key）
 const SHADOW_PRESETS = [
-  { name: '无', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
-  { name: '轻微', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
-  { name: '中等', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
-  { name: '强烈', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
+  { name: 'shadowPreset.none', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
+  { name: 'shadowPreset.light', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
+  { name: 'shadowPreset.medium', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
+  { name: 'shadowPreset.strong', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
 ];
 
-// 图片阴影预设
+// 图片阴影预设（name 使用 i18n key）
 const IMAGE_SHADOW_PRESETS = [
-  { name: '无', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
-  { name: '轻微', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
-  { name: '中等', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
-  { name: '强烈', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
+  { name: 'shadowPreset.none', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
+  { name: 'shadowPreset.light', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
+  { name: 'shadowPreset.medium', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
+  { name: 'shadowPreset.strong', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
 ];
 
-// 比例预设（按分类组织）
+// 比例预设（按分类组织，name 使用 i18n key）
 const ASPECT_RATIO_PRESETS = [
   // 原始比例
-  { name: '自动', value: 'auto' },
+  { name: 'aspectRatio.auto', value: 'auto' },
   // 基础比例
   { name: '1:1', value: '1:1' },
   { name: '4:3', value: '4:3' },
@@ -258,11 +259,11 @@ const ASPECT_RATIO_PRESETS = [
   // 设备屏幕（使用 device: 前缀避免重复）
   { name: 'iPhone', value: 'device:9:19.5' },
   { name: 'iPhone SE', value: 'device:16:9' },
-  { name: '安卓旗舰', value: 'device:9:21' },
+  { name: 'aspectRatio.androidFlagship', value: 'device:9:21' },
   { name: 'iPad', value: 'device:3:4' },
-  { name: '安卓平板', value: 'device:16:10' },
+  { name: 'aspectRatio.androidTablet', value: 'device:16:10' },
   // 自定义
-  { name: '自定义', value: 'custom' },
+  { name: 'aspectRatio.custom', value: 'custom' },
 ];
 
 /** 解析比例字符串，返回宽高比 */
@@ -1271,7 +1272,9 @@ const Toolbar: React.FC<{
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-}> = ({ activeTool, onSelectTool, canUndo, canRedo, onUndo, onRedo }) => (
+}> = ({ activeTool, onSelectTool, canUndo, canRedo, onUndo, onRedo }) => {
+  const { t } = useTranslation('editor');
+  return (
   <aside className="toolbar w-[56px] h-full flex flex-col items-center py-3 gap-1 shrink-0">
     {TOOLS.map((tool) => {
       const isActive = activeTool === tool.id;
@@ -1302,7 +1305,7 @@ const Toolbar: React.FC<{
           ? 'tool-btn cursor-pointer'
           : 'tool-btn cursor-not-allowed opacity-40'
       }`}
-      title="撤销 (Ctrl+Z)"
+      title={t('action.undo')}
     >
       <Undo2 size={18} />
     </button>
@@ -1314,12 +1317,13 @@ const Toolbar: React.FC<{
           ? 'tool-btn cursor-pointer'
           : 'tool-btn cursor-not-allowed opacity-40'
       }`}
-      title="重做 (Ctrl+Shift+Z)"
+      title={t('action.redo')}
     >
       <Redo2 size={18} />
     </button>
   </aside>
-);
+  );
+};
 
 /** 可编辑的数值输入字段 */
 const EditableField: React.FC<{
@@ -1689,6 +1693,7 @@ const BackgroundPresetButton: React.FC<{
   isSelected: boolean;
   onClick: () => void;
 }> = ({ preset, isSelected, onClick }) => {
+  const { t } = useTranslation('editor');
   const getBackground = () => {
     if (preset.type === 'solid') {
       return preset.color === 'transparent'
@@ -1709,7 +1714,7 @@ const BackgroundPresetButton: React.FC<{
         backgroundSize: preset.color === 'transparent' ? '8px 8px' : 'auto',
         backgroundPosition: preset.color === 'transparent' ? '0 0, 0 4px, 4px -4px, -4px 0px' : 'auto',
       }}
-      title={preset.name}
+      title={t(preset.name)}
     />
   );
 };
@@ -1719,42 +1724,49 @@ const ShadowPresetButton: React.FC<{
   preset: (typeof SHADOW_PRESETS)[number];
   isSelected: boolean;
   onClick: () => void;
-}> = ({ preset, isSelected, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-      isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
-    }`}
-  >
-    <span className="text-[10px] font-body leading-none">{preset.name}</span>
-  </button>
-);
+}> = ({ preset, isSelected, onClick }) => {
+  const { t } = useTranslation('editor');
+  return (
+    <button
+      onClick={onClick}
+      className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+        isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
+      }`}
+    >
+      <span className="text-[10px] font-body leading-none">{t(preset.name)}</span>
+    </button>
+  );
+};
 
 /** 图片阴影预设按钮 */
 const ImageShadowPresetButton: React.FC<{
   preset: (typeof IMAGE_SHADOW_PRESETS)[number];
   isSelected: boolean;
   onClick: () => void;
-}> = ({ preset, isSelected, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-      isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
-    }`}
-  >
-    <span className="text-[10px] font-body leading-none">{preset.name}</span>
-  </button>
-);
+}> = ({ preset, isSelected, onClick }) => {
+  const { t } = useTranslation('editor');
+  return (
+    <button
+      onClick={onClick}
+      className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
+        isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
+      }`}
+    >
+      <span className="text-[10px] font-body leading-none">{t(preset.name)}</span>
+    </button>
+  );
+};
 
 /** 图片容器设置面板 */
 const FrameSettings: React.FC<{
   settings: ImageFrameSettings;
   onUpdate: (updates: Partial<ImageFrameSettings>) => void;
 }> = ({ settings, onUpdate }) => {
+  const { t } = useTranslation('editor');
   return (
     <div className="flex flex-col gap-3">
       {/* 背景设置 */}
-      <CollapsibleSection title="背景" defaultOpen={true}>
+      <CollapsibleSection title={t('label.background')} defaultOpen={true}>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
             type:
@@ -1762,9 +1774,9 @@ const FrameSettings: React.FC<{
           <SelectControl
             value={settings.background.type}
             options={[
-              { name: '纯色', value: 'solid' },
-              { name: '线性渐变', value: 'linear' },
-              { name: '径向渐变', value: 'radial' },
+              { name: t('backgroundType.solid'), value: 'solid' },
+              { name: t('backgroundType.gradient'), value: 'linear' },
+              { name: t('backgroundType.gradient'), value: 'radial' },
             ]}
             onChange={(type) =>
               onUpdate({
@@ -1784,7 +1796,7 @@ const FrameSettings: React.FC<{
           <>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-                起始色:
+                {t('backgroundType.startColor')}:
               </span>
               <div className="flex gap-1">
                 {PRESET_COLORS.slice(0, 4).map((color) => (
@@ -1819,7 +1831,7 @@ const FrameSettings: React.FC<{
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-                结束色:
+                {t('backgroundType.endColor')}:
               </span>
               <div className="flex gap-1">
                 {PRESET_COLORS.slice(0, 4).map((color) => (
@@ -1853,7 +1865,7 @@ const FrameSettings: React.FC<{
               </div>
             </div>
             <SliderControl
-              label="角度"
+              label={t('label.angle')}
               value={settings.background.gradientAngle}
               min={0}
               max={360}
@@ -1901,7 +1913,7 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 边距设置 */}
-      <CollapsibleSection title="边距">
+      <CollapsibleSection title={t('label.padding')}>
         <div className="flex items-center gap-2">
           <button
             onClick={() =>
@@ -1922,7 +1934,7 @@ const FrameSettings: React.FC<{
           </button>
           <div className="flex gap-1 flex-1">
             <EditableField
-              label="上"
+              label={t('direction.top')}
               value={settings.padding.top}
               onChange={(top) =>
                 onUpdate({
@@ -1933,7 +1945,7 @@ const FrameSettings: React.FC<{
               }
             />
             <EditableField
-              label="右"
+              label={t('direction.right')}
               value={settings.padding.right}
               onChange={(right) =>
                 onUpdate({
@@ -1947,7 +1959,7 @@ const FrameSettings: React.FC<{
         </div>
         <div className="flex gap-1 pl-7">
           <EditableField
-            label="下"
+            label={t('direction.bottom')}
             value={settings.padding.bottom}
             onChange={(bottom) =>
               onUpdate({
@@ -1958,7 +1970,7 @@ const FrameSettings: React.FC<{
             }
           />
           <EditableField
-            label="左"
+            label={t('direction.left')}
             value={settings.padding.left}
             onChange={(left) =>
               onUpdate({
@@ -1972,7 +1984,7 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 容器圆角设置 */}
-      <CollapsibleSection title="容器圆角">
+      <CollapsibleSection title={t('label.borderRadius')}>
         {/* 圆角预设 */}
         <div className="mb-3">
           <div className="flex gap-1 flex-wrap">
@@ -2000,7 +2012,7 @@ const FrameSettings: React.FC<{
                     : 'prop-field-sm hover:bg-[var(--color-surface-hover)]'
                 }`}
               >
-                {preset.name}
+                {t(preset.name)}
               </button>
             ))}
           </div>
@@ -2015,7 +2027,7 @@ const FrameSettings: React.FC<{
             }}
             className="prop-field-sm px-2 py-1 text-[10px] flex items-center gap-1"
           >
-            <span>单位:</span>
+            <span>{t('label.unit')}:</span>
             <span className="text-[var(--color-accent)]">{settings.borderRadius.unit}</span>
           </button>
         </div>
@@ -2040,7 +2052,7 @@ const FrameSettings: React.FC<{
         {/* 圆角值输入 */}
         {settings.borderRadius.linked ? (
           <SliderControl
-            label="圆角"
+            label={t('label.borderRadius')}
             value={settings.borderRadius.topLeft}
             min={0}
             max={settings.borderRadius.unit === 'px' ? 100 : 50}
@@ -2060,14 +2072,14 @@ const FrameSettings: React.FC<{
           <div className="space-y-1">
             <div className="flex gap-1">
               <EditableField
-                label="左上"
+                label={t('corner.topLeft')}
                 value={settings.borderRadius.topLeft}
                 onChange={(topLeft) =>
                   onUpdate({ borderRadius: { ...settings.borderRadius, topLeft } })
                 }
               />
               <EditableField
-                label="右上"
+                label={t('corner.topRight')}
                 value={settings.borderRadius.topRight}
                 onChange={(topRight) =>
                   onUpdate({ borderRadius: { ...settings.borderRadius, topRight } })
@@ -2076,14 +2088,14 @@ const FrameSettings: React.FC<{
             </div>
             <div className="flex gap-1 pl-7">
               <EditableField
-                label="左下"
+                label={t('corner.bottomLeft')}
                 value={settings.borderRadius.bottomLeft}
                 onChange={(bottomLeft) =>
                   onUpdate({ borderRadius: { ...settings.borderRadius, bottomLeft } })
                 }
               />
               <EditableField
-                label="右下"
+                label={t('corner.bottomRight')}
                 value={settings.borderRadius.bottomRight}
                 onChange={(bottomRight) =>
                   onUpdate({ borderRadius: { ...settings.borderRadius, bottomRight } })
@@ -2095,7 +2107,7 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 图片圆角设置 */}
-      <CollapsibleSection title="图片圆角">
+      <CollapsibleSection title={t('label.imageRadius')}>
         {/* 圆角预设 */}
         <div className="mb-3">
           <div className="flex gap-1 flex-wrap">
@@ -2123,7 +2135,7 @@ const FrameSettings: React.FC<{
                     : 'prop-field-sm hover:bg-[var(--color-surface-hover)]'
                 }`}
               >
-                {preset.name}
+                {t(preset.name)}
               </button>
             ))}
           </div>
@@ -2138,7 +2150,7 @@ const FrameSettings: React.FC<{
             }}
             className="prop-field-sm px-2 py-1 text-[10px] flex items-center gap-1"
           >
-            <span>单位:</span>
+            <span>{t('label.unit')}:</span>
             <span className="text-[var(--color-accent)]">{settings.imageRadius.unit}</span>
           </button>
         </div>
@@ -2163,7 +2175,7 @@ const FrameSettings: React.FC<{
         {/* 圆角值输入 */}
         {settings.imageRadius.linked ? (
           <SliderControl
-            label="圆角"
+            label={t('label.borderRadius')}
             value={settings.imageRadius.topLeft}
             min={0}
             max={settings.imageRadius.unit === 'px' ? 100 : 50}
@@ -2183,14 +2195,14 @@ const FrameSettings: React.FC<{
           <div className="space-y-1">
             <div className="flex gap-1">
               <EditableField
-                label="左上"
+                label={t('corner.topLeft')}
                 value={settings.imageRadius.topLeft}
                 onChange={(topLeft) =>
                   onUpdate({ imageRadius: { ...settings.imageRadius, topLeft } })
                 }
               />
               <EditableField
-                label="右上"
+                label={t('corner.topRight')}
                 value={settings.imageRadius.topRight}
                 onChange={(topRight) =>
                   onUpdate({ imageRadius: { ...settings.imageRadius, topRight } })
@@ -2199,14 +2211,14 @@ const FrameSettings: React.FC<{
             </div>
             <div className="flex gap-1 pl-7">
               <EditableField
-                label="左下"
+                label={t('corner.bottomLeft')}
                 value={settings.imageRadius.bottomLeft}
                 onChange={(bottomLeft) =>
                   onUpdate({ imageRadius: { ...settings.imageRadius, bottomLeft } })
                 }
               />
               <EditableField
-                label="右下"
+                label={t('corner.bottomRight')}
                 value={settings.imageRadius.bottomRight}
                 onChange={(bottomRight) =>
                   onUpdate({ imageRadius: { ...settings.imageRadius, bottomRight } })
@@ -2219,7 +2231,7 @@ const FrameSettings: React.FC<{
 
       {/* 阴影设置 */}
       <CollapsibleSection
-        title="阴影"
+        title={t('section.shadow')}
         enabled={settings.shadow.enabled}
         onToggle={(enabled) =>
           onUpdate({ shadow: { ...settings.shadow, enabled } })
@@ -2232,7 +2244,7 @@ const FrameSettings: React.FC<{
           }
         />
         <SliderControl
-          label="模糊"
+          label={t('label.blur')}
           value={settings.shadow.blur}
           min={0}
           max={100}
@@ -2283,7 +2295,7 @@ const FrameSettings: React.FC<{
 
       {/* 图片阴影设置 */}
       <CollapsibleSection
-        title="图片阴影"
+        title={t('section.imageShadow')}
         enabled={settings.imageShadow.enabled}
         onToggle={(enabled) =>
           onUpdate({ imageShadow: { ...settings.imageShadow, enabled } })
@@ -2296,7 +2308,7 @@ const FrameSettings: React.FC<{
           }
         />
         <SliderControl
-          label="模糊"
+          label={t('label.blur')}
           value={settings.imageShadow.blur}
           min={0}
           max={100}
@@ -2346,7 +2358,7 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 比例设置 */}
-      <CollapsibleSection title="比例">
+      <CollapsibleSection title={t('label.aspectRatio')}>
         <SelectControl
           value={settings.aspectRatio}
           options={ASPECT_RATIO_PRESETS}
@@ -2368,7 +2380,7 @@ const FrameSettings: React.FC<{
                   },
                 })
               }
-              placeholder="宽"
+              placeholder={t('label.width')}
               className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body text-foreground outline-none text-center"
               style={{ backgroundColor: '#FAFAFA' }}
             />
@@ -2386,7 +2398,7 @@ const FrameSettings: React.FC<{
                   },
                 })
               }
-              placeholder="高"
+              placeholder={t('label.height')}
               className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body text-foreground outline-none text-center"
               style={{ backgroundColor: '#FAFAFA' }}
             />
@@ -2396,7 +2408,7 @@ const FrameSettings: React.FC<{
 
       {/* 窗口控件设置 */}
       <CollapsibleSection
-        title="窗口控件"
+        title={t('section.windowControls')}
         enabled={settings.windowControl.enabled}
         onToggle={(enabled) =>
           onUpdate({ windowControl: { ...settings.windowControl, enabled } })
@@ -2404,7 +2416,7 @@ const FrameSettings: React.FC<{
       >
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            样式:
+            {t('windowStyle')}:
           </span>
           <div className="flex gap-1">
             <button
@@ -2419,7 +2431,7 @@ const FrameSettings: React.FC<{
                   : 'prop-field-sm'
               }`}
             >
-              <span className="text-[11px] font-body leading-none">macOS 风格</span>
+              <span className="text-[11px] font-body leading-none">{t('windowStyle.macos')}</span>
             </button>
             <button
               onClick={() =>
@@ -2433,7 +2445,7 @@ const FrameSettings: React.FC<{
                   : 'prop-field-sm'
               }`}
             >
-              <span className="text-[11px] font-body leading-none">Windows 风格</span>
+              <span className="text-[11px] font-body leading-none">{t('windowStyle.windows')}</span>
             </button>
           </div>
         </div>
@@ -2441,7 +2453,7 @@ const FrameSettings: React.FC<{
 
       {/* 水印设置 */}
       <CollapsibleSection
-        title="水印"
+        title={t('section.watermark')}
         enabled={settings.watermark.enabled}
         onToggle={(enabled) =>
           onUpdate({ watermark: { ...settings.watermark, enabled } })
@@ -2514,12 +2526,12 @@ const FrameSettings: React.FC<{
                     });
                   }}
                 >
-                  删除
+                  {t('action.delete')}
                 </button>
               </div>
             ) : (
               <span className="text-[11px] text-[var(--color-editor-hint)] font-body">
-                点击或拖拽上传图片水印
+                {t('hint.uploadWatermark')}
               </span>
             )}
           </div>
@@ -2529,7 +2541,7 @@ const FrameSettings: React.FC<{
         {!settings.watermark.imageUrl && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-              文字:
+              {t('label.text')}:
             </span>
             <input
               type="text"
@@ -2539,7 +2551,7 @@ const FrameSettings: React.FC<{
                   watermark: { ...settings.watermark, text: e.target.value },
                 })
               }
-              placeholder="水印文字"
+              placeholder={t('hint.watermarkPlaceholder')}
               className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body text-foreground outline-none"
               style={{ backgroundColor: '#FAFAFA' }}
             />
@@ -2548,15 +2560,15 @@ const FrameSettings: React.FC<{
 
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            位置:
+            {t('label.position')}:
           </span>
           <SelectControl
             value={settings.watermark.position}
             options={[
-              { name: '右下', value: 'bottom-right' },
-              { name: '左下', value: 'bottom-left' },
-              { name: '右上', value: 'top-right' },
-              { name: '左上', value: 'top-left' },
+              { name: t('position.bottomRight'), value: 'bottom-right' },
+              { name: t('position.bottomLeft'), value: 'bottom-left' },
+              { name: t('position.topRight'), value: 'top-right' },
+              { name: t('position.topLeft'), value: 'top-left' },
             ]}
             onChange={(position) =>
               onUpdate({
@@ -2569,7 +2581,7 @@ const FrameSettings: React.FC<{
           />
         </div>
         <SliderControl
-          label="透明度"
+          label={t('label.opacity')}
           value={settings.watermark.opacity}
           min={0}
           max={100}
@@ -2580,7 +2592,7 @@ const FrameSettings: React.FC<{
         />
         {settings.watermark.imageUrl ? (
           <SliderControl
-            label="大小"
+            label={t('label.size')}
             value={settings.watermark.imageSize}
             min={32}
             max={200}
@@ -2591,7 +2603,7 @@ const FrameSettings: React.FC<{
           />
         ) : (
           <SliderControl
-            label="大小"
+            label={t('label.size')}
             value={settings.watermark.fontSize}
             min={8}
             max={48}
@@ -2623,6 +2635,7 @@ const PropertiesPanel: React.FC<{
   copied: boolean;
   exportError: string | null;
 }> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings, onExportImage, onCopyToClipboard, isExporting, copied, exportError }) => {
+  const { t } = useTranslation('editor');
   // 选中类型：arrow, rect, text, mosaic 或 none
   const selectionType: 'arrow' | 'rect' | 'text' | 'mosaic' | 'none' = selectedArrow
     ? 'arrow'
@@ -2695,21 +2708,21 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            箭头样式
+            {t('label.arrowStyle')}
           </span>
           <ColorPicker
             color={selectedArrow.color}
             onChange={handleArrowColorChange}
           />
           <SliderControl
-            label="线宽"
+            label={t('label.strokeWidth')}
             value={selectedArrow.strokeWidth}
             min={1}
             max={10}
             onChange={handleArrowStrokeWidthChange}
           />
           <SliderControl
-            label="箭头大小"
+            label={t('label.arrowSize')}
             value={selectedArrow.headSize}
             min={5}
             max={30}
@@ -2726,21 +2739,21 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            矩形样式
+            {t('label.rectStyle')}
           </span>
           <ColorPicker
             color={selectedRect.color}
             onChange={handleRectColorChange}
           />
           <SliderControl
-            label="线宽"
+            label={t('label.strokeWidth')}
             value={selectedRect.strokeWidth}
             min={1}
             max={10}
             onChange={handleRectStrokeWidthChange}
           />
           <SliderControl
-            label="填充"
+            label={t('label.fill')}
             value={selectedRect.fillOpacity}
             min={0}
             max={100}
@@ -2758,14 +2771,14 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            文字样式
+            {t('label.textStyle')}
           </span>
           <ColorPicker
             color={selectedText.color}
             onChange={handleTextColorChange}
           />
           <SliderControl
-            label="字号"
+            label={t('label.fontSize')}
             value={selectedText.fontSize}
             min={8}
             max={120}
@@ -2786,17 +2799,17 @@ const PropertiesPanel: React.FC<{
             className="text-[11px] font-body font-semibold"
             style={{ color: 'var(--color-accent-orange)' }}
           >
-            马赛克样式
+            {t('label.mosaicStyle')}
           </span>
           <SliderControl
-            label="方块大小"
+            label={t('label.blockSize')}
             value={selectedMosaic.blockSize}
             min={5}
             max={50}
             onChange={handleBlockSizeChange}
           />
           <SliderControl
-            label="透明度"
+            label={t('label.opacity')}
             value={selectedMosaic.opacity}
             min={0}
             max={100}
@@ -2832,7 +2845,7 @@ const PropertiesPanel: React.FC<{
             className="text-[12px] font-body font-semibold leading-none"
             style={{ color: '#FFFFFF' }}
           >
-            {isExporting ? '导出中...' : '导出图片'}
+            {isExporting ? t('action.exporting') : t('action.export')}
           </span>
         </button>
         <button
@@ -2849,7 +2862,7 @@ const PropertiesPanel: React.FC<{
             className="text-[12px] font-body font-semibold leading-none"
             style={{ color: copied ? 'var(--color-field-focus)' : 'var(--color-editor-hint)' }}
           >
-            {copied ? '已复制' : '复制到剪贴板'}
+            {copied ? t('hint.copied') : t('action.copyToClipboard')}
           </span>
         </button>
         {/* 错误提示 */}
@@ -3094,6 +3107,7 @@ const CanvasImage: React.FC<{
 // ---------------------------------------------------------------------------
 
 const App: React.FC = () => {
+  const { t } = useTranslation('editor');
   const [source, setSource] = useState<EditorSource | null>(null);
   const [imageData, setImageData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -5722,17 +5736,17 @@ const App: React.FC = () => {
                 }}
               >
                 <span className="text-[12px] text-white">
-                  {cropArea ? '拖拽调整裁剪区域，' : '拖拽绘制裁剪区域，'}
+                  {cropArea ? t('crop.adjustHint') : t('crop.drawHint')}
                 </span>
                 <span className="text-[12px]" style={{ color: '#a5b4fc' }}>
                   Enter
                 </span>
-                <span className="text-[12px] text-white">确认</span>
+                <span className="text-[12px] text-white">{t('crop.confirm')}</span>
                 <span className="text-[12px] text-gray-400 mx-1">|</span>
                 <span className="text-[12px] text-amber-400">
                   Esc
                 </span>
-                <span className="text-[12px] text-white">取消</span>
+                <span className="text-[12px] text-white">{t('crop.cancel')}</span>
               </div>
             )}
 

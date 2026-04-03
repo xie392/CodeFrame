@@ -1,0 +1,21 @@
+{
+  "loading": "加载中...",
+  "cancel": "取消",
+  "confirm": "确定",
+  "save": "保存",
+  "delete": "删除",
+  "edit": "编辑",
+  "copy": "复制",
+  "download": "下载",
+  "reset": "重置",
+  "undo": "撤销",
+  "redo": "重做",
+  "seconds": "{{count}}秒",
+  "days": "{{count}}天",
+  "forever": "永久保存",
+  "confirmScreenshot": "确认截图",
+  "dragToSelect": "拖拽选择截图区域",
+  "selectionTooSmall": "选区太小，请重新选择",
+  "screenshotAfter": "秒后截图",
+  "escToCancel": "(Esc 取消)"
+}

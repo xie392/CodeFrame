@@ -1,0 +1,21 @@
+{
+  "loading": "Loading...",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "copy": "Copy",
+  "download": "Download",
+  "reset": "Reset",
+  "undo": "Undo",
+  "redo": "Redo",
+  "seconds": "{{count}}s",
+  "days": "{{count}} days",
+  "forever": "Forever",
+  "confirmScreenshot": "Confirm",
+  "dragToSelect": "Drag to select screenshot area",
+  "selectionTooSmall": "Selection too small, please retry",
+  "screenshotAfter": "s",
+  "escToCancel": "(Esc to cancel)"
+}

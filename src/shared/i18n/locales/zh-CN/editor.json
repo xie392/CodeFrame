@@ -1,0 +1,171 @@
+{
+  "tool": {
+    "select": "选择",
+    "move": "移动",
+    "arrow": "箭头",
+    "rectangle": "矩形",
+    "text": "文字",
+    "mosaic": "马赛克",
+    "crop": "裁剪"
+  },
+  "action": {
+    "undo": "撤销 (Ctrl+Z)",
+    "redo": "重做 (Ctrl+Shift+Z)",
+    "upload": "上传",
+    "download": "下载",
+    "copy": "复制",
+    "export": "导出图片",
+    "exporting": "导出中...",
+    "copyToClipboard": "复制到剪贴板",
+    "delete": "删除"
+  },
+  "label": {
+    "strokeWidth": "线宽",
+    "color": "颜色",
+    "fontSize": "字号",
+    "blockSize": "块大小",
+    "opacity": "透明度",
+    "padding": "边距",
+    "borderRadius": "圆角",
+    "background": "背景",
+    "imageRadius": "图片圆角",
+    "shadow": "阴影",
+    "imageShadow": "图片阴影",
+    "windowControls": "窗口控件",
+    "watermark": "水印",
+    "customColor": "自定义颜色",
+    "blur": "模糊",
+    "position": "位置",
+    "text": "文字",
+    "style": "样式",
+    "mosaicStyle": "马赛克样式",
+    "blockSizeLabel": "方块大小",
+    "opacityLabel": "透明度",
+    "unit": "单位",
+    "size": "大小",
+    "aspectRatio": "比例",
+    "angle": "角度",
+    "width": "宽",
+    "height": "高",
+    "arrowStyle": "箭头样式",
+    "arrowSize": "箭头大小",
+    "rectStyle": "矩形样式",
+    "textStyle": "文字样式",
+    "fill": "填充"
+  },
+  "hint": {
+    "dropImage": "拖拽图片到此处",
+    "pasteImage": "粘贴图片或点击上传",
+    "uploadImage": "上传图片",
+    "copied": "已复制到剪贴板",
+    "downloaded": "已下载",
+    "processing": "处理中...",
+    "uploadWatermark": "点击或拖拽上传图片水印",
+    "watermarkPlaceholder": "水印文字"
+  },
+  "error": {
+    "loadFailed": "图片加载失败",
+    "exportFailed": "导出失败",
+    "invalidImage": "无效的图片格式"
+  },
+  "arrowStyle": {
+    "single": "单箭头",
+    "double": "双箭头",
+    "line": "直线"
+  },
+  "borderStyle": {
+    "solid": "实线",
+    "dashed": "虚线",
+    "dotted": "点线"
+  },
+  "backgroundType": {
+    "solid": "纯色",
+    "gradient": "渐变",
+    "image": "图片",
+    "startColor": "起始色",
+    "endColor": "结束色"
+  },
+  "backgroundPreset": {
+    "transparent": "透明",
+    "white": "白色",
+    "black": "黑色",
+    "sunset": "日落",
+    "ocean": "海洋",
+    "forest": "森林",
+    "purple": "紫色",
+    "peach": "蜜桃"
+  },
+  "shadowPreset": {
+    "none": "无",
+    "light": "轻微",
+    "medium": "中等",
+    "strong": "强烈"
+  },
+  "crop": {
+    "title": "裁剪",
+    "apply": "应用",
+    "cancel": "取消",
+    "reset": "重置",
+    "confirm": "确认",
+    "adjustHint": "拖拽调整裁剪区域，",
+    "drawHint": "拖拽绘制裁剪区域，"
+  },
+  "frame": {
+    "padding": "边距",
+    "radius": "圆角",
+    "background": "背景"
+  },
+  "export": {
+    "png": "PNG",
+    "jpg": "JPG",
+    "webp": "WEBP"
+  },
+  "borderRadiusPreset": {
+    "none": "无圆角",
+    "small": "小圆角",
+    "medium": "中等圆角",
+    "large": "大圆角",
+    "capsule": "胶囊形"
+  },
+  "aspectRatio": {
+    "auto": "自动",
+    "custom": "自定义",
+    "androidFlagship": "安卓旗舰",
+    "androidTablet": "安卓平板"
+  },
+  "windowStyle": {
+    "macos": "macOS 风格",
+    "windows": "Windows 风格",
+    "none": "无"
+  },
+  "section": {
+    "shadow": "阴影",
+    "imageShadow": "图片阴影",
+    "windowControls": "窗口控件",
+    "watermark": "水印"
+  },
+  "watermarkPosition": {
+    "bottomRight": "右下",
+    "bottomLeft": "左下",
+    "topRight": "右上",
+    "topLeft": "左上"
+  },
+  "corner": {
+    "topLeft": "左上",
+    "topRight": "右上",
+    "bottomLeft": "左下",
+    "bottomRight": "右下"
+  },
+  "position": {
+    "bottomRight": "右下",
+    "bottomLeft": "左下",
+    "topRight": "右上",
+    "topLeft": "左上"
+  },
+  "direction": {
+    "top": "上",
+    "right": "右",
+    "bottom": "下",
+    "left": "左"
+  }
+}

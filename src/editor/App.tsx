@@ -28,7 +28,9 @@ import {
   Check,
 } from 'lucide-react';
 import { snapdom } from '@zumer/snapdom';
-import { STORAGE_KEYS } from '@shared/constants';
+import { STORAGE_KEYS, EXPORT_FORMATS } from '@shared/constants';
+import { useSettingsStore } from '@shared/stores/settings-store';
+import type { ExportFormat } from '@shared/types';
 import { useEditorHistory } from './hooks/useEditorHistory';
 import type {
   EditorState,
@@ -3112,6 +3114,9 @@ const App: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // 获取用户设置
+  const { settings } = useSettingsStore();
+
   // 图片加载后计算居中偏移
   const handleImageSizeChange = useCallback(
     (w: number, h: number) => {
@@ -3576,15 +3581,46 @@ const App: React.FC = () => {
     try {
       await waitForRender();
 
-      // 使用 snapdom 导出图片容器
-      const img = await snapdom.toPng(prepared.container, {
-        scale: 2,
-      });
+      const format = settings.defaultFormat as ExportFormat;
+      const scale = settings.quality === '1x' ? 1 : settings.quality === '3x' ? 3 : 2;
+      const timestamp = Date.now();
+
+      // 根据格式导出
+      let img: HTMLImageElement;
+      let extension: string;
+
+      switch (format) {
+        case EXPORT_FORMATS.JPG: {
+          // JPG 使用 Blob 方式导出
+          const blob = await snapdom.toBlob(prepared.container, {
+            scale,
+            type: 'jpeg',
+            backgroundColor: '#ffffff',
+            quality: 0.92,
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `codeframe-${timestamp}.jpg`;
+          a.click();
+          URL.revokeObjectURL(url);
+          return; // 提前返回，跳过通用下载逻辑
+        }
+        case EXPORT_FORMATS.WEBP:
+          img = await snapdom.toWebp(prepared.container, { scale });
+          extension = 'webp';
+          break;
+        case EXPORT_FORMATS.PNG:
+        default:
+          img = await snapdom.toPng(prepared.container, { scale });
+          extension = 'png';
+          break;
+      }
 
       // 触发下载
       const a = document.createElement('a');
       a.href = img.src;
-      a.download = `codeframe-${Date.now()}.png`;
+      a.download = `codeframe-${timestamp}.${extension}`;
       a.click();
     } catch (err) {
       console.error('导出失败:', err);
@@ -3594,7 +3630,7 @@ const App: React.FC = () => {
       cleanupExport(prepared.annotationImg);
       setIsExporting(false);
     }
-  }, [prepareExport, waitForRender, cleanupExport]);
+  }, [prepareExport, waitForRender, cleanupExport, settings.defaultFormat, settings.quality]);
 
   // 复制到剪贴板
   const handleCopyToClipboard = useCallback(async () => {

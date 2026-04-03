@@ -20,6 +20,9 @@ import { snapdom } from '@zumer/snapdom';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorView } from '@codemirror/view';
+import { useSettingsStore } from '@shared/stores/settings-store';
+import { EXPORT_FORMATS } from '@shared/constants';
+import type { ExportFormat } from '@shared/types';
 import {
   Tooltip,
   TooltipTrigger,
@@ -240,6 +243,9 @@ const App: React.FC = () => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  // 获取用户设置
+  const { settings } = useSettingsStore();
+
   // ---- 代码窗口状态 ----
   const [winSize, setWinSize] = useState({
     width: 520,
@@ -391,20 +397,60 @@ const App: React.FC = () => {
       if (isEditingRef.current) exitEditRef.current();
       // 等待 DOM 更新
       await new Promise((r) => setTimeout(r, 50));
-      const img = await snapdom.toPng(el, {
-        scale: 2,
-        exclude: ['[data-no-export]'],
-      });
+
+      const format = settings.defaultFormat as ExportFormat;
+      const scale = settings.quality === '1x' ? 1 : settings.quality === '3x' ? 3 : 2;
+      const timestamp = Date.now();
+
+      // 根据格式导出
+      let img: HTMLImageElement;
+      let extension: string;
+
+      switch (format) {
+        case EXPORT_FORMATS.JPG: {
+          // JPG 使用 Blob 方式导出
+          const blob = await snapdom.toBlob(el, {
+            scale,
+            type: 'jpeg',
+            backgroundColor: '#ffffff',
+            quality: 0.92,
+            exclude: ['[data-no-export]'],
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `codeframe-${timestamp}.jpg`;
+          a.click();
+          URL.revokeObjectURL(url);
+          return;
+        }
+        case EXPORT_FORMATS.WEBP:
+          img = await snapdom.toWebp(el, {
+            scale,
+            exclude: ['[data-no-export]'],
+          });
+          extension = 'webp';
+          break;
+        case EXPORT_FORMATS.PNG:
+        default:
+          img = await snapdom.toPng(el, {
+            scale,
+            exclude: ['[data-no-export]'],
+          });
+          extension = 'png';
+          break;
+      }
+
       const a = document.createElement('a');
       a.href = img.src;
-      a.download = `codeframe-${Date.now()}.png`;
+      a.download = `codeframe-${timestamp}.${extension}`;
       a.click();
     } catch (err) {
       console.error('导出失败:', err);
     } finally {
       setIsExporting(false);
     }
-  }, []);
+  }, [settings.defaultFormat, settings.quality]);
 
   const handleCopyToClipboard = useCallback(async () => {
     const el = exportRef.current;

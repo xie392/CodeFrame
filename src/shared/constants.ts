@@ -29,7 +29,6 @@ export const EXPORT_FORMATS = {
   PNG: 'png',
   JPG: 'jpg',
   WEBP: 'webp',
-  SVG: 'svg',
 } as const;
 
 // 导出格式中文标签
@@ -37,7 +36,6 @@ export const EXPORT_FORMAT_LABELS: Record<string, string> = {
   png: 'PNG',
   jpg: 'JPG',
   webp: 'WEBP',
-  svg: 'SVG',
 };
 
 // 截图质量选项

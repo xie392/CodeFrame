@@ -1,38 +1,21 @@
+/**
+ * Editor 主组件
+ * 重构后的精简版本，导入已拆分的模块
+ */
+
 import React, {
-  useState,
   useEffect,
   useCallback,
   useRef,
   useMemo,
-  type DragEvent,
   type ClipboardEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  MousePointer2,
-  Move,
-  MoveRight,
-  Square,
-  Type,
-  Scan,
-  Crop,
-  Undo2,
-  Redo2,
-  ImagePlus,
-  Download,
-  ClipboardCopy,
-  Minus,
-  Plus,
-  RotateCcw,
-  ChevronRight,
-  Loader2,
-  Check,
-} from 'lucide-react';
-import { snapdom } from '@zumer/snapdom';
-import { STORAGE_KEYS, EXPORT_FORMATS } from '@shared/constants';
+import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { STORAGE_KEYS } from '@shared/constants';
 import { useSettingsStore } from '@shared/stores/settings-store';
-import type { ExportFormat } from '@shared/types';
-import { useEditorHistory } from './hooks/useEditorHistory';
+
+// 导入类型
 import type {
   EditorState,
   ArrowShape,
@@ -41,3123 +24,76 @@ import type {
   MosaicShape,
   CropArea,
   ToolId,
-  ArrowStyle,
-  RectBorderStyle,
-  ImageFrameSettings,
 } from './types';
-import { BORDER_RADIUS_PRESETS } from './types';
 
-// ---------------------------------------------------------------------------
-// 常量与类型
-// ---------------------------------------------------------------------------
-
-const ACCEPTED_IMAGE_TYPES = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-] as const;
-
-const MIN_SCALE = 0.25;
-const MAX_SCALE = 4;
-const MAX_IMG_W = 800;
-const MAX_IMG_H = 600;
-
-// 预设颜色
-const PRESET_COLORS = [
-  '#EF4444', // 红
-  '#F59E0B', // 橙
-  '#EAB308', // 黄
-  '#22C55E', // 绿
-  '#3B82F6', // 蓝
-  '#8B5CF6', // 紫
-  '#FFFFFF', // 白
-  '#000000', // 黑
-] as const;
-
-// 默认箭头样式
-const DEFAULT_ARROW_STYLE: {
-  color: string;
-  strokeWidth: number;
-  headSize: number;
-  style: ArrowStyle;
-} = {
-  color: '#EF4444',
-  strokeWidth: 2,
-  headSize: 12,
-  style: 'single',
-};
-
-// 默认矩形样式
-const DEFAULT_RECT_STYLE: {
-  color: string;
-  strokeWidth: number;
-  fillOpacity: number;
-  borderStyle: RectBorderStyle;
-} = {
-  color: '#EF4444',
-  strokeWidth: 2,
-  fillOpacity: 0,
-  borderStyle: 'solid',
-};
-
-// 默认文字样式
-const DEFAULT_TEXT_STYLE: {
-  color: string;
-  fontSize: number;
-  fontWeight: 'normal' | 'bold';
-  fontStyle: 'normal' | 'italic';
-} = {
-  color: '#EF4444',
-  fontSize: 24,
-  fontWeight: 'normal',
-  fontStyle: 'normal',
-};
-
-// 默认马赛克样式
-const DEFAULT_MOSAIC_STYLE: {
-  blockSize: number;
-  opacity: number;
-} = {
-  blockSize: 10,
-  opacity: 100,
-};
-
-// 默认图片容器设置
-const DEFAULT_FRAME_SETTINGS: ImageFrameSettings = {
-  background: {
-    type: 'linear',
-    color: '#FFFFFF',
-    gradientColors: ['#E0F7FA', '#E1BEE7'],
-    gradientAngle: 135,
-  },
-  padding: {
-    top: 40,
-    right: 40,
-    bottom: 40,
-    left: 40,
-    linked: true,
-  },
-  borderRadius: {
-    unit: 'px' as const,
-    topLeft: 12,
-    topRight: 12,
-    bottomRight: 12,
-    bottomLeft: 12,
-    linked: true,
-  },
-  imageRadius: {
-    unit: 'px' as const,
-    topLeft: 0,
-    topRight: 0,
-    bottomRight: 0,
-    bottomLeft: 0,
-    linked: true,
-  },
-  shadow: {
-    enabled: true,
-    color: '#000000',
-    blur: 20,
-    offsetX: 0,
-    offsetY: 10,
-  },
-  imageShadow: {
-    enabled: false,
-    color: '#000000',
-    blur: 20,
-    offsetX: 0,
-    offsetY: 10,
-  },
-  aspectRatio: 'auto',
-  customAspectRatio: { width: 0, height: 0 },
-  windowControl: {
-    enabled: false,
-    style: 'macos',
-  },
-  watermark: {
-    enabled: false,
-    text: '',
-    position: 'bottom-right',
-    opacity: 50,
-    fontSize: 14,
-    imageUrl: null,
-    imageSize: 64,
-  },
-};
-
-// 背景预设（name 使用 i18n key）
-const BACKGROUND_PRESETS = [
-  { name: 'backgroundPreset.transparent', type: 'solid' as const, color: 'transparent' },
-  { name: 'backgroundPreset.white', type: 'solid' as const, color: '#FFFFFF' },
-  { name: 'backgroundPreset.black', type: 'solid' as const, color: '#000000' },
-  {
-    name: 'backgroundPreset.sunset',
-    type: 'linear' as const,
-    gradientColors: ['#FF512F', '#DD2476'] as [string, string],
-    gradientAngle: 135,
-  },
-  {
-    name: 'backgroundPreset.ocean',
-    type: 'linear' as const,
-    gradientColors: ['#2193b0', '#6dd5ed'] as [string, string],
-    gradientAngle: 135,
-  },
-  {
-    name: 'backgroundPreset.forest',
-    type: 'linear' as const,
-    gradientColors: ['#134E5E', '#71B280'] as [string, string],
-    gradientAngle: 135,
-  },
-  {
-    name: 'backgroundPreset.purple',
-    type: 'linear' as const,
-    gradientColors: ['#667eea', '#764ba2'] as [string, string],
-    gradientAngle: 135,
-  },
-  {
-    name: 'backgroundPreset.peach',
-    type: 'linear' as const,
-    gradientColors: ['#FFB88C', '#DE6262'] as [string, string],
-    gradientAngle: 135,
-  },
-];
-
-// 阴影预设（name 使用 i18n key）
-const SHADOW_PRESETS = [
-  { name: 'shadowPreset.none', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
-  { name: 'shadowPreset.light', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
-  { name: 'shadowPreset.medium', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
-  { name: 'shadowPreset.strong', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
-];
-
-// 图片阴影预设（name 使用 i18n key）
-const IMAGE_SHADOW_PRESETS = [
-  { name: 'shadowPreset.none', enabled: false, blur: 0, offsetX: 0, offsetY: 0 },
-  { name: 'shadowPreset.light', enabled: true, blur: 10, offsetX: 0, offsetY: 4 },
-  { name: 'shadowPreset.medium', enabled: true, blur: 20, offsetX: 0, offsetY: 10 },
-  { name: 'shadowPreset.strong', enabled: true, blur: 40, offsetX: 0, offsetY: 20 },
-];
-
-// 比例预设（按分类组织，name 使用 i18n key）
-const ASPECT_RATIO_PRESETS = [
-  // 原始比例
-  { name: 'aspectRatio.auto', value: 'auto' },
-  // 基础比例
-  { name: '1:1', value: '1:1' },
-  { name: '4:3', value: '4:3' },
-  { name: '3:2', value: '3:2' },
-  { name: '2:3', value: '2:3' },
-  { name: '5:4', value: '5:4' },
-  { name: '16:9', value: '16:9' },
-  { name: '16:10', value: '16:10' },
-  { name: '21:9', value: '21:9' },
-  // 社交媒体
-  { name: '9:16', value: '9:16' },
-  { name: '4:5', value: '4:5' },
-  { name: '3:4', value: '3:4' },
-  { name: '1.91:1', value: '1.91:1' },
-  // 设备屏幕（使用 device: 前缀避免重复）
-  { name: 'iPhone', value: 'device:9:19.5' },
-  { name: 'iPhone SE', value: 'device:16:9' },
-  { name: 'aspectRatio.androidFlagship', value: 'device:9:21' },
-  { name: 'iPad', value: 'device:3:4' },
-  { name: 'aspectRatio.androidTablet', value: 'device:16:10' },
-  // 自定义
-  { name: 'aspectRatio.custom', value: 'custom' },
-];
-
-/** 解析比例字符串，返回宽高比 */
-function parseAspectRatio(
-  ratio: string,
-  customRatio?: { width: number; height: number }
-): number | null {
-  if (ratio === 'auto' || ratio === 'original') return null;
-  
-  // 自定义比例
-  if (ratio === 'custom' && customRatio) {
-    if (customRatio.width > 0 && customRatio.height > 0) {
-      return customRatio.width / customRatio.height;
-    }
-    return null;
-  }
-  
-  // 设备比例（带 device: 前缀）
-  let ratioValue = ratio;
-  if (ratio.startsWith('device:')) {
-    ratioValue = ratio.substring(7); // 移除 'device:' 前缀
-  }
-  
-  // 支持 "W:H" 格式，如 "16:9", "4:3", "1.91:1"
-  const parts = ratioValue.split(':');
-  if (parts.length === 2) {
-    const w = parseFloat(parts[0]);
-    const h = parseFloat(parts[1]);
-    if (w > 0 && h > 0) {
-      return w / h;
-    }
-  }
-  return null;
-}
-
-/** 根据比例计算容器尺寸 */
-function calculateAspectRatioSize(
-  aspectRatio: string,
-  imageWidth: number,
-  imageHeight: number,
-  customRatio?: { width: number; height: number }
-): { width: number; height: number } {
-  const ratio = parseAspectRatio(aspectRatio, customRatio);
-  if (!ratio) {
-    // auto 或 original，使用图片原始尺寸
-    return { width: imageWidth, height: imageHeight };
-  }
-  
-  // 根据比例计算容器尺寸
-  // 策略：以图片较大边为基准，按比例计算容器尺寸
-  const imageRatio = imageWidth / imageHeight;
-  
-  if (imageRatio > ratio) {
-    // 图片更宽，以宽度为基准
-    return {
-      width: imageWidth,
-      height: imageWidth / ratio,
-    };
-  } else {
-    // 图片更高，以高度为基准
-    return {
-      width: imageHeight * ratio,
-      height: imageHeight,
-    };
-  }
-}
-
-type EditorSource = 'capture' | 'upload';
-
-interface ToolConfig {
-  id: ToolId;
-  icon: React.ReactNode;
-}
-
-const TOOLS: ToolConfig[] = [
-  { id: 'select', icon: <MousePointer2 size={18} /> },
-  { id: 'move', icon: <Move size={18} /> },
-  { id: 'arrow', icon: <MoveRight size={18} /> },
-  { id: 'rect', icon: <Square size={18} /> },
-  { id: 'text', icon: <Type size={18} /> },
-  { id: 'mosaic', icon: <Scan size={18} /> },
-  { id: 'crop', icon: <Crop size={18} /> },
-];
-
-// ---------------------------------------------------------------------------
-// 工具函数
-// ---------------------------------------------------------------------------
-
-function parseSource(): EditorSource | null {
-  const params = new URLSearchParams(window.location.search);
-  const source = params.get('source');
-  if (source === 'capture' || source === 'upload') return source;
-  return 'upload'; // 默认空画布模式
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function isAcceptedImageType(file: File): boolean {
-  return (ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type);
-}
-
-// 箭头 ID 计数器
-let arrowIdCounter = 0;
-
-function generateId(): string {
-  return `arrow_${Date.now()}_${++arrowIdCounter}`;
-}
-
-// 矩形 ID 计数器
-let rectIdCounter = 0;
-
-function generateRectId(): string {
-  return `rect_${Date.now()}_${++rectIdCounter}`;
-}
-
-// 文字 ID 计数器
-let textIdCounter = 0;
-
-function generateTextId(): string {
-  return `text_${Date.now()}_${++textIdCounter}`;
-}
-
-// 马赛克 ID 计数器
-let mosaicIdCounter = 0;
-
-function generateMosaicId(): string {
-  return `mosaic_${Date.now()}_${++mosaicIdCounter}`;
-}
-
-// 控制点半径
-const HANDLE_RADIUS = 6;
-
-// 箭头拖拽类型（起点、终点、中点、移动）
-type DragType = 'none' | 'move' | 'start' | 'end' | 'middle';
-
-// 矩形拖拽类型（8个控制点 + 移动）
-type RectDragType =
-  | 'none'
-  | 'move'
-  | 'resize-tl'
-  | 'resize-tr'
-  | 'resize-bl'
-  | 'resize-br'
-  | 'resize-t'
-  | 'resize-r'
-  | 'resize-b'
-  | 'resize-l';
-
-// 矩形控制点光标映射
-const RECT_CURSOR_MAP: Record<RectDragType, string> = {
-  none: 'default',
-  move: 'move',
-  'resize-tl': 'nwse-resize',
-  'resize-tr': 'nesw-resize',
-  'resize-bl': 'nesw-resize',
-  'resize-br': 'nwse-resize',
-  'resize-t': 'ns-resize',
-  'resize-b': 'ns-resize',
-  'resize-l': 'ew-resize',
-  'resize-r': 'ew-resize',
-};
-
-// 文字拖拽类型（四角调整字号）
-type TextDragType = 'none' | 'move' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br';
-
-// 文字控制点光标映射
-const TEXT_CURSOR_MAP: Record<TextDragType, string> = {
-  none: 'default',
-  move: 'move',
-  'resize-tl': 'nwse-resize',
-  'resize-tr': 'nesw-resize',
-  'resize-bl': 'nesw-resize',
-  'resize-br': 'nwse-resize',
-};
-
-// 马赛克拖拽类型（8个控制点 + 移动，与矩形相同）
-type MosaicDragType = RectDragType;
-
-// 马赛克控制点光标映射（与矩形相同）
-const MOSAIC_CURSOR_MAP: Record<MosaicDragType, string> = RECT_CURSOR_MAP;
-
-// 最小裁剪尺寸
-const MIN_CROP_SIZE = 10;
-
-// 裁剪框拖拽类型（与矩形相同）
-type CropDragType = RectDragType;
-
-// 裁剪框光标映射（与矩形相同）
-const CROP_CURSOR_MAP: Record<CropDragType, string> = RECT_CURSOR_MAP;
-
-// 在 Canvas 上绘制箭头
-function drawArrow(
-  ctx: CanvasRenderingContext2D,
-  arrow: ArrowShape,
-  isSelected: boolean = false,
-): void {
-  const { startX, startY, endX, endY, color, strokeWidth, headSize, style } =
-    arrow;
-
-  // 计算方向向量
-  const dx = endX - startX;
-  const dy = endY - startY;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  if (length < 1) return;
-
-  const unitX = dx / length;
-  const unitY = dy / length;
-
-  // 箭头头部角度（30度）
-  const angle = Math.PI / 6;
-
-  ctx.save();
-
-  // 先绘制选中状态高亮（在箭头下方）
-  if (isSelected) {
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
-    ctx.lineWidth = strokeWidth + 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.lineTo(endX, endY);
-    ctx.stroke();
-  }
-
-  // 设置箭头样式
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = strokeWidth;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  // 绘制主线
-  ctx.beginPath();
-  ctx.moveTo(startX, startY);
-  ctx.lineTo(endX, endY);
-  ctx.stroke();
-
-  // 绘制箭头头部
-  const drawHead = (tipX: number, tipY: number, dirX: number, dirY: number) => {
-    const headLen = headSize;
-    ctx.beginPath();
-    ctx.moveTo(tipX, tipY);
-    ctx.lineTo(
-      tipX - headLen * (dirX * Math.cos(angle) - dirY * Math.sin(angle)),
-      tipY - headLen * (dirY * Math.cos(angle) + dirX * Math.sin(angle)),
-    );
-    ctx.moveTo(tipX, tipY);
-    ctx.lineTo(
-      tipX - headLen * (dirX * Math.cos(angle) + dirY * Math.sin(angle)),
-      tipY - headLen * (dirY * Math.cos(angle) - dirX * Math.sin(angle)),
-    );
-    ctx.stroke();
-  };
-
-  // 终点箭头
-  drawHead(endX, endY, unitX, unitY);
-
-  // 起点（双箭头）
-  if (style === 'double') {
-    drawHead(startX, startY, -unitX, -unitY);
-  }
-
-  // 绘制选中状态的控制点
-  if (isSelected) {
-    ctx.fillStyle = '#3B82F6';
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-
-    // 起点控制点
-    ctx.beginPath();
-    ctx.arc(startX, startY, HANDLE_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // 中点控制点（箭头长度足够时才显示）
-    const arrowLength = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
-    const minArrowLengthForMidHandle = HANDLE_RADIUS * 4;
-    if (arrowLength >= minArrowLengthForMidHandle) {
-      const midX = (startX + endX) / 2;
-      const midY = (startY + endY) / 2;
-      ctx.beginPath();
-      ctx.arc(midX, midY, HANDLE_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    // 终点控制点
-    ctx.beginPath();
-    ctx.arc(endX, endY, HANDLE_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
-// 检测点击是否在箭头附近
-function isPointNearArrow(
-  x: number,
-  y: number,
-  arrow: ArrowShape,
-  threshold: number = 8,
-): boolean {
-  const { startX, startY, endX, endY } = arrow;
-
-  // 计算点到线段的距离
-  const dx = endX - startX;
-  const dy = endY - startY;
-  const lengthSq = dx * dx + dy * dy;
-
-  if (lengthSq === 0) {
-    // 线段退化为点
-    const dist = Math.sqrt((x - startX) ** 2 + (y - startY) ** 2);
-    return dist <= threshold;
-  }
-
-  // 计算投影参数 t
-  let t = ((x - startX) * dx + (y - startY) * dy) / lengthSq;
-  t = Math.max(0, Math.min(1, t));
-
-  // 最近点
-  const nearestX = startX + t * dx;
-  const nearestY = startY + t * dy;
-
-  const dist = Math.sqrt((x - nearestX) ** 2 + (y - nearestY) ** 2);
-  return dist <= threshold;
-}
-
-// 检测点击是否在控制点上，返回拖拽类型
-function getDragTypeAtPoint(
-  x: number,
-  y: number,
-  arrow: ArrowShape,
-): DragType {
-  const { startX, startY, endX, endY } = arrow;
-  const threshold = HANDLE_RADIUS + 2;
-
-  // 计算中点
-  const midX = (startX + endX) / 2;
-  const midY = (startY + endY) / 2;
-
-  // 检测终点控制点
-  const distEnd = Math.sqrt((x - endX) ** 2 + (y - endY) ** 2);
-  if (distEnd <= threshold) return 'end';
-
-  // 检测起点控制点
-  const distStart = Math.sqrt((x - startX) ** 2 + (y - startY) ** 2);
-  if (distStart <= threshold) return 'start';
-
-  // 检测中点控制点（箭头长度足够时才显示）
-  const arrowLength = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
-  const minArrowLengthForMidHandle = HANDLE_RADIUS * 4; // 最小长度为控制点半径的 4 倍
-  if (arrowLength >= minArrowLengthForMidHandle) {
-    const distMid = Math.sqrt((x - midX) ** 2 + (y - midY) ** 2);
-    if (distMid <= threshold) return 'middle';
-  }
-
-  // 检测箭头主体
-  if (isPointNearArrow(x, y, arrow)) return 'move';
-
-  return 'none';
-}
-
-// 在 Canvas 上绘制矩形
-function drawRect(
-  ctx: CanvasRenderingContext2D,
-  rect: RectShape,
-  isSelected: boolean = false,
-): void {
-  const { x, y, width, height, color, strokeWidth, fillOpacity, borderStyle } =
-    rect;
-
-  ctx.save();
-
-  // 先绘制选中状态高亮（在矩形下方）
-  if (isSelected) {
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
-    ctx.lineWidth = strokeWidth + 4;
-    ctx.strokeRect(x, y, width, height);
-  }
-
-  // 绘制填充
-  if (fillOpacity > 0) {
-    const alpha = fillOpacity / 100;
-    ctx.fillStyle = hexToRgba(color, alpha);
-    ctx.fillRect(x, y, width, height);
-  }
-
-  // 设置边框样式
-  ctx.strokeStyle = color;
-  ctx.lineWidth = strokeWidth;
-  if (borderStyle === 'dashed') {
-    ctx.setLineDash([8, 4]);
-  } else {
-    ctx.setLineDash([]);
-  }
-
-  // 绘制边框
-  ctx.strokeRect(x, y, width, height);
-
-  // 绘制选中状态的控制点
-  if (isSelected) {
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#3B82F6';
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-
-    const handles = getRectHandles(rect);
-    handles.forEach((handle) => {
-      ctx.beginPath();
-      ctx.arc(handle.x, handle.y, HANDLE_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-  }
-
-  ctx.restore();
-}
-
-// 十六进制颜色转 RGBA
-function hexToRgba(hex: string, alpha: number): string {
-  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-    console.warn(`Invalid hex color: ${hex}`);
-    return `rgba(0, 0, 0, ${alpha})`;
-  }
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-// 获取矩形的 8 个控制点位置
-function getRectHandles(rect: RectShape): { x: number; y: number }[] {
-  const { x, y, width, height } = rect;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-
-  return [
-    { x: x, y: y }, // 左上 (tl)
-    { x: cx, y: y }, // 上中 (t)
-    { x: x + width, y: y }, // 右上 (tr)
-    { x: x + width, y: cy }, // 右中 (r)
-    { x: x + width, y: y + height }, // 右下 (br)
-    { x: cx, y: y + height }, // 下中 (b)
-    { x: x, y: y + height }, // 左下 (bl)
-    { x: x, y: cy }, // 左中 (l)
-  ];
-}
-
-// 检测点击是否在矩形内部
-function isPointInRect(x: number, y: number, rect: RectShape): boolean {
-  const { x: rx, y: ry, width, height } = rect;
-  return x >= rx && x <= rx + width && y >= ry && y <= ry + height;
-}
-
-// 检测点击是否在矩形边框附近
-function isPointNearRectBorder(
-  x: number,
-  y: number,
-  rect: RectShape,
-  threshold: number = 8,
-): boolean {
-  const { x: rx, y: ry, width, height } = rect;
-
-  // 检测是否在矩形边界附近
-  const inHorizontalBand =
-    y >= ry - threshold && y <= ry + height + threshold;
-  const inVerticalBand =
-    x >= rx - threshold && x <= rx + width + threshold;
-
-  // 左边或右边
-  if (inHorizontalBand) {
-    if (Math.abs(x - rx) <= threshold || Math.abs(x - (rx + width)) <= threshold) {
-      return true;
-    }
-  }
-
-  // 上边或下边
-  if (inVerticalBand) {
-    if (Math.abs(y - ry) <= threshold || Math.abs(y - (ry + height)) <= threshold) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-// 检测点击位置返回矩形拖拽类型
-function getRectDragTypeAtPoint(
-  x: number,
-  y: number,
-  rect: RectShape,
-): RectDragType {
-  const threshold = HANDLE_RADIUS + 2;
-  const handles = getRectHandles(rect);
-  const handleTypes: RectDragType[] = [
-    'resize-tl',
-    'resize-t',
-    'resize-tr',
-    'resize-r',
-    'resize-br',
-    'resize-b',
-    'resize-bl',
-    'resize-l',
-  ];
-
-  // 检测控制点
-  for (let i = 0; i < handles.length; i++) {
-    const handle = handles[i];
-    const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
-    if (dist <= threshold) {
-      return handleTypes[i];
-    }
-  }
-
-  // 检测边框
-  if (isPointNearRectBorder(x, y, rect)) {
-    // 根据位置判断是哪个边
-    const { x: rx, y: ry, width, height } = rect;
-    const relX = (x - rx) / width;
-    const relY = (y - ry) / height;
-
-    // 角落区域
-    if (relX < 0.2 && relY < 0.2) return 'resize-tl';
-    if (relX > 0.8 && relY < 0.2) return 'resize-tr';
-    if (relX < 0.2 && relY > 0.8) return 'resize-bl';
-    if (relX > 0.8 && relY > 0.8) return 'resize-br';
-    // 边缘区域
-    if (relY < 0.2) return 'resize-t';
-    if (relY > 0.8) return 'resize-b';
-    if (relX < 0.2) return 'resize-l';
-    if (relX > 0.8) return 'resize-r';
-  }
-
-  // 检测内部
-  if (isPointInRect(x, y, rect)) {
-    return 'move';
-  }
-
-  return 'none';
-}
-
-// ---------------------------------------------------------------------------
-// 文字相关函数
-// ---------------------------------------------------------------------------
-
-// 获取文字边界
-function getTextBounds(
-  text: TextShape,
-  ctx: CanvasRenderingContext2D,
-): { x: number; y: number; width: number; height: number } {
-  ctx.save();
-  ctx.font = `${text.fontStyle === 'italic' ? 'italic ' : ''}${text.fontWeight === 'bold' ? 'bold ' : ''}${text.fontSize}px sans-serif`;
-  const metrics = ctx.measureText(text.text);
-  const width = metrics.width;
-  const height = text.fontSize * 1.2; // 行高约为字号的 1.2 倍
-  ctx.restore();
-
-  return {
-    x: text.x,
-    y: text.y,
-    width,
-    height,
-  };
-}
-
-// 获取文字的四个角控制点
-function getTextHandles(
-  text: TextShape,
-  ctx: CanvasRenderingContext2D,
-): { x: number; y: number; type: TextDragType }[] {
-  const bounds = getTextBounds(text, ctx);
-  const { x, y, width, height } = bounds;
-
-  return [
-    { x: x, y: y, type: 'resize-tl' }, // 左上
-    { x: x + width, y: y, type: 'resize-tr' }, // 右上
-    { x: x, y: y + height, type: 'resize-bl' }, // 左下
-    { x: x + width, y: y + height, type: 'resize-br' }, // 右下
-  ];
-}
-
-// 检测点击是否在文字区域内
-function isPointInText(
-  x: number,
-  y: number,
-  text: TextShape,
-  ctx: CanvasRenderingContext2D,
-): boolean {
-  const bounds = getTextBounds(text, ctx);
-  return (
-    x >= bounds.x &&
-    x <= bounds.x + bounds.width &&
-    y >= bounds.y &&
-    y <= bounds.y + bounds.height
-  );
-}
-
-// 检测点击位置返回文字拖拽类型
-function getTextDragTypeAtPoint(
-  x: number,
-  y: number,
-  text: TextShape,
-  ctx: CanvasRenderingContext2D,
-): TextDragType {
-  const threshold = HANDLE_RADIUS + 2;
-  const handles = getTextHandles(text, ctx);
-
-  // 检测控制点
-  for (const handle of handles) {
-    const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
-    if (dist <= threshold) {
-      return handle.type;
-    }
-  }
-
-  // 检测文字内部
-  if (isPointInText(x, y, text, ctx)) {
-    return 'move';
-  }
-
-  return 'none';
-}
-
-// 在 Canvas 上绘制文字
-function drawText(
-  ctx: CanvasRenderingContext2D,
-  text: TextShape,
-  isSelected: boolean = false,
-): void {
-  ctx.save();
-
-  const bounds = getTextBounds(text, ctx);
-
-  // 先绘制选中状态高亮（在文字下方）
-  if (isSelected) {
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
-    ctx.fillRect(bounds.x - 4, bounds.y - 2, bounds.width + 8, bounds.height + 4);
-  }
-
-  // 设置文字样式
-  ctx.font = `${text.fontStyle === 'italic' ? 'italic ' : ''}${text.fontWeight === 'bold' ? 'bold ' : ''}${text.fontSize}px sans-serif`;
-  ctx.fillStyle = text.color;
-  ctx.textBaseline = 'top';
-
-  // 绘制文字
-  ctx.fillText(text.text, text.x, text.y);
-
-  // 绘制选中状态的控制点
-  if (isSelected) {
-    ctx.fillStyle = '#3B82F6';
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-
-    const handles = getTextHandles(text, ctx);
-    handles.forEach((handle) => {
-      ctx.beginPath();
-      ctx.arc(handle.x, handle.y, HANDLE_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-  }
-
-  ctx.restore();
-}
-
-// ---------------------------------------------------------------------------
-// 马赛克相关函数
-// ---------------------------------------------------------------------------
-
-// 在 Canvas 上绘制马赛克
-function drawMosaic(
-  ctx: CanvasRenderingContext2D,
-  mosaic: MosaicShape,
-  isSelected: boolean = false,
-): void {
-  const { x, y, width, height, blockSize, opacity } = mosaic;
-
-  ctx.save();
-
-  // 先绘制选中状态高亮（在马赛克下方）
-  if (isSelected) {
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(x, y, width, height);
-  }
-
-  // 设置透明度
-  ctx.globalAlpha = opacity / 100;
-
-  // 创建马赛克效果
-  const clampedBlockSize = Math.max(1, blockSize);
-  for (let bx = x; bx < x + width; bx += clampedBlockSize) {
-    for (let by = y; by < y + height; by += clampedBlockSize) {
-      // 计算当前块的实际尺寸（边缘可能不足一个完整块）
-      const bw = Math.min(clampedBlockSize, x + width - bx);
-      const bh = Math.min(clampedBlockSize, y + height - by);
-
-      // 生成随机灰度颜色
-      const gray = Math.floor(Math.random() * 256);
-      ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
-      ctx.fillRect(bx, by, bw, bh);
-    }
-  }
-
-  // 绘制选中状态的控制点（不受透明度影响）
-  if (isSelected) {
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#3B82F6';
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-
-    const handles = getMosaicHandles(mosaic);
-    handles.forEach((handle) => {
-      ctx.beginPath();
-      ctx.arc(handle.x, handle.y, HANDLE_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-  }
-
-  ctx.restore();
-}
-
-// 获取马赛克的 8 个控制点位置
-function getMosaicHandles(mosaic: MosaicShape): { x: number; y: number }[] {
-  const { x, y, width, height } = mosaic;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-
-  return [
-    { x: x, y: y }, // 左上 (tl)
-    { x: cx, y: y }, // 上中 (t)
-    { x: x + width, y: y }, // 右上 (tr)
-    { x: x + width, y: cy }, // 右中 (r)
-    { x: x + width, y: y + height }, // 右下 (br)
-    { x: cx, y: y + height }, // 下中 (b)
-    { x: x, y: y + height }, // 左下 (bl)
-    { x: x, y: cy }, // 左中 (l)
-  ];
-}
-
-// 检测点击是否在马赛克内部
-function isPointInMosaic(x: number, y: number, mosaic: MosaicShape): boolean {
-  const { x: mx, y: my, width, height } = mosaic;
-  return x >= mx && x <= mx + width && y >= my && y <= my + height;
-}
-
-// ---------------------------------------------------------------------------
-// 框选相关函数
-// ---------------------------------------------------------------------------
-
-// 检测对象是否完全在框选区域内
-function isArrowInRect(arrow: ArrowShape, rect: { x1: number; y1: number; x2: number; y2: number }): boolean {
-  const minX = Math.min(rect.x1, rect.x2);
-  const maxX = Math.max(rect.x1, rect.x2);
-  const minY = Math.min(rect.y1, rect.y2);
-  const maxY = Math.max(rect.y1, rect.y2);
-  // 箭头的两个端点都必须在矩形内
-  return (
-    arrow.startX >= minX && arrow.startX <= maxX &&
-    arrow.startY >= minY && arrow.startY <= maxY &&
-    arrow.endX >= minX && arrow.endX <= maxX &&
-    arrow.endY >= minY && arrow.endY <= maxY
-  );
-}
-
-function isRectInRect(rect: RectShape, selectRect: { x1: number; y1: number; x2: number; y2: number }): boolean {
-  const minX = Math.min(selectRect.x1, selectRect.x2);
-  const maxX = Math.max(selectRect.x1, selectRect.x2);
-  const minY = Math.min(selectRect.y1, selectRect.y2);
-  const maxY = Math.max(selectRect.y1, selectRect.y2);
-  // 矩形的四个角都必须在选区内
-  return (
-    rect.x >= minX && rect.x + rect.width <= maxX &&
-    rect.y >= minY && rect.y + rect.height <= maxY
-  );
-}
-
-function isTextInRect(text: TextShape, rect: { x1: number; y1: number; x2: number; y2: number }, ctx: CanvasRenderingContext2D): boolean {
-  const minX = Math.min(rect.x1, rect.x2);
-  const maxX = Math.max(rect.x1, rect.x2);
-  const minY = Math.min(rect.y1, rect.y2);
-  const maxY = Math.max(rect.y1, rect.y2);
-  const bounds = getTextBounds(text, ctx);
-  return (
-    bounds.x >= minX && bounds.x + bounds.width <= maxX &&
-    bounds.y >= minY && bounds.y + bounds.height <= maxY
-  );
-}
-
-function isMosaicInRect(mosaic: MosaicShape, rect: { x1: number; y1: number; x2: number; y2: number }): boolean {
-  const minX = Math.min(rect.x1, rect.x2);
-  const maxX = Math.max(rect.x1, rect.x2);
-  const minY = Math.min(rect.y1, rect.y2);
-  const maxY = Math.max(rect.y1, rect.y2);
-  return (
-    mosaic.x >= minX && mosaic.x + mosaic.width <= maxX &&
-    mosaic.y >= minY && mosaic.y + mosaic.height <= maxY
-  );
-}
-
-// 绘制框选矩形
-function drawMarqueeRect(ctx: CanvasRenderingContext2D, rect: { x1: number; y1: number; x2: number; y2: number }): void {
-  const x = Math.min(rect.x1, rect.x2);
-  const y = Math.min(rect.y1, rect.y2);
-  const width = Math.abs(rect.x2 - rect.x1);
-  const height = Math.abs(rect.y2 - rect.y1);
-
-  ctx.save();
-  // 半透明蓝色填充
-  ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
-  ctx.fillRect(x, y, width, height);
-  // 蓝色边框
-  ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, width, height);
-  ctx.restore();
-}
-
-// 检测点击位置返回马赛克拖拽类型
-function getMosaicDragTypeAtPoint(
-  x: number,
-  y: number,
-  mosaic: MosaicShape,
-): MosaicDragType {
-  const threshold = HANDLE_RADIUS + 2;
-  const handles = getMosaicHandles(mosaic);
-  const handleTypes: MosaicDragType[] = [
-    'resize-tl',
-    'resize-t',
-    'resize-tr',
-    'resize-r',
-    'resize-br',
-    'resize-b',
-    'resize-bl',
-    'resize-l',
-  ];
-
-  // 检测控制点
-  for (let i = 0; i < handles.length; i++) {
-    const handle = handles[i];
-    const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
-    if (dist <= threshold) {
-      return handleTypes[i];
-    }
-  }
-
-  // 检测内部
-  if (isPointInMosaic(x, y, mosaic)) {
-    return 'move';
-  }
-
-  return 'none';
-}
-
-// ---------------------------------------------------------------------------
-// 裁剪相关函数
-// ---------------------------------------------------------------------------
-
-// 获取裁剪框的 8 个控制点位置
-function getCropHandles(crop: CropArea): { x: number; y: number }[] {
-  const { x, y, width, height } = crop;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-
-  return [
-    { x: x, y: y }, // 左上 (tl)
-    { x: cx, y: y }, // 上中 (t)
-    { x: x + width, y: y }, // 右上 (tr)
-    { x: x + width, y: cy }, // 右中 (r)
-    { x: x + width, y: y + height }, // 右下 (br)
-    { x: cx, y: y + height }, // 下中 (b)
-    { x: x, y: y + height }, // 左下 (bl)
-    { x: x, y: cy }, // 左中 (l)
-  ];
-}
-
-// 检测点击是否在裁剪框内部
-function isPointInCrop(x: number, y: number, crop: CropArea): boolean {
-  const { x: cx, y: cy, width, height } = crop;
-  return x >= cx && x <= cx + width && y >= cy && y <= cy + height;
-}
-
-// 检测点击位置返回裁剪框拖拽类型
-function getCropDragTypeAtPoint(
-  x: number,
-  y: number,
-  crop: CropArea,
-): CropDragType {
-  const threshold = HANDLE_RADIUS + 2;
-  const handles = getCropHandles(crop);
-  const handleTypes: CropDragType[] = [
-    'resize-tl',
-    'resize-t',
-    'resize-tr',
-    'resize-r',
-    'resize-br',
-    'resize-b',
-    'resize-bl',
-    'resize-l',
-  ];
-
-  // 检测控制点
-  for (let i = 0; i < handles.length; i++) {
-    const handle = handles[i];
-    const dist = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
-    if (dist <= threshold) {
-      return handleTypes[i];
-    }
-  }
-
-  // 检测内部
-  if (isPointInCrop(x, y, crop)) {
-    return 'move';
-  }
-
-  return 'none';
-}
-
-// 在 Canvas 上绘制裁剪框
-function drawCropBox(
-  ctx: CanvasRenderingContext2D,
-  crop: CropArea,
-  imageWidth: number,
-  imageHeight: number,
-): void {
-  const { x, y, width, height } = crop;
-
-  ctx.save();
-
-  // 绘制裁剪区域外的半透明遮罩（降低透明度）
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  
-  // 上边遮罩
-  ctx.fillRect(0, 0, imageWidth, y);
-  // 下边遮罩
-  ctx.fillRect(0, y + height, imageWidth, imageHeight - y - height);
-  // 左边遮罩
-  ctx.fillRect(0, y, x, height);
-  // 右边遮罩
-  ctx.fillRect(x + width, y, imageWidth - x - width, height);
-
-  // 绘制裁剪框边框（虚线）
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 4]);
-  ctx.strokeRect(x, y, width, height);
-
-  // 绘制网格线（三分线）
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([]);
-  
-  // 垂直三分线
-  const thirdW = width / 3;
-  ctx.beginPath();
-  ctx.moveTo(x + thirdW, y);
-  ctx.lineTo(x + thirdW, y + height);
-  ctx.moveTo(x + thirdW * 2, y);
-  ctx.lineTo(x + thirdW * 2, y + height);
-  ctx.stroke();
-
-  // 水平三分线
-  const thirdH = height / 3;
-  ctx.beginPath();
-  ctx.moveTo(x, y + thirdH);
-  ctx.lineTo(x + width, y + thirdH);
-  ctx.moveTo(x, y + thirdH * 2);
-  ctx.lineTo(x + width, y + thirdH * 2);
-  ctx.stroke();
-
-  // 绘制控制点
-  ctx.fillStyle = '#FFFFFF';
-  ctx.strokeStyle = '#3B82F6';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([]);
-
-  const handles = getCropHandles(crop);
-  handles.forEach((handle) => {
-    ctx.beginPath();
-    ctx.arc(handle.x, handle.y, HANDLE_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
-
-  ctx.restore();
-}
-
-// ---------------------------------------------------------------------------
-// 子组件
-// ---------------------------------------------------------------------------
-
-/** 左侧工具栏 */
-const Toolbar: React.FC<{
-  activeTool: ToolId;
-  onSelectTool: (tool: ToolId) => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-}> = ({ activeTool, onSelectTool, canUndo, canRedo, onUndo, onRedo }) => {
-  const { t } = useTranslation('editor');
-  return (
-  <aside className="toolbar w-[56px] h-full flex flex-col items-center py-3 gap-1 shrink-0">
-    {TOOLS.map((tool) => {
-      const isActive = activeTool === tool.id;
-      return (
-        <button
-          key={tool.id}
-          onClick={() => onSelectTool(tool.id)}
-          className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center cursor-pointer transition-colors duration-200 ${
-            isActive
-              ? 'tool-btn-active'
-              : 'tool-btn'
-          }`}
-        >
-          {tool.icon}
-        </button>
-      );
-    })}
-
-    {/* 分隔线 */}
-    <div className="w-[24px] h-[1px] my-1 bg-[var(--color-editor-separator)]" />
-
-    {/* 撤销 / 重做 */}
-    <button
-      onClick={onUndo}
-      disabled={!canUndo}
-      className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center transition-colors duration-200 ${
-        canUndo
-          ? 'tool-btn cursor-pointer'
-          : 'tool-btn cursor-not-allowed opacity-40'
-      }`}
-      title={t('action.undo')}
-    >
-      <Undo2 size={18} />
-    </button>
-    <button
-      onClick={onRedo}
-      disabled={!canRedo}
-      className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center transition-colors duration-200 ${
-        canRedo
-          ? 'tool-btn cursor-pointer'
-          : 'tool-btn cursor-not-allowed opacity-40'
-      }`}
-      title={t('action.redo')}
-    >
-      <Redo2 size={18} />
-    </button>
-  </aside>
-  );
-};
-
-/** 可编辑的数值输入字段 */
-const EditableField: React.FC<{
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}> = ({ label, value, onChange }) => {
-  const [localValue, setLocalValue] = useState(String(value));
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // 同步外部值变化
-  useEffect(() => {
-    setLocalValue(String(Math.round(value)));
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value);
-  };
-
-  const handleBlur = () => {
-    const num = parseInt(localValue, 10);
-    if (!isNaN(num)) {
-      onChange(num);
-    } else {
-      setLocalValue(String(Math.round(value)));
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      inputRef.current?.blur();
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-1 flex-1">
-      <span className="text-[10px] text-[var(--color-editor-hint)] font-body leading-none">
-        {label}
-      </span>
-      <input
-        ref={inputRef}
-        type="number"
-        value={localValue}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className="prop-field h-[32px] rounded-[8px] px-[10px] flex items-center text-[12px] text-foreground font-body leading-none outline-none focus:ring-1 focus:ring-[var(--color-field-focus)]"
-        style={{ backgroundColor: '#FAFAFA' }}
-      />
-    </div>
-  );
-};
-
-/** 颜色选择器 */
-const ColorPicker: React.FC<{
-  color: string;
-  onChange: (color: string) => void;
-}> = ({ color, onChange }) => {
-  const colorInputRef = useRef<HTMLInputElement>(null);
-
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-        stroke:
-      </span>
-      <div className="flex gap-1 flex-wrap">
-        {PRESET_COLORS.map((presetColor) => (
-          <button
-            key={presetColor}
-            onClick={() => onChange(presetColor)}
-            className="w-6 h-6 rounded-full shrink-0 cursor-pointer transition-transform hover:scale-110"
-            style={{
-              backgroundColor: presetColor,
-              border: color === presetColor
-                ? '2px solid var(--color-field-focus)'
-                : '1px solid #d1d5db',
-            }}
-          />
-        ))}
-        {/* 自定义颜色选择器 */}
-        <button
-          onClick={() => colorInputRef.current?.click()}
-          className="w-6 h-6 rounded-full shrink-0 cursor-pointer overflow-hidden"
-          style={{
-            background:
-              'linear-gradient(135deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080)',
-            border: '1px solid #d1d5db',
-          }}
-        >
-          <input
-            ref={colorInputRef}
-            type="color"
-            value={color}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full h-full opacity-0 cursor-pointer"
-          />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-/** 滑块控件 */
-const SliderControl: React.FC<{
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  unit?: string;
-  onChange: (value: number) => void;
-}> = ({ label, value, min, max, unit = 'px', onChange }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none w-12">
-      {label}:
-    </span>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="flex-1 h-1 cursor-pointer"
-      style={{ accentColor: 'var(--color-field-focus)' }}
-    />
-    <span className="text-[11px] text-foreground font-body leading-none w-10 text-right tabular-nums">
-      {value}
-      {unit}
-    </span>
-  </div>
-);
-
-/** 箭头样式切换 */
-const ArrowStyleToggle: React.FC<{
-  style: ArrowStyle;
-  onChange: (style: ArrowStyle) => void;
-}> = ({ style, onChange }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-      arrow:
-    </span>
-    <div className="flex gap-1">
-      <button
-        onClick={() => onChange('single')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          style === 'single'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <ChevronRight size={14} />
-        <span className="text-[11px] font-body leading-none">single</span>
-      </button>
-      <button
-        onClick={() => onChange('double')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          style === 'double'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <ChevronRight size={14} className="rotate-180" />
-        <ChevronRight size={14} />
-        <span className="text-[11px] font-body leading-none">double</span>
-      </button>
-    </div>
-  </div>
-);
-
-/** 矩形边框样式切换 */
-const RectBorderStyleToggle: React.FC<{
-  borderStyle: RectBorderStyle;
-  onChange: (style: RectBorderStyle) => void;
-}> = ({ borderStyle, onChange }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-      border:
-    </span>
-    <div className="flex gap-1">
-      <button
-        onClick={() => onChange('solid')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          borderStyle === 'solid'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <div className="w-4 h-0.5 bg-current" />
-        <span className="text-[11px] font-body leading-none">solid</span>
-      </button>
-      <button
-        onClick={() => onChange('dashed')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          borderStyle === 'dashed'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <div className="w-4 h-0.5 border-t-2 border-dashed border-current" />
-        <span className="text-[11px] font-body leading-none">dashed</span>
-      </button>
-    </div>
-  </div>
-);
-
-/** 文字粗体切换 */
-const FontWeightToggle: React.FC<{
-  fontWeight: 'normal' | 'bold';
-  onChange: (weight: 'normal' | 'bold') => void;
-}> = ({ fontWeight, onChange }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-      weight:
-    </span>
-    <div className="flex gap-1">
-      <button
-        onClick={() => onChange('normal')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          fontWeight === 'normal'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <span className="text-[11px] font-body leading-none">normal</span>
-      </button>
-      <button
-        onClick={() => onChange('bold')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          fontWeight === 'bold'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <span className="text-[11px] font-body font-bold leading-none">bold</span>
-      </button>
-    </div>
-  </div>
-);
-
-/** 文字斜体切换 */
-const FontStyleToggle: React.FC<{
-  fontStyle: 'normal' | 'italic';
-  onChange: (style: 'normal' | 'italic') => void;
-}> = ({ fontStyle, onChange }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-      style:
-    </span>
-    <div className="flex gap-1">
-      <button
-        onClick={() => onChange('normal')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          fontStyle === 'normal'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <span className="text-[11px] font-body leading-none">normal</span>
-      </button>
-      <button
-        onClick={() => onChange('italic')}
-        className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-          fontStyle === 'italic'
-            ? 'bg-[var(--color-accent)] text-black'
-            : 'prop-field-sm'
-        }`}
-      >
-        <span className="text-[11px] font-body italic leading-none">italic</span>
-      </button>
-    </div>
-  </div>
-);
-
-// ---------------------------------------------------------------------------
-// 图片容器设置组件
-// ---------------------------------------------------------------------------
-
-/** 可折叠区块 */
-const CollapsibleSection: React.FC<{
-  title: string;
-  defaultOpen?: boolean;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  enabled?: boolean;
-  onToggle?: (enabled: boolean) => void;
-  children: React.ReactNode;
-}> = ({ title, defaultOpen = true, open, onOpenChange, enabled, onToggle, children }) => {
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const isOpen = open !== undefined ? open : internalOpen;
-  const hasToggle = enabled !== undefined && onToggle !== undefined;
-
-  const handleToggle = () => {
-    if (onOpenChange) {
-      onOpenChange(!isOpen);
-    } else {
-      setInternalOpen(!isOpen);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-[10px]">
-      <div className="flex items-center justify-between">
-        <button
-          onClick={handleToggle}
-          className="flex items-center gap-1 cursor-pointer"
-        >
-          <ChevronRight
-            size={12}
-            style={{
-              color: 'var(--color-accent-orange)',
-              transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.15s ease',
-            }}
-          />
-          <span
-            className="text-[11px] font-body font-semibold"
-            style={{ color: 'var(--color-accent-orange)' }}
-          >
-            {title}
-          </span>
-        </button>
-        {hasToggle && (
-          <ToggleSwitch enabled={enabled!} onChange={onToggle!} />
-        )}
-      </div>
-      {isOpen && (!hasToggle || enabled) && (
-        <div className="pl-3 flex flex-col gap-[8px]">{children}</div>
-      )}
-    </div>
-  );
-};
-
-/** 开关控件 */
-const ToggleSwitch: React.FC<{
-  enabled: boolean;
-  onChange: (enabled: boolean) => void;
-}> = ({ enabled, onChange }) => (
-  <button
-    onClick={() => onChange(!enabled)}
-    className="w-9 h-5 rounded-full relative cursor-pointer transition-colors shrink-0"
-    style={{
-      backgroundColor: enabled ? 'var(--color-switch-on)' : 'var(--color-switch-off)',
-    }}
-  >
-    <div
-      className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
-      style={{
-        backgroundColor: '#fff',
-        left: enabled ? '18px' : '2px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-      }}
-    />
-  </button>
-);
-
-/** 下拉选择器 */
-const SelectControl: React.FC<{
-  value: string;
-  options: { name: string; value: string }[];
-  onChange: (value: string) => void;
-}> = ({ value, options, onChange }) => {
-  const { t } = useTranslation('editor');
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="prop-field-sm h-[28px] px-2 rounded-[6px] text-[11px] font-body text-foreground cursor-pointer outline-none"
-      style={{ backgroundColor: '#FAFAFA' }}
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value} className="bg-white">
-          {t(opt.name)}
-        </option>
-      ))}
-    </select>
-  );
-};
-
-/** 背景预设按钮 */
-const BackgroundPresetButton: React.FC<{
-  preset: (typeof BACKGROUND_PRESETS)[number];
-  isSelected: boolean;
-  onClick: () => void;
-}> = ({ preset, isSelected, onClick }) => {
-  const { t } = useTranslation('editor');
-  const getBackground = () => {
-    if (preset.type === 'solid') {
-      return preset.color === 'transparent'
-        ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)'
-        : preset.color;
-    }
-    return `linear-gradient(${preset.gradientAngle}deg, ${preset.gradientColors[0]}, ${preset.gradientColors[1]})`;
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`w-[24px] h-[24px] rounded-[4px] shrink-0 cursor-pointer border-2 transition-colors ${
-        isSelected ? 'border-[var(--color-accent)]' : 'border-transparent'
-      }`}
-      style={{
-        background: getBackground(),
-        backgroundSize: preset.color === 'transparent' ? '8px 8px' : 'auto',
-        backgroundPosition: preset.color === 'transparent' ? '0 0, 0 4px, 4px -4px, -4px 0px' : 'auto',
-      }}
-      title={t(preset.name)}
-    />
-  );
-};
-
-/** 阴影预设按钮 */
-const ShadowPresetButton: React.FC<{
-  preset: (typeof SHADOW_PRESETS)[number];
-  isSelected: boolean;
-  onClick: () => void;
-}> = ({ preset, isSelected, onClick }) => {
-  const { t } = useTranslation('editor');
-  return (
-    <button
-      onClick={onClick}
-      className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-        isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
-      }`}
-    >
-      <span className="text-[10px] font-body leading-none">{t(preset.name)}</span>
-    </button>
-  );
-};
-
-/** 图片阴影预设按钮 */
-const ImageShadowPresetButton: React.FC<{
-  preset: (typeof IMAGE_SHADOW_PRESETS)[number];
-  isSelected: boolean;
-  onClick: () => void;
-}> = ({ preset, isSelected, onClick }) => {
-  const { t } = useTranslation('editor');
-  return (
-    <button
-      onClick={onClick}
-      className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-        isSelected ? 'bg-[var(--color-accent)] text-black' : 'prop-field-sm'
-      }`}
-    >
-      <span className="text-[10px] font-body leading-none">{t(preset.name)}</span>
-    </button>
-  );
-};
-
-/** 图片容器设置面板 */
-const FrameSettings: React.FC<{
-  settings: ImageFrameSettings;
-  onUpdate: (updates: Partial<ImageFrameSettings>) => void;
-  collapsedSections?: Record<string, boolean>;
-  onCollapsedChange?: (sections: Record<string, boolean>) => void;
-}> = ({ settings, onUpdate, collapsedSections, onCollapsedChange }) => {
-  const { t } = useTranslation('editor');
-
-  const handleSectionToggle = (key: string, open: boolean) => {
-    if (onCollapsedChange) {
-      onCollapsedChange({ ...collapsedSections, [key]: !open });
-    }
-  };
-
-  const isSectionOpen = (key: string) => !(collapsedSections?.[key] ?? false);
-
-  return (
-    <div className="flex flex-col gap-3">
-      {/* 背景设置 */}
-      <CollapsibleSection
-        title={t('label.background')}
-        open={isSectionOpen('background')}
-        onOpenChange={(open) => handleSectionToggle('background', open)}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            type:
-          </span>
-          <SelectControl
-            value={settings.background.type}
-            options={[
-              { name: t('backgroundType.solid'), value: 'solid' },
-              { name: t('backgroundType.gradient'), value: 'linear' },
-              { name: t('backgroundType.gradient'), value: 'radial' },
-            ]}
-            onChange={(type) =>
-              onUpdate({
-                background: { ...settings.background, type: type as 'solid' | 'linear' | 'radial' },
-              })
-            }
-          />
-        </div>
-        {settings.background.type === 'solid' ? (
-          <ColorPicker
-            color={settings.background.color}
-            onChange={(color) =>
-              onUpdate({ background: { ...settings.background, color } })
-            }
-          />
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-                {t('backgroundType.startColor')}:
-              </span>
-              <div className="flex gap-1">
-                {PRESET_COLORS.slice(0, 4).map((color) => (
-                  <button
-                    key={color}
-                    onClick={() =>
-                      onUpdate({
-                        background: {
-                          ...settings.background,
-                          gradientColors: [color, settings.background.gradientColors[1]],
-                        },
-                      })
-                    }
-                    className="w-[20px] h-[20px] rounded-[4px] shrink-0 cursor-pointer border border-[var(--color-border)]"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={settings.background.gradientColors[0]}
-                  onChange={(e) =>
-                    onUpdate({
-                      background: {
-                        ...settings.background,
-                        gradientColors: [e.target.value, settings.background.gradientColors[1]],
-                      },
-                    })
-                  }
-                  className="w-[20px] h-[20px] rounded-[4px] cursor-pointer bg-transparent"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-                {t('backgroundType.endColor')}:
-              </span>
-              <div className="flex gap-1">
-                {PRESET_COLORS.slice(0, 4).map((color) => (
-                  <button
-                    key={color}
-                    onClick={() =>
-                      onUpdate({
-                        background: {
-                          ...settings.background,
-                          gradientColors: [settings.background.gradientColors[0], color],
-                        },
-                      })
-                    }
-                    className="w-[20px] h-[20px] rounded-[4px] shrink-0 cursor-pointer border border-[var(--color-border)]"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={settings.background.gradientColors[1]}
-                  onChange={(e) =>
-                    onUpdate({
-                      background: {
-                        ...settings.background,
-                        gradientColors: [settings.background.gradientColors[0], e.target.value],
-                      },
-                    })
-                  }
-                  className="w-[20px] h-[20px] rounded-[4px] cursor-pointer bg-transparent"
-                />
-              </div>
-            </div>
-            <SliderControl
-              label={t('label.angle')}
-              value={settings.background.gradientAngle}
-              min={0}
-              max={360}
-              onChange={(gradientAngle) =>
-                onUpdate({ background: { ...settings.background, gradientAngle } })
-              }
-            />
-          </>
-        )}
-        <div className="flex items-center gap-2 flex-wrap">
-          {BACKGROUND_PRESETS.map((preset) => (
-            <BackgroundPresetButton
-              key={preset.name}
-              preset={preset}
-              isSelected={
-                preset.type === settings.background.type &&
-                (preset.type === 'solid'
-                  ? preset.color === settings.background.color
-                  : preset.gradientColors?.[0] === settings.background.gradientColors[0] &&
-                    preset.gradientColors?.[1] === settings.background.gradientColors[1])
-              }
-              onClick={() => {
-                if (preset.type === 'solid') {
-                  onUpdate({
-                    background: {
-                      ...settings.background,
-                      type: 'solid',
-                      color: preset.color,
-                    },
-                  });
-                } else {
-                  onUpdate({
-                    background: {
-                      ...settings.background,
-                      type: 'linear',
-                      gradientColors: preset.gradientColors,
-                      gradientAngle: preset.gradientAngle,
-                    },
-                  });
-                }
-              }}
-            />
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      {/* 边距设置 */}
-      <CollapsibleSection
-        title={t('label.padding')}
-        open={isSectionOpen('padding')}
-        onOpenChange={(open) => handleSectionToggle('padding', open)}
-      >
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              onUpdate({
-                padding: { ...settings.padding, linked: !settings.padding.linked },
-              })
-            }
-            className={`w-[20px] h-[20px] rounded-[4px] flex items-center justify-center cursor-pointer transition-colors ${
-              settings.padding.linked
-                ? 'bg-[var(--color-accent)] text-black'
-                : 'prop-field-sm'
-            }`}
-            title={settings.padding.linked ? 'Unlink' : 'Link'}
-          >
-            <span className="text-[10px] font-body leading-none">
-              {settings.padding.linked ? '🔗' : '⛓️‍💥'}
-            </span>
-          </button>
-          <div className="flex gap-1 flex-1">
-            <EditableField
-              label={t('direction.top')}
-              value={settings.padding.top}
-              onChange={(top) =>
-                onUpdate({
-                  padding: settings.padding.linked
-                    ? { ...settings.padding, top, right: top, bottom: top, left: top }
-                    : { ...settings.padding, top },
-                })
-              }
-            />
-            <EditableField
-              label={t('direction.right')}
-              value={settings.padding.right}
-              onChange={(right) =>
-                onUpdate({
-                  padding: settings.padding.linked
-                    ? { ...settings.padding, top: right, right, bottom: right, left: right }
-                    : { ...settings.padding, right },
-                })
-              }
-            />
-          </div>
-        </div>
-        <div className="flex gap-1 pl-7">
-          <EditableField
-            label={t('direction.bottom')}
-            value={settings.padding.bottom}
-            onChange={(bottom) =>
-              onUpdate({
-                padding: settings.padding.linked
-                  ? { ...settings.padding, top: bottom, right: bottom, bottom, left: bottom }
-                  : { ...settings.padding, bottom },
-              })
-            }
-          />
-          <EditableField
-            label={t('direction.left')}
-            value={settings.padding.left}
-            onChange={(left) =>
-              onUpdate({
-                padding: settings.padding.linked
-                  ? { ...settings.padding, top: left, right: left, bottom: left, left }
-                  : { ...settings.padding, left },
-              })
-            }
-          />
-        </div>
-      </CollapsibleSection>
-
-      {/* 容器圆角设置 */}
-      <CollapsibleSection
-        title={t('label.borderRadius')}
-        open={isSectionOpen('borderRadius')}
-        onOpenChange={(open) => handleSectionToggle('borderRadius', open)}
-      >
-        {/* 圆角预设 */}
-        <div className="mb-3">
-          <div className="flex gap-1 flex-wrap">
-            {BORDER_RADIUS_PRESETS.map((preset) => (
-              <button
-                key={preset.name}
-                onClick={() => {
-                  onUpdate({
-                    borderRadius: {
-                      ...settings.borderRadius,
-                      unit: 'px',
-                      topLeft: preset.value,
-                      topRight: preset.value,
-                      bottomRight: preset.value,
-                      bottomLeft: preset.value,
-                      linked: true,
-                    },
-                  });
-                }}
-                className={`px-2 py-1 text-[10px] rounded transition-colors ${
-                  settings.borderRadius.linked &&
-                  settings.borderRadius.unit === 'px' &&
-                  settings.borderRadius.topLeft === preset.value
-                    ? 'bg-[var(--color-accent)] text-black'
-                    : 'prop-field-sm hover:bg-[var(--color-surface-hover)]'
-                }`}
-              >
-                {t(preset.name)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 单位切换 */}
-        <div className="flex gap-1 mb-3">
-          <button
-            onClick={() => {
-              const newUnit = settings.borderRadius.unit === 'px' ? '%' : 'px';
-              onUpdate({ borderRadius: { ...settings.borderRadius, unit: newUnit } });
-            }}
-            className="prop-field-sm px-2 py-1 text-[10px] flex items-center gap-1"
-          >
-            <span>{t('label.unit')}:</span>
-            <span className="text-[var(--color-accent)]">{settings.borderRadius.unit}</span>
-          </button>
-        </div>
-
-        {/* 统一/独立模式切换 */}
-        <div className="flex items-center gap-2 mb-2">
-          <button
-            onClick={() =>
-              onUpdate({ borderRadius: { ...settings.borderRadius, linked: !settings.borderRadius.linked } })
-            }
-            className={`w-6 h-6 flex items-center justify-center rounded text-[10px] transition-colors ${
-              settings.borderRadius.linked
-                ? 'bg-[var(--color-accent)] text-black'
-                : 'prop-field-sm'
-            }`}
-            title={settings.borderRadius.linked ? '切换为独立模式' : '切换为统一模式'}
-          >
-            {settings.borderRadius.linked ? '🔗' : '⛓️‍💥'}
-          </button>
-        </div>
-
-        {/* 圆角值输入 */}
-        {settings.borderRadius.linked ? (
-          <SliderControl
-            label={t('label.borderRadius')}
-            value={settings.borderRadius.topLeft}
-            min={0}
-            max={settings.borderRadius.unit === 'px' ? 100 : 50}
-            onChange={(value) =>
-              onUpdate({
-                borderRadius: {
-                  ...settings.borderRadius,
-                  topLeft: value,
-                  topRight: value,
-                  bottomRight: value,
-                  bottomLeft: value,
-                },
-              })
-            }
-          />
-        ) : (
-          <div className="space-y-1">
-            <div className="flex gap-1">
-              <EditableField
-                label={t('corner.topLeft')}
-                value={settings.borderRadius.topLeft}
-                onChange={(topLeft) =>
-                  onUpdate({ borderRadius: { ...settings.borderRadius, topLeft } })
-                }
-              />
-              <EditableField
-                label={t('corner.topRight')}
-                value={settings.borderRadius.topRight}
-                onChange={(topRight) =>
-                  onUpdate({ borderRadius: { ...settings.borderRadius, topRight } })
-                }
-              />
-            </div>
-            <div className="flex gap-1 pl-7">
-              <EditableField
-                label={t('corner.bottomLeft')}
-                value={settings.borderRadius.bottomLeft}
-                onChange={(bottomLeft) =>
-                  onUpdate({ borderRadius: { ...settings.borderRadius, bottomLeft } })
-                }
-              />
-              <EditableField
-                label={t('corner.bottomRight')}
-                value={settings.borderRadius.bottomRight}
-                onChange={(bottomRight) =>
-                  onUpdate({ borderRadius: { ...settings.borderRadius, bottomRight } })
-                }
-              />
-            </div>
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {/* 图片圆角设置 */}
-      <CollapsibleSection
-        title={t('label.imageRadius')}
-        open={isSectionOpen('imageRadius')}
-        onOpenChange={(open) => handleSectionToggle('imageRadius', open)}
-      >
-        {/* 圆角预设 */}
-        <div className="mb-3">
-          <div className="flex gap-1 flex-wrap">
-            {BORDER_RADIUS_PRESETS.map((preset) => (
-              <button
-                key={preset.name}
-                onClick={() => {
-                  onUpdate({
-                    imageRadius: {
-                      ...settings.imageRadius,
-                      unit: 'px',
-                      topLeft: preset.value,
-                      topRight: preset.value,
-                      bottomRight: preset.value,
-                      bottomLeft: preset.value,
-                      linked: true,
-                    },
-                  });
-                }}
-                className={`px-2 py-1 text-[10px] rounded transition-colors ${
-                  settings.imageRadius.linked &&
-                  settings.imageRadius.unit === 'px' &&
-                  settings.imageRadius.topLeft === preset.value
-                    ? 'bg-[var(--color-accent)] text-black'
-                    : 'prop-field-sm hover:bg-[var(--color-surface-hover)]'
-                }`}
-              >
-                {t(preset.name)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 单位切换 */}
-        <div className="flex gap-1 mb-3">
-          <button
-            onClick={() => {
-              const newUnit = settings.imageRadius.unit === 'px' ? '%' : 'px';
-              onUpdate({ imageRadius: { ...settings.imageRadius, unit: newUnit } });
-            }}
-            className="prop-field-sm px-2 py-1 text-[10px] flex items-center gap-1"
-          >
-            <span>{t('label.unit')}:</span>
-            <span className="text-[var(--color-accent)]">{settings.imageRadius.unit}</span>
-          </button>
-        </div>
-
-        {/* 统一/独立模式切换 */}
-        <div className="flex items-center gap-2 mb-2">
-          <button
-            onClick={() =>
-              onUpdate({ imageRadius: { ...settings.imageRadius, linked: !settings.imageRadius.linked } })
-            }
-            className={`w-6 h-6 flex items-center justify-center rounded text-[10px] transition-colors ${
-              settings.imageRadius.linked
-                ? 'bg-[var(--color-accent)] text-black'
-                : 'prop-field-sm'
-            }`}
-            title={settings.imageRadius.linked ? '切换为独立模式' : '切换为统一模式'}
-          >
-            {settings.imageRadius.linked ? '🔗' : '⛓️‍💥'}
-          </button>
-        </div>
-
-        {/* 圆角值输入 */}
-        {settings.imageRadius.linked ? (
-          <SliderControl
-            label={t('label.borderRadius')}
-            value={settings.imageRadius.topLeft}
-            min={0}
-            max={settings.imageRadius.unit === 'px' ? 100 : 50}
-            onChange={(value) =>
-              onUpdate({
-                imageRadius: {
-                  ...settings.imageRadius,
-                  topLeft: value,
-                  topRight: value,
-                  bottomRight: value,
-                  bottomLeft: value,
-                },
-              })
-            }
-          />
-        ) : (
-          <div className="space-y-1">
-            <div className="flex gap-1">
-              <EditableField
-                label={t('corner.topLeft')}
-                value={settings.imageRadius.topLeft}
-                onChange={(topLeft) =>
-                  onUpdate({ imageRadius: { ...settings.imageRadius, topLeft } })
-                }
-              />
-              <EditableField
-                label={t('corner.topRight')}
-                value={settings.imageRadius.topRight}
-                onChange={(topRight) =>
-                  onUpdate({ imageRadius: { ...settings.imageRadius, topRight } })
-                }
-              />
-            </div>
-            <div className="flex gap-1 pl-7">
-              <EditableField
-                label={t('corner.bottomLeft')}
-                value={settings.imageRadius.bottomLeft}
-                onChange={(bottomLeft) =>
-                  onUpdate({ imageRadius: { ...settings.imageRadius, bottomLeft } })
-                }
-              />
-              <EditableField
-                label={t('corner.bottomRight')}
-                value={settings.imageRadius.bottomRight}
-                onChange={(bottomRight) =>
-                  onUpdate({ imageRadius: { ...settings.imageRadius, bottomRight } })
-                }
-              />
-            </div>
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {/* 阴影设置 */}
-      <CollapsibleSection
-        title={t('section.shadow')}
-        open={isSectionOpen('shadow')}
-        onOpenChange={(open) => handleSectionToggle('shadow', open)}
-        enabled={settings.shadow.enabled}
-        onToggle={(enabled) =>
-          onUpdate({ shadow: { ...settings.shadow, enabled } })
-        }
-      >
-        <ColorPicker
-          color={settings.shadow.color}
-          onChange={(color) =>
-            onUpdate({ shadow: { ...settings.shadow, color } })
-          }
-        />
-        <SliderControl
-          label={t('label.blur')}
-          value={settings.shadow.blur}
-          min={0}
-          max={100}
-          onChange={(blur) =>
-            onUpdate({ shadow: { ...settings.shadow, blur } })
-          }
-        />
-        <div className="flex gap-2">
-          <EditableField
-            label="X"
-            value={settings.shadow.offsetX}
-            onChange={(offsetX) =>
-              onUpdate({ shadow: { ...settings.shadow, offsetX } })
-            }
-          />
-          <EditableField
-            label="Y"
-            value={settings.shadow.offsetY}
-            onChange={(offsetY) =>
-              onUpdate({ shadow: { ...settings.shadow, offsetY } })
-            }
-          />
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {SHADOW_PRESETS.map((preset) => (
-            <ShadowPresetButton
-              key={preset.name}
-              preset={preset}
-              isSelected={
-                settings.shadow.enabled === preset.enabled &&
-                settings.shadow.blur === preset.blur
-              }
-              onClick={() =>
-                onUpdate({
-                  shadow: {
-                    ...settings.shadow,
-                    enabled: preset.enabled,
-                    blur: preset.blur,
-                    offsetX: preset.offsetX,
-                    offsetY: preset.offsetY,
-                  },
-                })
-              }
-            />
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      {/* 图片阴影设置 */}
-      <CollapsibleSection
-        title={t('section.imageShadow')}
-        open={isSectionOpen('imageShadow')}
-        onOpenChange={(open) => handleSectionToggle('imageShadow', open)}
-        enabled={settings.imageShadow.enabled}
-        onToggle={(enabled) =>
-          onUpdate({ imageShadow: { ...settings.imageShadow, enabled } })
-        }
-      >
-        <ColorPicker
-          color={settings.imageShadow.color}
-          onChange={(color) =>
-            onUpdate({ imageShadow: { ...settings.imageShadow, color } })
-          }
-        />
-        <SliderControl
-          label={t('label.blur')}
-          value={settings.imageShadow.blur}
-          min={0}
-          max={100}
-          onChange={(blur) =>
-            onUpdate({ imageShadow: { ...settings.imageShadow, blur } })
-          }
-        />
-        <div className="flex gap-2">
-          <EditableField
-            label="X"
-            value={settings.imageShadow.offsetX}
-            onChange={(offsetX) =>
-              onUpdate({ imageShadow: { ...settings.imageShadow, offsetX } })
-            }
-          />
-          <EditableField
-            label="Y"
-            value={settings.imageShadow.offsetY}
-            onChange={(offsetY) =>
-              onUpdate({ imageShadow: { ...settings.imageShadow, offsetY } })
-            }
-          />
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {IMAGE_SHADOW_PRESETS.map((preset) => (
-            <ImageShadowPresetButton
-              key={preset.name}
-              preset={preset}
-              isSelected={
-                settings.imageShadow.enabled === preset.enabled &&
-                settings.imageShadow.blur === preset.blur
-              }
-              onClick={() =>
-                onUpdate({
-                  imageShadow: {
-                    ...settings.imageShadow,
-                    enabled: preset.enabled,
-                    blur: preset.blur,
-                    offsetX: preset.offsetX,
-                    offsetY: preset.offsetY,
-                  },
-                })
-              }
-            />
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      {/* 比例设置 */}
-      <CollapsibleSection
-        title={t('label.aspectRatio')}
-        open={isSectionOpen('aspectRatio')}
-        onOpenChange={(open) => handleSectionToggle('aspectRatio', open)}
-      >
-        <SelectControl
-          value={settings.aspectRatio}
-          options={ASPECT_RATIO_PRESETS}
-          onChange={(aspectRatio) => onUpdate({ aspectRatio })}
-        />
-        {/* 自定义比例输入 */}
-        {settings.aspectRatio === 'custom' && (
-          <div className="flex items-center gap-2 mt-2">
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={settings.customAspectRatio.width || ''}
-              onChange={(e) =>
-                onUpdate({
-                  customAspectRatio: {
-                    ...settings.customAspectRatio,
-                    width: parseInt(e.target.value) || 0,
-                  },
-                })
-              }
-              placeholder={t('label.width')}
-              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body text-foreground outline-none text-center"
-              style={{ backgroundColor: '#FAFAFA' }}
-            />
-            <span className="text-[11px] text-[var(--color-editor-hint)] font-body">:</span>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={settings.customAspectRatio.height || ''}
-              onChange={(e) =>
-                onUpdate({
-                  customAspectRatio: {
-                    ...settings.customAspectRatio,
-                    height: parseInt(e.target.value) || 0,
-                  },
-                })
-              }
-              placeholder={t('label.height')}
-              className="prop-field-sm h-[28px] w-[60px] px-2 rounded-[6px] text-[11px] font-body text-foreground outline-none text-center"
-              style={{ backgroundColor: '#FAFAFA' }}
-            />
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {/* 窗口控件设置 */}
-      <CollapsibleSection
-        title={t('section.windowControls')}
-        open={isSectionOpen('windowControl')}
-        onOpenChange={(open) => handleSectionToggle('windowControl', open)}
-        enabled={settings.windowControl.enabled}
-        onToggle={(enabled) =>
-          onUpdate({ windowControl: { ...settings.windowControl, enabled } })
-        }
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            {t('label.windowStyle')}:
-          </span>
-          <div className="flex gap-1">
-            <button
-              onClick={() =>
-                onUpdate({
-                  windowControl: { ...settings.windowControl, style: 'macos' },
-                })
-              }
-              className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-                settings.windowControl.style === 'macos'
-                  ? 'bg-[var(--color-accent)] text-black'
-                  : 'prop-field-sm'
-              }`}
-            >
-              <span className="text-[11px] font-body leading-none">{t('windowStyle.macos')}</span>
-            </button>
-            <button
-              onClick={() =>
-                onUpdate({
-                  windowControl: { ...settings.windowControl, style: 'windows' },
-                })
-              }
-              className={`h-[28px] px-3 rounded-[6px] flex items-center gap-1 cursor-pointer transition-colors ${
-                settings.windowControl.style === 'windows'
-                  ? 'bg-[var(--color-accent)] text-black'
-                  : 'prop-field-sm'
-              }`}
-            >
-              <span className="text-[11px] font-body leading-none">{t('windowStyle.windows')}</span>
-            </button>
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* 水印设置 */}
-      <CollapsibleSection
-        title={t('section.watermark')}
-        open={isSectionOpen('watermark')}
-        onOpenChange={(open) => handleSectionToggle('watermark', open)}
-        enabled={settings.watermark.enabled}
-        onToggle={(enabled) =>
-          onUpdate({ watermark: { ...settings.watermark, enabled } })
-        }
-      >
-        {/* 图片水印上传区域 */}
-        <div className="mb-2">
-          <div
-            className={`relative border border-dashed rounded-[6px] p-2 text-center cursor-pointer transition-colors ${
-              settings.watermark.imageUrl
-                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
-                : 'border-[var(--color-editor-border)] hover:border-[var(--color-accent)]'
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const file = e.dataTransfer.files[0];
-              if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                  onUpdate({
-                    watermark: {
-                      ...settings.watermark,
-                      imageUrl: ev.target?.result as string,
-                    },
-                  });
-                };
-                reader.readAsDataURL(file);
-              }
-            }}
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = 'image/png,image/jpeg,image/webp';
-              input.onchange = (e) => {
-                const file = (e.target as HTMLInputElement).files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    onUpdate({
-                      watermark: {
-                        ...settings.watermark,
-                        imageUrl: ev.target?.result as string,
-                      },
-                    });
-                  };
-                  reader.readAsDataURL(file);
-                }
-              };
-              input.click();
-            }}
-          >
-            {settings.watermark.imageUrl ? (
-              <div className="flex items-center justify-center gap-2">
-                <img
-                  src={settings.watermark.imageUrl}
-                  alt="水印图片"
-                  className="h-8 max-w-16 object-contain"
-                />
-                <button
-                  className="text-[11px] text-red-400 hover:text-red-300"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdate({
-                      watermark: { ...settings.watermark, imageUrl: null },
-                    });
-                  }}
-                >
-                  {t('action.delete')}
-                </button>
-              </div>
-            ) : (
-              <span className="text-[11px] text-[var(--color-editor-hint)] font-body">
-                {t('hint.uploadWatermark')}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 文字水印输入（仅在没有图片水印时显示） */}
-        {!settings.watermark.imageUrl && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-              {t('label.text')}:
-            </span>
-            <input
-              type="text"
-              value={settings.watermark.text}
-              onChange={(e) =>
-                onUpdate({
-                  watermark: { ...settings.watermark, text: e.target.value },
-                })
-              }
-              placeholder={t('hint.watermarkPlaceholder')}
-              className="prop-field-sm h-[28px] px-2 rounded-[6px] flex-1 text-[11px] font-body text-foreground outline-none"
-              style={{ backgroundColor: '#FAFAFA' }}
-            />
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            {t('label.position')}:
-          </span>
-          <SelectControl
-            value={settings.watermark.position}
-            options={[
-              { name: t('position.bottomRight'), value: 'bottom-right' },
-              { name: t('position.bottomLeft'), value: 'bottom-left' },
-              { name: t('position.topRight'), value: 'top-right' },
-              { name: t('position.topLeft'), value: 'top-left' },
-            ]}
-            onChange={(position) =>
-              onUpdate({
-                watermark: {
-                  ...settings.watermark,
-                  position: position as ImageFrameSettings['watermark']['position'],
-                },
-              })
-            }
-          />
-        </div>
-        <SliderControl
-          label={t('label.opacity')}
-          value={settings.watermark.opacity}
-          min={0}
-          max={100}
-          unit="%"
-          onChange={(opacity) =>
-            onUpdate({ watermark: { ...settings.watermark, opacity } })
-          }
-        />
-        {settings.watermark.imageUrl ? (
-          <SliderControl
-            label={t('label.size')}
-            value={settings.watermark.imageSize}
-            min={32}
-            max={200}
-            unit="px"
-            onChange={(imageSize) =>
-              onUpdate({ watermark: { ...settings.watermark, imageSize } })
-            }
-          />
-        ) : (
-          <SliderControl
-            label={t('label.size')}
-            value={settings.watermark.fontSize}
-            min={8}
-            max={48}
-            onChange={(fontSize) =>
-              onUpdate({ watermark: { ...settings.watermark, fontSize } })
-            }
-          />
-        )}
-      </CollapsibleSection>
-    </div>
-  );
-};
-
-/** 右侧属性面板 */
-const PropertiesPanel: React.FC<{
-  selectedArrow: ArrowShape | null;
-  onUpdateArrow: (updates: Partial<ArrowShape>) => void;
-  selectedRect: RectShape | null;
-  onUpdateRect: (updates: Partial<RectShape>) => void;
-  selectedText: TextShape | null;
-  onUpdateText: (updates: Partial<TextShape>) => void;
-  selectedMosaic: MosaicShape | null;
-  onUpdateMosaic: (updates: Partial<MosaicShape>) => void;
-  frameSettings: ImageFrameSettings;
-  onUpdateFrameSettings: (updates: Partial<ImageFrameSettings>) => void;
-  collapsedSections?: Record<string, boolean>;
-  onCollapsedChange?: (sections: Record<string, boolean>) => void;
-  onExportImage: () => void;
-  onCopyToClipboard: () => void;
-  isExporting: boolean;
-  copied: boolean;
-  exportError: string | null;
-}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings, collapsedSections, onCollapsedChange, onExportImage, onCopyToClipboard, isExporting, copied, exportError }) => {
-  const { t } = useTranslation('editor');
-  // 选中类型：arrow, rect, text, mosaic 或 none
-  const selectionType: 'arrow' | 'rect' | 'text' | 'mosaic' | 'none' = selectedArrow
-    ? 'arrow'
-    : selectedRect
-      ? 'rect'
-      : selectedText
-        ? 'text'
-        : selectedMosaic
-          ? 'mosaic'
-          : 'none';
-
-  // 箭头属性处理
-  const handleArrowColorChange = (color: string) => {
-    if (selectedArrow) onUpdateArrow({ color });
-  };
-  const handleArrowStrokeWidthChange = (strokeWidth: number) => {
-    if (selectedArrow) onUpdateArrow({ strokeWidth });
-  };
-  const handleHeadSizeChange = (headSize: number) => {
-    if (selectedArrow) onUpdateArrow({ headSize });
-  };
-  const handleStyleChange = (style: ArrowStyle) => {
-    if (selectedArrow) onUpdateArrow({ style });
-  };
-
-  // 矩形属性处理
-  const handleRectColorChange = (color: string) => {
-    if (selectedRect) onUpdateRect({ color });
-  };
-  const handleRectStrokeWidthChange = (strokeWidth: number) => {
-    if (selectedRect) onUpdateRect({ strokeWidth });
-  };
-  const handleFillOpacityChange = (fillOpacity: number) => {
-    if (selectedRect) onUpdateRect({ fillOpacity });
-  };
-  const handleBorderStyleChange = (borderStyle: RectBorderStyle) => {
-    if (selectedRect) onUpdateRect({ borderStyle });
-  };
-
-  // 文字属性处理
-  const handleTextColorChange = (color: string) => {
-    if (selectedText) onUpdateText({ color });
-  };
-  const handleFontSizeChange = (fontSize: number) => {
-    if (selectedText) onUpdateText({ fontSize });
-  };
-  const handleFontWeightChange = (fontWeight: 'normal' | 'bold') => {
-    if (selectedText) onUpdateText({ fontWeight });
-  };
-  const handleFontStyleChange = (fontStyle: 'normal' | 'italic') => {
-    if (selectedText) onUpdateText({ fontStyle });
-  };
-
-  // 马赛克属性处理
-  const handleBlockSizeChange = (blockSize: number) => {
-    if (selectedMosaic) onUpdateMosaic({ blockSize });
-  };
-  const handleMosaicOpacityChange = (opacity: number) => {
-    if (selectedMosaic) onUpdateMosaic({ opacity });
-  };
-
-  return (
-    <aside className="properties-panel w-[400px] h-full flex flex-col shrink-0">
-      {/* 可滚动内容区域 */}
-      <div className="flex-1 flex flex-col gap-4 p-5 overflow-y-auto overflow-x-hidden">
-      {/* [style] 区域 */}
-      {selectionType === 'arrow' && selectedArrow ? (
-        <div className="flex flex-col gap-[10px]">
-          <span
-            className="text-[11px] font-body font-semibold"
-            style={{ color: 'var(--color-accent-orange)' }}
-          >
-            {t('label.arrowStyle')}
-          </span>
-          <ColorPicker
-            color={selectedArrow.color}
-            onChange={handleArrowColorChange}
-          />
-          <SliderControl
-            label={t('label.strokeWidth')}
-            value={selectedArrow.strokeWidth}
-            min={1}
-            max={10}
-            onChange={handleArrowStrokeWidthChange}
-          />
-          <SliderControl
-            label={t('label.arrowSize')}
-            value={selectedArrow.headSize}
-            min={5}
-            max={30}
-            onChange={handleHeadSizeChange}
-          />
-          <ArrowStyleToggle
-            style={selectedArrow.style}
-            onChange={handleStyleChange}
-          />
-        </div>
-      ) : selectionType === 'rect' && selectedRect ? (
-        <div className="flex flex-col gap-[10px]">
-          <span
-            className="text-[11px] font-body font-semibold"
-            style={{ color: 'var(--color-accent-orange)' }}
-          >
-            {t('label.rectStyle')}
-          </span>
-          <ColorPicker
-            color={selectedRect.color}
-            onChange={handleRectColorChange}
-          />
-          <SliderControl
-            label={t('label.strokeWidth')}
-            value={selectedRect.strokeWidth}
-            min={1}
-            max={10}
-            onChange={handleRectStrokeWidthChange}
-          />
-          <SliderControl
-            label={t('label.fill')}
-            value={selectedRect.fillOpacity}
-            min={0}
-            max={100}
-            unit="%"
-            onChange={handleFillOpacityChange}
-          />
-          <RectBorderStyleToggle
-            borderStyle={selectedRect.borderStyle}
-            onChange={handleBorderStyleChange}
-          />
-        </div>
-      ) : selectionType === 'text' && selectedText ? (
-        <div className="flex flex-col gap-[10px]">
-          <span
-            className="text-[11px] font-body font-semibold"
-            style={{ color: 'var(--color-accent-orange)' }}
-          >
-            {t('label.textStyle')}
-          </span>
-          <ColorPicker
-            color={selectedText.color}
-            onChange={handleTextColorChange}
-          />
-          <SliderControl
-            label={t('label.fontSize')}
-            value={selectedText.fontSize}
-            min={8}
-            max={120}
-            onChange={handleFontSizeChange}
-          />
-          <FontWeightToggle
-            fontWeight={selectedText.fontWeight}
-            onChange={handleFontWeightChange}
-          />
-          <FontStyleToggle
-            fontStyle={selectedText.fontStyle}
-            onChange={handleFontStyleChange}
-          />
-        </div>
-      ) : selectionType === 'mosaic' && selectedMosaic ? (
-        <div className="flex flex-col gap-[10px]">
-          <span
-            className="text-[11px] font-body font-semibold"
-            style={{ color: 'var(--color-accent-orange)' }}
-          >
-            {t('label.mosaicStyle')}
-          </span>
-          <SliderControl
-            label={t('label.blockSize')}
-            value={selectedMosaic.blockSize}
-            min={5}
-            max={50}
-            onChange={handleBlockSizeChange}
-          />
-          <SliderControl
-            label={t('label.opacity')}
-            value={selectedMosaic.opacity}
-            min={0}
-            max={100}
-            unit="%"
-            onChange={handleMosaicOpacityChange}
-          />
-        </div>
-      ) : null}
-
-      {/* [frame] 区域 - 未选中标注时显示 */}
-      {selectionType === 'none' && (
-        <FrameSettings
-          settings={frameSettings}
-          onUpdate={onUpdateFrameSettings}
-          collapsedSections={collapsedSections}
-          onCollapsedChange={onCollapsedChange}
-        />
-      )}
-      </div>
-
-      {/* 固定底部操作按钮区域 */}
-      <div className="shrink-0 p-5 pt-0">
-        <div className="flex flex-col gap-2">
-        <button
-          className="export-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={onExportImage}
-          disabled={isExporting}
-        >
-          {isExporting ? (
-            <Loader2 size={16} className="animate-spin" style={{ color: '#FFFFFF' }} />
-          ) : (
-            <Download size={16} style={{ color: '#FFFFFF' }} />
-          )}
-          <span
-            className="text-[12px] font-body font-semibold leading-none"
-            style={{ color: '#FFFFFF' }}
-          >
-            {isExporting ? t('action.exporting') : t('action.export')}
-          </span>
-        </button>
-        <button
-          className="copy-btn w-full h-[40px] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={onCopyToClipboard}
-          disabled={isExporting}
-        >
-          {copied ? (
-            <Check size={16} style={{ color: 'var(--color-field-focus)' }} />
-          ) : (
-            <ClipboardCopy size={16} className="text-[var(--color-editor-hint)]" />
-          )}
-          <span
-            className="text-[12px] font-body font-semibold leading-none"
-            style={{ color: copied ? 'var(--color-field-focus)' : 'var(--color-editor-hint)' }}
-          >
-            {copied ? t('hint.copied') : t('action.copyToClipboard')}
-          </span>
-        </button>
-        {/* 错误提示 */}
-        {exportError && (
-          <div className="text-[11px] text-red-500 text-center mt-1">
-            {exportError}
-          </div>
-        )}
-        </div>
-      </div>
-    </aside>
-  );
-};
-
-/** 空画布上传提示 */
-const UploadPlaceholder: React.FC<{
-  onImageLoad: (dataUrl: string) => void;
-}> = ({ onImageLoad }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 拖拽事件
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDrop = useCallback(
-    async (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const file = e.dataTransfer.files[0];
-      if (!file || !isAcceptedImageType(file)) return;
-      const dataUrl = await readFileAsDataUrl(file);
-      onImageLoad(dataUrl);
-    },
-    [onImageLoad],
-  );
-
-  // 点击上传
-  const handleClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !isAcceptedImageType(file)) return;
-      const dataUrl = await readFileAsDataUrl(file);
-      onImageLoad(dataUrl);
-    },
-    [onImageLoad],
-  );
-
-  return (
-    <div
-      className="flex flex-col items-center justify-center gap-4 cursor-pointer select-none"
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      onClick={handleClick}
-    >
-      <div className="w-[64px] h-[64px] rounded-[16px] flex items-center justify-center bg-[var(--color-editor-upload-bg)]">
-        <ImagePlus size={28} style={{ color: 'var(--color-editor-upload-icon)' }} />
-      </div>
-      <div className="text-center">
-        <p className="text-[13px] text-[var(--color-editor-comment)] font-body mb-1">
-          // drop image here or paste
-        </p>
-        <p className="text-[11px] text-[var(--color-editor-hint)] font-body">
-          click to browse
-        </p>
-      </div>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={ACCEPTED_IMAGE_TYPES.join(',')}
-        className="hidden"
-        onChange={handleFileChange}
-      />
-    </div>
-  );
-};
-
-/** 根据背景设置生成 CSS 背景样式 */
-const getBackgroundStyle = (bg: ImageFrameSettings['background']): React.CSSProperties => {
-  if (bg.type === 'solid') {
-    if (bg.color === 'transparent') {
-      // 透明背景：显示棋盘格图案
-      return {
-        background: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
-        backgroundSize: '16px 16px',
-        backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
-        backgroundColor: '#fff',
-      };
-    }
-    return { backgroundColor: bg.color };
-  }
-  if (bg.type === 'linear') {
-    return {
-      background: `linear-gradient(${bg.gradientAngle}deg, ${bg.gradientColors[0]}, ${bg.gradientColors[1]})`,
-    };
-  }
-  if (bg.type === 'radial') {
-    return {
-      background: `radial-gradient(circle, ${bg.gradientColors[0]}, ${bg.gradientColors[1]})`,
-    };
-  }
-  return {};
-};
-
-/** 根据背景颜色计算水印颜色（自动适配） */
-const getWatermarkColor = (bg: ImageFrameSettings['background']): string => {
-  let r = 0, g = 0, b = 0;
-  
-  if (bg.type === 'solid' && bg.color !== 'transparent') {
-    // 解析纯色
-    const hex = bg.color.replace('#', '');
-    r = parseInt(hex.substring(0, 2), 16);
-    g = parseInt(hex.substring(2, 4), 16);
-    b = parseInt(hex.substring(4, 6), 16);
-  } else if (bg.type === 'linear' || bg.type === 'radial') {
-    // 取渐变色的平均值
-    const c1 = bg.gradientColors[0].replace('#', '');
-    const c2 = bg.gradientColors[1].replace('#', '');
-    const r1 = parseInt(c1.substring(0, 2), 16);
-    const g1 = parseInt(c1.substring(2, 4), 16);
-    const b1 = parseInt(c1.substring(4, 6), 16);
-    const r2 = parseInt(c2.substring(0, 2), 16);
-    const g2 = parseInt(c2.substring(2, 4), 16);
-    const b2 = parseInt(c2.substring(4, 6), 16);
-    r = (r1 + r2) / 2;
-    g = (g1 + g2) / 2;
-    b = (b1 + b2) / 2;
-  }
-  
-  // 计算亮度
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
-  
-  // 深色背景用白色，浅色背景用黑色
-  return luminance < 128 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
-};
-
-/** 水印渲染组件 */
-const WatermarkRenderer: React.FC<{
-  watermark: ImageFrameSettings['watermark'];
-  bgColor: ImageFrameSettings['background'];
-}> = ({ watermark, bgColor }) => {
-  if (!watermark.enabled) return null;
-  
-  const opacity = watermark.opacity / 100;
-  
-  // 位置样式映射
-  const positionStyles: Record<string, React.CSSProperties> = {
-    'top-left': { top: '8px', left: '8px' },
-    'top-right': { top: '8px', right: '8px' },
-    'bottom-left': { bottom: '8px', left: '8px' },
-    'bottom-right': { bottom: '8px', right: '8px' },
-  };
-  
-  const positionStyle = positionStyles[watermark.position] || positionStyles['bottom-right'];
-  
-  // 图片水印
-  if (watermark.imageUrl) {
-    return (
-      <img
-        src={watermark.imageUrl}
-        alt="水印"
-        style={{
-          position: 'absolute',
-          ...positionStyle,
-          width: watermark.imageSize,
-          height: watermark.imageSize,
-          objectFit: 'contain',
-          opacity,
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      />
-    );
-  }
-  
-  // 文字水印
-  if (!watermark.text) return null;
-  
-  const textColor = getWatermarkColor(bgColor);
-  
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        ...positionStyle,
-        fontSize: watermark.fontSize,
-        fontFamily: 'JetBrains Mono, IBM Plex Mono, monospace',
-        color: textColor,
-        opacity,
-        pointerEvents: 'none',
-        userSelect: 'none',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {watermark.text}
-    </div>
-  );
-};
-
-/** 画布中显示的图片 */
-const CanvasImage: React.FC<{
-  src: string;
-  onSizeChange?: (w: number, h: number) => void;
-  onNaturalSizeChange?: (w: number, h: number) => void;
-}> = ({ src, onSizeChange, onNaturalSizeChange }) => {
-  return (
-    <img
-      src={src}
-      alt="编辑图片"
-      onLoad={(e) => {
-        const img = e.currentTarget;
-        const nw = img.naturalWidth;
-        const nh = img.naturalHeight;
-        // 返回原始尺寸
-        onNaturalSizeChange?.(nw, nh);
-        // 计算实际显示尺寸（保持宽高比）
-        const maxW = Math.min(MAX_IMG_W, nw);
-        const maxH = Math.min(MAX_IMG_H, nh);
-        const ratio = Math.min(maxW / nw, maxH / nh);
-        const displayW = nw * ratio;
-        const displayH = nh * ratio;
-        onSizeChange?.(displayW, displayH);
-      }}
-      className="rounded-[8px] shadow-lg"
-      draggable={false}
-      style={{
-        maxWidth: MAX_IMG_W,
-        maxHeight: MAX_IMG_H,
-        objectFit: 'contain',
-      }}
-    />
-  );
-};
+// 导入常量
+import {
+  MIN_SCALE,
+  MAX_SCALE,
+  DEFAULT_ARROW_STYLE,
+  DEFAULT_RECT_STYLE,
+  DEFAULT_TEXT_STYLE,
+  DEFAULT_MOSAIC_STYLE,
+  MIN_CROP_SIZE,
+  RECT_CURSOR_MAP,
+  TEXT_CURSOR_MAP,
+  MOSAIC_CURSOR_MAP,
+  CROP_CURSOR_MAP,
+} from './constants';
+
+// 导入工具函数
+import {
+  parseSource,
+  readFileAsDataUrl,
+  calculateAspectRatioSize,
+  generateArrowId,
+  generateRectId,
+  generateTextId,
+  generateMosaicId,
+  getBackgroundStyle,
+} from './utils/editor';
+
+// 导入图形处理辅助函数
+import {
+  isPointNearArrow,
+  isPointInRect,
+  isPointInText,
+  isPointInMosaic,
+  isPointInCrop,
+  getDragTypeAtPoint,
+  getRectDragTypeAtPoint,
+  getTextDragTypeAtPoint,
+  getMosaicDragTypeAtPoint,
+  getCropDragTypeAtPoint,
+  isArrowInRect,
+  isRectInRect,
+  isTextInRect,
+  isMosaicInRect,
+  drawMarqueeRect,
+  type DragType,
+  type RectDragType,
+  type TextDragType,
+  type MosaicDragType,
+  type CropDragType,
+} from './utils/shape-helpers';
+
+// 导入服务
+import { CanvasRenderer } from './services/canvas-renderer';
+
+// 导入 Hooks
+import { useEditorHistory } from './hooks/useEditorHistory';
+import { useZoomPan } from './hooks/useZoomPan';
+import { useExport } from './hooks/useExport';
+
+// 导入 Store
+import { useEditorStore } from './store/editor-store';
+
+// 导入组件
+import { Toolbar } from './components/Toolbar';
+import { PropertiesPanel } from './components/PropertiesPanel';
+import { CanvasImage } from './components/CanvasImage';
+import { WatermarkRenderer } from './components/WatermarkRenderer';
+import { UploadPlaceholder } from './components/UploadPlaceholder';
 
 // ---------------------------------------------------------------------------
 // 主组件
@@ -3165,37 +101,294 @@ const CanvasImage: React.FC<{
 
 const App: React.FC = () => {
   const { t } = useTranslation('editor');
-  const [source, setSource] = useState<EditorSource | null>(null);
-  const [imageData, setImageData] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTool, setActiveTool] = useState<ToolId>('select');
+
+  // ---------------------------------------------------------------------------
+  // 从 Store 获取状态和 actions
+  // ---------------------------------------------------------------------------
+  const {
+    // 图片状态
+    source,
+    imageData,
+    error,
+    imageNaturalSize,
+    imageDisplaySize,
+    setSource,
+    setImageData,
+    setError,
+    setImageNaturalSize,
+    setImageDisplaySize,
+
+    // 工具状态
+    activeTool,
+    setActiveTool,
+
+    // 帧设置
+    frameSettings,
+    collapsedSections,
+    setFrameSettings,
+    setCollapsedSections,
+
+    // 图形状态
+    arrows,
+    rects,
+    texts,
+    mosaics,
+    selectedArrowIds,
+    selectedRectIds,
+    selectedTextIds,
+    selectedMosaicIds,
+    setArrows,
+    setSelectedArrowIds,
+    setRects,
+    setSelectedRectIds,
+    setTexts,
+    setSelectedTextIds,
+    setMosaics,
+    setSelectedMosaicIds,
+
+    // 编辑状态
+    editingTextId,
+    editingTextValue,
+    cropArea,
+    setEditingTextId,
+    setEditingTextValue,
+    setCropArea,
+
+    // 历史状态
+    canUndo,
+    canRedo,
+    setCanUndo,
+    setCanRedo,
+  } = useEditorStore();
+
   const initialized = useRef(false);
 
-  // 图片容器设置
-  const [frameSettings, setFrameSettings] = useState<ImageFrameSettings>(DEFAULT_FRAME_SETTINGS);
-
-  // 折叠面板状态
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-
-  // 画布缩放/平移状态
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  // Refs
   const canvasRef = useRef<HTMLDivElement>(null);
-  const scaleRef = useRef(scale);
-  const offsetRef = useRef(offset);
+  const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const exportContainerRef = useRef<HTMLDivElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
+  const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // 导出状态
-  const [isExporting, setIsExporting] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  // 获取用户设置和操作历史
+  // 用户设置和历史
   const { settings, operationHistory, updateOperationHistory } = useSettingsStore();
-
-  // 操作历史恢复状态
   const historyRestoredRef = useRef(false);
 
-  // 恢复操作历史配置（仅在挂载时执行一次）
-  // 注意：offset 和 scale 不恢复，因为它们是视图运行时状态，依赖图片尺寸
+  // ---------------------------------------------------------------------------
+  // 缩放和平移 Hook
+  // ---------------------------------------------------------------------------
+  const {
+    scale,
+    offset,
+    scaleRef,
+    offsetRef,
+    setScale,
+    setOffset,
+    zoomIn,
+    zoomOut,
+    resetView,
+    handleSlider,
+    zoomPercent,
+  } = useZoomPan({
+    containerRef: canvasRef,
+    activeTool,
+    imageData,
+  });
+
+  // ---------------------------------------------------------------------------
+  // 图形状态 - 已从 Store 获取
+  // ---------------------------------------------------------------------------
+
+  // 绘制状态 Refs
+  const drawingArrow = useRef<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+  const isDrawingArrow = useRef(false);
+  const drawingRect = useRef<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+  const isDrawingRect = useRef(false);
+  const drawingMosaic = useRef<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+  const isDrawingMosaic = useRef(false);
+  const drawingCrop = useRef<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+  const isDrawingCrop = useRef(false);
+
+  // 拖拽状态 Refs
+  const draggingRef = useRef<{
+    type: DragType;
+    arrowId: string;
+    startX: number;
+    startY: number;
+    arrowStart: { x: number; y: number };
+    arrowEnd: { x: number; y: number };
+  } | null>(null);
+  const draggingRectRef = useRef<{
+    type: RectDragType;
+    rectId: string;
+    startX: number;
+    startY: number;
+    rectOrig: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+  const draggingTextRef = useRef<{
+    type: TextDragType;
+    textId: string;
+    startX: number;
+    startY: number;
+    textOrig: { x: number; y: number; fontSize: number };
+  } | null>(null);
+  const draggingMosaicRef = useRef<{
+    type: MosaicDragType;
+    mosaicId: string;
+    startX: number;
+    startY: number;
+    mosaicOrig: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+  const draggingCropRef = useRef<{
+    type: CropDragType;
+    startX: number;
+    startY: number;
+    cropOrig: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+
+  // 框选状态
+  const isMarqueeSelecting = useRef(false);
+  const marqueeStart = useRef<{ x: number; y: number } | null>(null);
+  const marqueeEnd = useRef<{ x: number; y: number } | null>(null);
+
+  // 默认样式 Refs
+  const arrowStyleRef = useRef(DEFAULT_ARROW_STYLE);
+  const rectStyleRef = useRef(DEFAULT_RECT_STYLE);
+  const textStyleRef = useRef(DEFAULT_TEXT_STYLE);
+  const mosaicStyleRef = useRef(DEFAULT_MOSAIC_STYLE);
+
+  // 数据 Refs（避免闭包问题）
+  const arrowsRef = useRef(arrows);
+  arrowsRef.current = arrows;
+  const rectsRef = useRef(rects);
+  rectsRef.current = rects;
+  const textsRef = useRef(texts);
+  textsRef.current = texts;
+  const mosaicsRef = useRef(mosaics);
+  mosaicsRef.current = mosaics;
+
+  const selectedArrowIdsRef = useRef(selectedArrowIds);
+  selectedArrowIdsRef.current = selectedArrowIds;
+  const selectedRectIdsRef = useRef(selectedRectIds);
+  selectedRectIdsRef.current = selectedRectIds;
+  const selectedTextIdsRef = useRef(selectedTextIds);
+  selectedTextIdsRef.current = selectedTextIds;
+  const selectedMosaicIdsRef = useRef(selectedMosaicIds);
+  selectedMosaicIdsRef.current = selectedMosaicIds;
+
+  const cropAreaRef = useRef(cropArea);
+  cropAreaRef.current = cropArea;
+  const imageNaturalSizeRef = useRef(imageNaturalSize);
+  imageNaturalSizeRef.current = imageNaturalSize;
+  const imageDisplaySizeRef = useRef(imageDisplaySize);
+  imageDisplaySizeRef.current = imageDisplaySize;
+
+  // ---------------------------------------------------------------------------
+  // 历史记录
+  // ---------------------------------------------------------------------------
+  const historyActions = useEditorHistory();
+
+  const updateHistoryButtons = useCallback(() => {
+    setCanUndo(historyActions.canUndo());
+    setCanRedo(historyActions.canRedo());
+  }, [historyActions]);
+
+  const pushHistory = useCallback(() => {
+    const state: EditorState = {
+      arrows: JSON.parse(JSON.stringify(arrowsRef.current)),
+      rects: JSON.parse(JSON.stringify(rectsRef.current)),
+      texts: JSON.parse(JSON.stringify(textsRef.current)),
+      mosaics: JSON.parse(JSON.stringify(mosaicsRef.current)),
+      imageData: imageData,
+      view: {
+        scale: scaleRef.current,
+        offset: { ...offsetRef.current },
+      },
+      selectedArrowIds: [...selectedArrowIdsRef.current],
+      selectedRectIds: [...selectedRectIdsRef.current],
+      selectedTextIds: [...selectedTextIdsRef.current],
+      selectedMosaicIds: [...selectedMosaicIdsRef.current],
+    };
+    historyActions.pushState(state);
+    updateHistoryButtons();
+  }, [historyActions, imageData, updateHistoryButtons]);
+
+  const handleUndo = useCallback(() => {
+    const prevState = historyActions.undo();
+    if (prevState) {
+      setArrows(prevState.arrows);
+      setRects(prevState.rects);
+      setTexts(prevState.texts);
+      setMosaics(prevState.mosaics);
+      arrowsRef.current = prevState.arrows;
+      rectsRef.current = prevState.rects;
+      textsRef.current = prevState.texts;
+      mosaicsRef.current = prevState.mosaics;
+      if (prevState.imageData && prevState.imageData !== imageData) {
+        setImageData(prevState.imageData);
+      }
+      setScale(prevState.view.scale);
+      setOffset(prevState.view.offset);
+      scaleRef.current = prevState.view.scale;
+      offsetRef.current = prevState.view.offset;
+      setSelectedArrowIds(prevState.selectedArrowIds);
+      setSelectedRectIds(prevState.selectedRectIds);
+      setSelectedTextIds(prevState.selectedTextIds);
+      setSelectedMosaicIds(prevState.selectedMosaicIds);
+    }
+    updateHistoryButtons();
+  }, [historyActions, imageData, updateHistoryButtons, setScale, setOffset]);
+
+  const handleRedo = useCallback(() => {
+    const nextState = historyActions.redo();
+    if (nextState) {
+      setArrows(nextState.arrows);
+      setRects(nextState.rects);
+      setTexts(nextState.texts);
+      setMosaics(nextState.mosaics);
+      arrowsRef.current = nextState.arrows;
+      rectsRef.current = nextState.rects;
+      textsRef.current = nextState.texts;
+      mosaicsRef.current = nextState.mosaics;
+      if (nextState.imageData && nextState.imageData !== imageData) {
+        setImageData(nextState.imageData);
+      }
+      setScale(nextState.view.scale);
+      setOffset(nextState.view.offset);
+      scaleRef.current = nextState.view.scale;
+      offsetRef.current = nextState.view.offset;
+      setSelectedArrowIds(nextState.selectedArrowIds);
+      setSelectedRectIds(nextState.selectedRectIds);
+      setSelectedTextIds(nextState.selectedTextIds);
+      setSelectedMosaicIds(nextState.selectedMosaicIds);
+    }
+    updateHistoryButtons();
+  }, [historyActions, imageData, updateHistoryButtons, setScale, setOffset]);
+
+  // ---------------------------------------------------------------------------
+  // 导出功能
+  // ---------------------------------------------------------------------------
+  const {
+    isExporting,
+    copied,
+    exportError,
+    handleExportImage,
+    handleCopyToClipboard,
+  } = useExport({
+    exportContainerRef,
+    imageData,
+    frameSettings,
+    imageDisplaySizeRef,
+    arrowsRef,
+    rectsRef,
+    textsRef,
+    mosaicsRef,
+  });
+
+  // ---------------------------------------------------------------------------
+  // 操作历史恢复
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (historyRestoredRef.current) return;
     if (!settings.saveOperationHistory || !operationHistory.editor) {
@@ -3222,48 +415,13 @@ const App: React.FC = () => {
         ...(saved.frameSettings!.watermark && { watermark: saved.frameSettings!.watermark }),
       }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.saveOperationHistory, operationHistory.editor]);
 
-  // 图片加载后计算居中偏移
-  const handleImageSizeChange = useCallback(
-    (w: number, h: number) => {
-      // 存储显示尺寸（用于裁剪坐标转换）
-      setImageDisplaySize({ width: w, height: h });
-
-      const container = canvasRef.current;
-      if (!container) return;
-      const containerW = container.clientWidth;
-      const containerH = container.clientHeight;
-      
-      // 计算容器总尺寸（图片 + padding）
-      const padW = frameSettings.padding.linked
-        ? frameSettings.padding.top * 2
-        : frameSettings.padding.left + frameSettings.padding.right;
-      const padH = frameSettings.padding.linked
-        ? frameSettings.padding.top * 2
-        : frameSettings.padding.top + frameSettings.padding.bottom;
-      const totalW = w + padW;
-      const totalH = h + padH;
-      
-      // 计算居中偏移
-      const newOffset = {
-        x: (containerW - totalW) / 2,
-        y: (containerH - totalH) / 2,
-      };
-      offsetRef.current = newOffset;
-      setOffset(newOffset);
-    },
-    [frameSettings.padding],
-  );
-
-  // 保存操作历史（仅在恢复完成后，且配置实际变化时保存）
-  // 注意：不保存 scale 和 offset，因为它们是视图运行时状态
+  // 保存操作历史
   const prevSavedStateRef = useRef<string>('');
   useEffect(() => {
     if (!settings.saveOperationHistory || !historyRestoredRef.current) return;
 
-    // 序列化当前状态，避免重复保存相同内容
     const currentState = JSON.stringify({
       activeTool,
       collapsedSections,
@@ -3300,140 +458,78 @@ const App: React.FC = () => {
         watermark: frameSettings.watermark,
       },
     });
-  }, [
-    settings.saveOperationHistory,
-    activeTool,
-    collapsedSections,
-    frameSettings,
-    updateOperationHistory,
-  ]);
+  }, [settings.saveOperationHistory, activeTool, collapsedSections, frameSettings, updateOperationHistory]);
 
-  // 图片原始尺寸变化（用于裁剪）
+  // ---------------------------------------------------------------------------
+  // 图片加载
+  // ---------------------------------------------------------------------------
+  const handleImageSizeChange = useCallback(
+    (w: number, h: number) => {
+      setImageDisplaySize({ width: w, height: h });
+
+      const container = canvasRef.current;
+      if (!container) return;
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+
+      const padW = frameSettings.padding.linked
+        ? frameSettings.padding.top * 2
+        : frameSettings.padding.left + frameSettings.padding.right;
+      const padH = frameSettings.padding.linked
+        ? frameSettings.padding.top * 2
+        : frameSettings.padding.top + frameSettings.padding.bottom;
+      const totalW = w + padW;
+      const totalH = h + padH;
+
+      const newOffset = {
+        x: (containerW - totalW) / 2,
+        y: (containerH - totalH) / 2,
+      };
+      offsetRef.current = newOffset;
+      setOffset(newOffset);
+    },
+    [frameSettings.padding, setOffset]
+  );
+
   const handleImageNaturalSizeChange = useCallback((w: number, h: number) => {
     setImageNaturalSize({ width: w, height: h });
   }, []);
 
-  // 箭头相关状态
-  const [arrows, setArrows] = useState<ArrowShape[]>([]);
-  const [selectedArrowIds, setSelectedArrowIds] = useState<string[]>([]);
-  const drawingArrow = useRef<{
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
-  } | null>(null);
-  const isDrawingArrow = useRef(false);
+  const handleImageLoad = useCallback((dataUrl: string) => {
+    setImageData(dataUrl);
+    setError(null);
+  }, []);
 
-  // 箭头拖拽状态
-  const draggingRef = useRef<{
-    type: DragType;
-    arrowId: string;
-    startX: number;
-    startY: number;
-    arrowStart: { x: number; y: number };
-    arrowEnd: { x: number; y: number };
-  } | null>(null);
-
-  // 矩形相关状态
-  const [rects, setRects] = useState<RectShape[]>([]);
-  const [selectedRectIds, setSelectedRectIds] = useState<string[]>([]);
-  const drawingRect = useRef<{
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
-  } | null>(null);
-  const isDrawingRect = useRef(false);
-
-  // 矩形拖拽状态
-  const draggingRectRef = useRef<{
-    type: RectDragType;
-    rectId: string;
-    startX: number;
-    startY: number;
-    rectOrig: { x: number; y: number; width: number; height: number };
-  } | null>(null);
-
-  // 文字相关状态
-  const [texts, setTexts] = useState<TextShape[]>([]);
-  const [selectedTextIds, setSelectedTextIds] = useState<string[]>([]);
-  const [editingTextId, setEditingTextId] = useState<string | null>(null);
-  const [editingTextValue, setEditingTextValue] = useState('');
-  const textInputRef = useRef<HTMLInputElement>(null);
-
-  // 文字拖拽状态
-  const draggingTextRef = useRef<{
-    type: TextDragType;
-    textId: string;
-    startX: number;
-    startY: number;
-    textOrig: { x: number; y: number; fontSize: number };
-  } | null>(null);
-
-  // 马赛克相关状态
-  const [mosaics, setMosaics] = useState<MosaicShape[]>([]);
-  const [selectedMosaicIds, setSelectedMosaicIds] = useState<string[]>([]);
-  const drawingMosaic = useRef<{
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
-  } | null>(null);
-  const isDrawingMosaic = useRef(false);
-
-  // 马赛克拖拽状态
-  const draggingMosaicRef = useRef<{
-    type: MosaicDragType;
-    mosaicId: string;
-    startX: number;
-    startY: number;
-    mosaicOrig: { x: number; y: number; width: number; height: number };
-  } | null>(null);
-
-  // 裁剪相关状态
-  const [cropArea, setCropArea] = useState<CropArea | null>(null);
-  const [imageNaturalSize, setImageNaturalSize] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-  const [imageDisplaySize, setImageDisplaySize] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-
-  // 比例变化时重新居中显示
+  // 比例变化时重新居中
   const prevAspectRatioRef = useRef(frameSettings.aspectRatio);
   const prevCustomRatioRef = useRef(frameSettings.customAspectRatio);
-  
+
   useEffect(() => {
     if (!imageData || !imageDisplaySize) return;
-    
-    // 检查比例是否真的变化了
+
     const aspectChanged = prevAspectRatioRef.current !== frameSettings.aspectRatio;
-    const customChanged = 
+    const customChanged =
       prevCustomRatioRef.current.width !== frameSettings.customAspectRatio.width ||
       prevCustomRatioRef.current.height !== frameSettings.customAspectRatio.height;
-    
+
     if (!aspectChanged && !customChanged) return;
-    
+
     prevAspectRatioRef.current = frameSettings.aspectRatio;
     prevCustomRatioRef.current = frameSettings.customAspectRatio;
-    
+
     const container = canvasRef.current;
     if (!container) return;
-    
+
     const containerW = container.clientWidth;
     const containerH = container.clientHeight;
-    
-    // 计算新的容器尺寸
+
     const newContainerSize = calculateAspectRatioSize(
       frameSettings.aspectRatio,
       imageDisplaySize.width,
       imageDisplaySize.height,
       frameSettings.customAspectRatio
     );
-    
-    // 计算容器总尺寸（加上 padding）
+
     const padW = frameSettings.padding.linked
       ? frameSettings.padding.top * 2
       : frameSettings.padding.left + frameSettings.padding.right;
@@ -3442,395 +538,20 @@ const App: React.FC = () => {
       : frameSettings.padding.top + frameSettings.padding.bottom;
     const totalW = newContainerSize.width + padW;
     const totalH = newContainerSize.height + padH;
-    
-    // 计算居中偏移
+
     const newOffset = {
       x: (containerW - totalW) / 2,
       y: (containerH - totalH) / 2,
     };
     offsetRef.current = newOffset;
     setOffset(newOffset);
-    // 重置缩放
     scaleRef.current = 1;
     setScale(1);
-  }, [frameSettings.aspectRatio, frameSettings.customAspectRatio, frameSettings.padding, imageData, imageDisplaySize]);
-
-  const drawingCrop = useRef<{
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
-  } | null>(null);
-  const isDrawingCrop = useRef(false);
-
-  // 裁剪框拖拽状态
-  const draggingCropRef = useRef<{
-    type: CropDragType;
-    startX: number;
-    startY: number;
-    cropOrig: { x: number; y: number; width: number; height: number };
-  } | null>(null);
-
-  // Canvas 引用
-  const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
-  const imageContainerRef = useRef<HTMLDivElement>(null);
-  // 导出容器引用（指向实际的图片容器，而非 Transform Layer）
-  const exportContainerRef = useRef<HTMLDivElement>(null);
-
-  // 默认箭头样式（用于创建新箭头）
-  const arrowStyleRef = useRef(DEFAULT_ARROW_STYLE);
-
-  // 默认矩形样式（用于创建新矩形）
-  const rectStyleRef = useRef(DEFAULT_RECT_STYLE);
-
-  // 默认文字样式（用于创建新文字）
-  const textStyleRef = useRef(DEFAULT_TEXT_STYLE);
-
-  // 默认马赛克样式（用于创建新马赛克）
-  const mosaicStyleRef = useRef(DEFAULT_MOSAIC_STYLE);
-
-  // 使用 ref 避免闭包陈旧状态
-  const arrowsRef = useRef(arrows);
-  arrowsRef.current = arrows;
-
-  // 矩形 ref
-  const rectsRef = useRef(rects);
-  rectsRef.current = rects;
-
-  // 文字 ref
-  const textsRef = useRef(texts);
-  textsRef.current = texts;
-
-  // 马赛克 ref
-  const mosaicsRef = useRef(mosaics);
-  mosaicsRef.current = mosaics;
-
-  // 选中 ID ref（避免事件处理中的闭包问题）
-  const selectedArrowIdsRef = useRef(selectedArrowIds);
-  selectedArrowIdsRef.current = selectedArrowIds;
-
-  const selectedRectIdsRef = useRef(selectedRectIds);
-  selectedRectIdsRef.current = selectedRectIds;
-
-  const selectedTextIdsRef = useRef(selectedTextIds);
-  selectedTextIdsRef.current = selectedTextIds;
-
-  const selectedMosaicIdsRef = useRef(selectedMosaicIds);
-  selectedMosaicIdsRef.current = selectedMosaicIds;
-
-  // 框选状态
-  const isMarqueeSelecting = useRef(false);
-  const marqueeStart = useRef<{ x: number; y: number } | null>(null);
-  const marqueeEnd = useRef<{ x: number; y: number } | null>(null);
-
-  // 裁剪区域 ref
-  const cropAreaRef = useRef(cropArea);
-  cropAreaRef.current = cropArea;
-
-  // 图片原始尺寸 ref
-  const imageNaturalSizeRef = useRef(imageNaturalSize);
-  imageNaturalSizeRef.current = imageNaturalSize;
-
-  // 图片显示尺寸 ref
-  const imageDisplaySizeRef = useRef(imageDisplaySize);
-  imageDisplaySizeRef.current = imageDisplaySize;
-  imageNaturalSizeRef.current = imageNaturalSize;
+  }, [frameSettings.aspectRatio, frameSettings.customAspectRatio, frameSettings.padding, imageData, imageDisplaySize, setOffset, setScale]);
 
   // ---------------------------------------------------------------------------
-  // 历史记录（撤销/恢复）
+  // Canvas 渲染
   // ---------------------------------------------------------------------------
-  const historyActions = useEditorHistory();
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
-  // 更新撤销/恢复按钮状态
-  const updateHistoryButtons = useCallback(() => {
-    setCanUndo(historyActions.canUndo());
-    setCanRedo(historyActions.canRedo());
-  }, [historyActions]);
-
-  // 推送当前状态到历史记录
-  const pushHistory = useCallback(() => {
-    // 深拷贝数组避免引用污染
-    const state: EditorState = {
-      arrows: JSON.parse(JSON.stringify(arrowsRef.current)),
-      rects: JSON.parse(JSON.stringify(rectsRef.current)),
-      texts: JSON.parse(JSON.stringify(textsRef.current)),
-      mosaics: JSON.parse(JSON.stringify(mosaicsRef.current)),
-      imageData: imageData,
-      view: {
-        scale: scaleRef.current,
-        offset: { ...offsetRef.current },
-      },
-      selectedArrowIds: [...selectedArrowIdsRef.current],
-      selectedRectIds: [...selectedRectIdsRef.current],
-      selectedTextIds: [...selectedTextIdsRef.current],
-      selectedMosaicIds: [...selectedMosaicIdsRef.current],
-    };
-    historyActions.pushState(state);
-    updateHistoryButtons();
-  }, [historyActions, imageData, updateHistoryButtons]);
-
-  // 撤销操作
-  const handleUndo = useCallback(() => {
-    const prevState = historyActions.undo();
-    if (prevState) {
-      setArrows(prevState.arrows);
-      setRects(prevState.rects);
-      setTexts(prevState.texts);
-      setMosaics(prevState.mosaics);
-      // 同步 ref
-      arrowsRef.current = prevState.arrows;
-      rectsRef.current = prevState.rects;
-      textsRef.current = prevState.texts;
-      mosaicsRef.current = prevState.mosaics;
-      if (prevState.imageData && prevState.imageData !== imageData) {
-        setImageData(prevState.imageData);
-      }
-      setScale(prevState.view.scale);
-      setOffset(prevState.view.offset);
-      scaleRef.current = prevState.view.scale;
-      offsetRef.current = prevState.view.offset;
-      setSelectedArrowIds(prevState.selectedArrowIds);
-      setSelectedRectIds(prevState.selectedRectIds);
-      setSelectedTextIds(prevState.selectedTextIds);
-      setSelectedMosaicIds(prevState.selectedMosaicIds);
-    }
-    updateHistoryButtons();
-  }, [historyActions, imageData, updateHistoryButtons]);
-
-  // 恢复操作
-  const handleRedo = useCallback(() => {
-    const nextState = historyActions.redo();
-    if (nextState) {
-      setArrows(nextState.arrows);
-      setRects(nextState.rects);
-      setTexts(nextState.texts);
-      setMosaics(nextState.mosaics);
-      // 同步 ref
-      arrowsRef.current = nextState.arrows;
-      rectsRef.current = nextState.rects;
-      textsRef.current = nextState.texts;
-      mosaicsRef.current = nextState.mosaics;
-      if (nextState.imageData && nextState.imageData !== imageData) {
-        setImageData(nextState.imageData);
-      }
-      setScale(nextState.view.scale);
-      setOffset(nextState.view.offset);
-      scaleRef.current = nextState.view.scale;
-      offsetRef.current = nextState.view.offset;
-      setSelectedArrowIds(nextState.selectedArrowIds);
-      setSelectedRectIds(nextState.selectedRectIds);
-      setSelectedTextIds(nextState.selectedTextIds);
-      setSelectedMosaicIds(nextState.selectedMosaicIds);
-    }
-    updateHistoryButtons();
-  }, [historyActions, imageData, updateHistoryButtons]);
-
-  // ---------------------------------------------------------------------------
-  // 导出功能
-  // ---------------------------------------------------------------------------
-
-  // 导出错误状态
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  // 准备导出：创建标注图层并叠加到图片容器上
-  const prepareExport = useCallback(() => {
-    const container = exportContainerRef.current;
-    if (!container || !imageData) return null;
-
-    // 获取图片显示尺寸
-    const displaySize = imageDisplaySizeRef.current;
-    if (!displaySize) return null;
-
-    // 计算 padding
-    const padLeft = frameSettings.padding.linked
-      ? frameSettings.padding.top
-      : frameSettings.padding.left;
-    const padTop = frameSettings.padding.linked
-      ? frameSettings.padding.top
-      : frameSettings.padding.top;
-    const padRight = frameSettings.padding.linked
-      ? frameSettings.padding.top
-      : frameSettings.padding.right;
-    const padBottom = frameSettings.padding.linked
-      ? frameSettings.padding.top
-      : frameSettings.padding.bottom;
-    const padW = padLeft + padRight;
-    const padH = padTop + padBottom;
-
-    // 计算容器尺寸（考虑 aspectRatio）
-    const containerSize = calculateAspectRatioSize(
-      frameSettings.aspectRatio,
-      displaySize.width,
-      displaySize.height,
-      frameSettings.customAspectRatio
-    );
-
-    // auto 模式下，容器尺寸 = 图片尺寸 + padding（由内容撑开）
-    // 非 auto 模式下，容器尺寸 = containerSize（已含 padding，因为 box-sizing: border-box）
-    const isAuto = frameSettings.aspectRatio === 'auto';
-    const canvasWidth = isAuto ? containerSize.width + padW : containerSize.width;
-    const canvasHeight = isAuto ? containerSize.height + padH : containerSize.height;
-
-    // 创建临时 canvas 用于绘制标注
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvasWidth;
-    tempCanvas.height = canvasHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    let annotationImg: HTMLImageElement | null = null;
-
-    if (tempCtx) {
-      // 标注坐标是相对于图片容器左上角的（已包含 padding 和居中偏移）
-      // 不需要额外的 translate 偏移
-
-      // 绘制标注（不带选中状态）
-      rectsRef.current.forEach((rect) => {
-        drawRect(tempCtx, rect, false);
-      });
-      arrowsRef.current.forEach((arrow) => {
-        drawArrow(tempCtx, arrow, false);
-      });
-      textsRef.current.forEach((text) => {
-        drawText(tempCtx, text, false);
-      });
-      mosaicsRef.current.forEach((mosaic) => {
-        drawMosaic(tempCtx, mosaic, false);
-      });
-
-      // 创建标注图片并叠加到容器
-      annotationImg = document.createElement('img');
-      annotationImg.src = tempCanvas.toDataURL('image/png');
-      annotationImg.style.position = 'absolute';
-      annotationImg.style.top = '0';
-      annotationImg.style.left = '0';
-      annotationImg.style.width = '100%';
-      annotationImg.style.height = '100%';
-      annotationImg.style.pointerEvents = 'none';
-      annotationImg.style.zIndex = '10';
-      container.appendChild(annotationImg);
-    }
-
-    return { container, annotationImg };
-  }, [imageData, frameSettings.padding, frameSettings.aspectRatio, frameSettings.customAspectRatio]);
-
-  // 清理导出：移除临时元素
-  const cleanupExport = useCallback((annotationImg: HTMLImageElement | null) => {
-    if (annotationImg && annotationImg.parentNode) {
-      annotationImg.parentNode.removeChild(annotationImg);
-    }
-  }, []);
-
-  // 等待 DOM 渲染完成
-  const waitForRender = useCallback(() => {
-    return new Promise<void>((resolve) => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => resolve());
-      });
-    });
-  }, []);
-
-  // 导出图片
-  const handleExportImage = useCallback(async () => {
-    const prepared = prepareExport();
-    if (!prepared) return;
-
-    setIsExporting(true);
-    setExportError(null);
-    try {
-      await waitForRender();
-
-      const format = settings.defaultFormat as ExportFormat;
-      const scale = settings.quality === '1x' ? 1 : settings.quality === '3x' ? 3 : 2;
-      const timestamp = Date.now();
-
-      // 根据格式导出
-      let img: HTMLImageElement;
-      let extension: string;
-
-      switch (format) {
-        case EXPORT_FORMATS.JPG: {
-          // JPG 使用 Blob 方式导出
-          const blob = await snapdom.toBlob(prepared.container, {
-            scale,
-            type: 'jpeg',
-            backgroundColor: '#ffffff',
-            quality: 0.92,
-          });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `codeframe-${timestamp}.jpg`;
-          a.click();
-          URL.revokeObjectURL(url);
-          return; // 提前返回，跳过通用下载逻辑
-        }
-        case EXPORT_FORMATS.WEBP:
-          img = await snapdom.toWebp(prepared.container, { scale });
-          extension = 'webp';
-          break;
-        case EXPORT_FORMATS.PNG:
-        default:
-          img = await snapdom.toPng(prepared.container, { scale });
-          extension = 'png';
-          break;
-      }
-
-      // 触发下载
-      const a = document.createElement('a');
-      a.href = img.src;
-      a.download = `codeframe-${timestamp}.${extension}`;
-      a.click();
-    } catch (err) {
-      console.error('导出失败:', err);
-      setExportError('导出失败，请重试');
-      setTimeout(() => setExportError(null), 3000);
-    } finally {
-      cleanupExport(prepared.annotationImg);
-      setIsExporting(false);
-    }
-  }, [prepareExport, waitForRender, cleanupExport, settings.defaultFormat, settings.quality]);
-
-  // 复制到剪贴板
-  const handleCopyToClipboard = useCallback(async () => {
-    if (!navigator.clipboard?.write) {
-      setExportError('当前浏览器不支持复制图片到剪贴板');
-      setTimeout(() => setExportError(null), 3000);
-      return;
-    }
-
-    const prepared = prepareExport();
-    if (!prepared) return;
-
-    setIsExporting(true);
-    setExportError(null);
-    try {
-      await waitForRender();
-
-      // 使用 snapdom 导出
-      const blob = await snapdom.toBlob(prepared.container, {
-        scale: 2,
-        type: 'png',
-      });
-
-      // 写入剪贴板
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob }),
-      ]);
-
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('复制失败:', err);
-      setExportError('复制失败，请重试');
-      setTimeout(() => setExportError(null), 3000);
-    } finally {
-      cleanupExport(prepared.annotationImg);
-      setIsExporting(false);
-    }
-  }, [prepareExport, waitForRender, cleanupExport]);
-
-  // 将屏幕坐标转换为图片坐标
   const screenToImageCoord = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } | null => {
       const canvas = annotationCanvasRef.current;
@@ -3842,10 +563,9 @@ const App: React.FC = () => {
 
       return { x, y };
     },
-    [],
+    []
   );
 
-  // 绘制所有标注（箭头 + 矩形）
   const renderShapes = useCallback(() => {
     const canvas = annotationCanvasRef.current;
     if (!canvas) return;
@@ -3853,93 +573,83 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 应用变换
     ctx.save();
     ctx.translate(offsetRef.current.x, offsetRef.current.y);
     ctx.scale(scaleRef.current, scaleRef.current);
 
-    // 绘制已保存的矩形
+    const renderer = new CanvasRenderer(ctx);
+
+    // 绘制矩形
     rects.forEach((rect) => {
-      drawRect(ctx, rect, selectedRectIds.includes(rect.id));
+      renderer.drawRect(rect, selectedRectIds.includes(rect.id));
     });
 
-    // 绘制正在绘制的矩形
     if (drawingRect.current && isDrawingRect.current) {
       const { startX, startY, endX, endY } = drawingRect.current;
-      const tempRect: RectShape = {
+      renderer.drawRect({
         id: 'temp',
         x: Math.min(startX, endX),
         y: Math.min(startY, endY),
         width: Math.abs(endX - startX),
         height: Math.abs(endY - startY),
         ...rectStyleRef.current,
-      };
-      drawRect(ctx, tempRect, false);
+      }, false);
     }
 
-    // 绘制已保存的箭头
+    // 绘制箭头
     arrows.forEach((arrow) => {
-      drawArrow(ctx, arrow, selectedArrowIds.includes(arrow.id));
+      renderer.drawArrow(arrow, selectedArrowIds.includes(arrow.id));
     });
 
-    // 绘制正在绘制的箭头
     if (drawingArrow.current && isDrawingArrow.current) {
-      const tempArrow: ArrowShape = {
+      renderer.drawArrow({
         id: 'temp',
         startX: drawingArrow.current.startX,
         startY: drawingArrow.current.startY,
         endX: drawingArrow.current.endX,
         endY: drawingArrow.current.endY,
         ...arrowStyleRef.current,
-      };
-      drawArrow(ctx, tempArrow, false);
+      }, false);
     }
 
-    // 绘制已保存的文字
+    // 绘制文字
     texts.forEach((text) => {
-      // 如果正在编辑此文字，则跳过绘制（用 input 替代）
       if (editingTextId === text.id) return;
-      drawText(ctx, text, selectedTextIds.includes(text.id));
+      renderer.drawText(text, selectedTextIds.includes(text.id));
     });
 
-    // 绘制已保存的马赛克
+    // 绘制马赛克
     mosaics.forEach((mosaic) => {
-      drawMosaic(ctx, mosaic, selectedMosaicIds.includes(mosaic.id));
+      renderer.drawMosaic(mosaic, imageCanvasRef.current, selectedMosaicIds.includes(mosaic.id));
     });
 
-    // 绘制正在绘制的马赛克
     if (drawingMosaic.current && isDrawingMosaic.current) {
       const { startX, startY, endX, endY } = drawingMosaic.current;
-      const tempMosaic: MosaicShape = {
+      renderer.drawMosaic({
         id: 'temp',
         x: Math.min(startX, endX),
         y: Math.min(startY, endY),
         width: Math.abs(endX - startX),
         height: Math.abs(endY - startY),
         ...mosaicStyleRef.current,
-      };
-      drawMosaic(ctx, tempMosaic, false);
+      }, imageCanvasRef.current, false);
     }
 
-    // 绘制裁剪框（裁剪工具激活时）
+    // 绘制裁剪框
     if (activeTool === 'crop' && imageDisplaySize) {
-      // 如果有确定的裁剪区域，绘制它
       if (cropArea) {
-        drawCropBox(ctx, cropArea, imageDisplaySize.width, imageDisplaySize.height);
+        renderer.drawCropBox(cropArea, imageDisplaySize.width, imageDisplaySize.height);
       }
-      // 如果正在绘制裁剪框，绘制临时裁剪框
       if (drawingCrop.current && isDrawingCrop.current) {
         const { startX, startY, endX, endY } = drawingCrop.current;
-        const tempCrop: CropArea = {
+        renderer.drawCropBox({
           x: Math.min(startX, endX),
           y: Math.min(startY, endY),
           width: Math.abs(endX - startX),
           height: Math.abs(endY - startY),
-        };
-        drawCropBox(ctx, tempCrop, imageDisplaySize.width, imageDisplaySize.height);
+        }, imageDisplaySize.width, imageDisplaySize.height);
       }
     }
 
@@ -3956,103 +666,40 @@ const App: React.FC = () => {
     ctx.restore();
   }, [arrows, rects, texts, mosaics, selectedArrowIds, selectedRectIds, selectedTextIds, selectedMosaicIds, editingTextId, cropArea, imageDisplaySize, activeTool]);
 
-  // 更新箭头属性（仅支持单选时使用）
-  const updateArrow = useCallback(
-    (updates: Partial<ArrowShape>) => {
-      if (selectedArrowIds.length !== 1) return;
-      const selectedArrowId = selectedArrowIds[0];
-      // 修改前保存历史
-      pushHistory();
-      setArrows((prev) =>
-        prev.map((a) =>
-          a.id === selectedArrowId ? { ...a, ...updates } : a,
-        ),
-      );
-    },
-    [selectedArrowIds, pushHistory],
-  );
+  // 创建包含图片数据的 canvas，用于马赛克渲染
+  // 注意：使用显示尺寸而非原始尺寸，因为马赛克坐标是基于显示坐标系的
+  useEffect(() => {
+    if (!imageData || !imageDisplaySize) {
+      imageCanvasRef.current = null;
+      return;
+    }
 
-  // 更新矩形属性（仅支持单选时使用）
-  const updateRect = useCallback(
-    (updates: Partial<RectShape>) => {
-      if (selectedRectIds.length !== 1) return;
-      const selectedRectId = selectedRectIds[0];
-      // 修改前保存历史
-      pushHistory();
-      setRects((prev) =>
-        prev.map((r) =>
-          r.id === selectedRectId ? { ...r, ...updates } : r,
-        ),
-      );
-    },
-    [selectedRectIds, pushHistory],
-  );
+    const img = new window.Image();
+    img.onload = () => {
+      const tempCanvas = document.createElement('canvas');
+      // 使用显示尺寸，与马赛克坐标系匹配
+      tempCanvas.width = imageDisplaySize.width;
+      tempCanvas.height = imageDisplaySize.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        // 将图片缩放到显示尺寸
+        tempCtx.drawImage(img, 0, 0, imageDisplaySize.width, imageDisplaySize.height);
+        imageCanvasRef.current = tempCanvas;
+        renderShapes();
+      }
+    };
+    img.src = imageData;
+  }, [imageData, imageDisplaySize, renderShapes]);
 
-  // 更新文字属性（仅支持单选时使用）
-  const updateText = useCallback(
-    (updates: Partial<TextShape>) => {
-      if (selectedTextIds.length !== 1) return;
-      const selectedTextId = selectedTextIds[0];
-      // 修改前保存历史
-      pushHistory();
-      setTexts((prev) =>
-        prev.map((t) =>
-          t.id === selectedTextId ? { ...t, ...updates } : t,
-        ),
-      );
-    },
-    [selectedTextIds, pushHistory],
-  );
-
-  // 更新马赛克属性（仅支持单选时使用）
-  const updateMosaic = useCallback(
-    (updates: Partial<MosaicShape>) => {
-      if (selectedMosaicIds.length !== 1) return;
-      const selectedMosaicId = selectedMosaicIds[0];
-      // 修改前保存历史
-      pushHistory();
-      setMosaics((prev) =>
-        prev.map((m) =>
-          m.id === selectedMosaicId ? { ...m, ...updates } : m,
-        ),
-      );
-    },
-    [selectedMosaicIds, pushHistory],
-  );
-
-  // 选中的箭头（仅支持单选时使用）
-  const selectedArrow = useMemo(
-    () => selectedArrowIds.length === 1 ? arrows.find((a) => a.id === selectedArrowIds[0]) || null : null,
-    [arrows, selectedArrowIds],
-  );
-
-  // 选中的矩形（仅支持单选时使用）
-  const selectedRect = useMemo(
-    () => selectedRectIds.length === 1 ? rects.find((r) => r.id === selectedRectIds[0]) || null : null,
-    [rects, selectedRectIds],
-  );
-
-  // 选中的文字（仅支持单选时使用）
-  const selectedText = useMemo(
-    () => selectedTextIds.length === 1 ? texts.find((t) => t.id === selectedTextIds[0]) || null : null,
-    [texts, selectedTextIds],
-  );
-
-  // 选中的马赛克（仅支持单选时使用）
-  const selectedMosaic = useMemo(
-    () => selectedMosaicIds.length === 1 ? mosaics.find((m) => m.id === selectedMosaicIds[0]) || null : null,
-    [mosaics, selectedMosaicIds],
-  );
-
-  // 标注绘制与编辑事件处理
+  // ---------------------------------------------------------------------------
+  // 事件处理
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     const el = canvasRef.current;
     if (!el || !imageData) return;
 
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
-
-      // 如果正在编辑文字，不处理拖动
       if (editingTextId) return;
 
       const coord = screenToImageCoord(e.clientX, e.clientY);
@@ -4061,37 +708,20 @@ const App: React.FC = () => {
       // 箭头绘制
       if (activeTool === 'arrow') {
         isDrawingArrow.current = true;
-        drawingArrow.current = {
-          startX: coord.x,
-          startY: coord.y,
-          endX: coord.x,
-          endY: coord.y,
-        };
+        drawingArrow.current = { startX: coord.x, startY: coord.y, endX: coord.x, endY: coord.y };
         return;
       }
 
       // 矩形绘制
       if (activeTool === 'rect') {
         isDrawingRect.current = true;
-        drawingRect.current = {
-          startX: coord.x,
-          startY: coord.y,
-          endX: coord.x,
-          endY: coord.y,
-        };
+        drawingRect.current = { startX: coord.x, startY: coord.y, endX: coord.x, endY: coord.y };
         return;
       }
 
-      // 文字工具：点击创建文字
+      // 文字工具
       if (activeTool === 'text') {
-        const canvas = annotationCanvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        // 创建前保存历史
         pushHistory();
-
         const newText: TextShape = {
           id: generateTextId(),
           x: coord.x,
@@ -4104,7 +734,6 @@ const App: React.FC = () => {
         setSelectedArrowIds([]);
         setSelectedRectIds([]);
         setSelectedMosaicIds([]);
-        // 不自动进入编辑模式，让用户双击编辑
         setActiveTool('select');
         return;
       }
@@ -4112,12 +741,7 @@ const App: React.FC = () => {
       // 马赛克绘制
       if (activeTool === 'mosaic') {
         isDrawingMosaic.current = true;
-        drawingMosaic.current = {
-          startX: coord.x,
-          startY: coord.y,
-          endX: coord.x,
-          endY: coord.y,
-        };
+        drawingMosaic.current = { startX: coord.x, startY: coord.y, endX: coord.x, endY: coord.y };
         return;
       }
 
@@ -4126,7 +750,6 @@ const App: React.FC = () => {
         const currentCrop = cropAreaRef.current;
         const imgSize = imageNaturalSizeRef.current;
 
-        // 如果已有裁剪框，检测是否点击控制点或内部
         if (currentCrop && imgSize) {
           const dragType = getCropDragTypeAtPoint(coord.x, coord.y, currentCrop);
           if (dragType !== 'none') {
@@ -4134,196 +757,122 @@ const App: React.FC = () => {
               type: dragType,
               startX: coord.x,
               startY: coord.y,
-              cropOrig: {
-                x: currentCrop.x,
-                y: currentCrop.y,
-                width: currentCrop.width,
-                height: currentCrop.height,
-              },
+              cropOrig: { x: currentCrop.x, y: currentCrop.y, width: currentCrop.width, height: currentCrop.height },
             };
             return;
           }
         }
 
-        // 否则开始绘制新的裁剪框
         isDrawingCrop.current = true;
-        drawingCrop.current = {
-          startX: coord.x,
-          startY: coord.y,
-          endX: coord.x,
-          endY: coord.y,
-        };
-        setCropArea(null); // 清除之前的裁剪框
+        drawingCrop.current = { startX: coord.x, startY: coord.y, endX: coord.x, endY: coord.y };
+        setCropArea(null);
         return;
       }
 
       // 选择工具
       if (activeTool === 'select') {
-        const currentArrows = arrowsRef.current;
-        const currentRects = rectsRef.current;
-        const currentTexts = textsRef.current;
-        const currentMosaics = mosaicsRef.current;
         const canvas = annotationCanvasRef.current;
         const ctx = canvas?.getContext('2d');
 
-        // 辅助函数：检测对象是否被选中
-        const isArrowSelected = (id: string) => selectedArrowIdsRef.current.includes(id);
-        const isRectSelected = (id: string) => selectedRectIdsRef.current.includes(id);
-        const isTextSelected = (id: string) => selectedTextIdsRef.current.includes(id);
-        const isMosaicSelected = (id: string) => selectedMosaicIdsRef.current.includes(id);
-
-        // 辅助函数：检测控制点
-        const checkTextControlPoint = (textId: string): { found: boolean; dragType: TextDragType } => {
-          const text = currentTexts.find(t => t.id === textId);
+        // 检测已选中对象的控制点
+        for (const textId of selectedTextIdsRef.current) {
+          const text = textsRef.current.find(t => t.id === textId);
           if (text && ctx) {
             const dragType = getTextDragTypeAtPoint(coord.x, coord.y, text, ctx);
             if (dragType !== 'none') {
-              return { found: true, dragType };
+              setSelectedTextIds([textId]);
+              setSelectedArrowIds([]);
+              setSelectedRectIds([]);
+              setSelectedMosaicIds([]);
+              draggingTextRef.current = {
+                type: dragType,
+                textId,
+                startX: coord.x,
+                startY: coord.y,
+                textOrig: { x: text.x, y: text.y, fontSize: text.fontSize },
+              };
+              return;
             }
-          }
-          return { found: false, dragType: 'none' };
-        };
-
-        const checkMosaicControlPoint = (mosaicId: string): { found: boolean; dragType: MosaicDragType } => {
-          const mosaic = currentMosaics.find(m => m.id === mosaicId);
-          if (mosaic) {
-            const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, mosaic);
-            if (dragType !== 'none') {
-              return { found: true, dragType };
-            }
-          }
-          return { found: false, dragType: 'none' };
-        };
-
-        const checkRectControlPoint = (rectId: string): { found: boolean; dragType: RectDragType } => {
-          const rect = currentRects.find(r => r.id === rectId);
-          if (rect) {
-            const dragType = getRectDragTypeAtPoint(coord.x, coord.y, rect);
-            if (dragType !== 'none') {
-              return { found: true, dragType };
-            }
-          }
-          return { found: false, dragType: 'none' };
-        };
-
-        const checkArrowControlPoint = (arrowId: string): { found: boolean; dragType: DragType } => {
-          const arrow = currentArrows.find(a => a.id === arrowId);
-          if (arrow) {
-            const dragType = getDragTypeAtPoint(coord.x, coord.y, arrow);
-            if (dragType !== 'none') {
-              return { found: true, dragType };
-            }
-          }
-          return { found: false, dragType: 'none' };
-        };
-
-        // 检测已选中对象的控制点（用于拖拽）
-        // 遍历所有选中对象，检测控制点
-        for (const textId of selectedTextIdsRef.current) {
-          const result = checkTextControlPoint(textId);
-          if (result.found) {
-            // 单独控制点拖拽：只保留当前对象选中
-            setSelectedTextIds([textId]);
-            setSelectedArrowIds([]);
-            setSelectedRectIds([]);
-            setSelectedMosaicIds([]);
-            draggingTextRef.current = {
-              type: result.dragType,
-              textId,
-              startX: coord.x,
-              startY: coord.y,
-              textOrig: {
-                x: currentTexts.find(t => t.id === textId)!.x,
-                y: currentTexts.find(t => t.id === textId)!.y,
-                fontSize: currentTexts.find(t => t.id === textId)!.fontSize,
-              },
-            };
-            return;
           }
         }
 
         for (const mosaicId of selectedMosaicIdsRef.current) {
-          const result = checkMosaicControlPoint(mosaicId);
-          if (result.found) {
-            setSelectedMosaicIds([mosaicId]);
-            setSelectedArrowIds([]);
-            setSelectedRectIds([]);
-            setSelectedTextIds([]);
-            draggingMosaicRef.current = {
-              type: result.dragType,
-              mosaicId,
-              startX: coord.x,
-              startY: coord.y,
-              mosaicOrig: {
-                x: currentMosaics.find(m => m.id === mosaicId)!.x,
-                y: currentMosaics.find(m => m.id === mosaicId)!.y,
-                width: currentMosaics.find(m => m.id === mosaicId)!.width,
-                height: currentMosaics.find(m => m.id === mosaicId)!.height,
-              },
-            };
-            return;
+          const mosaic = mosaicsRef.current.find(m => m.id === mosaicId);
+          if (mosaic) {
+            const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, mosaic);
+            if (dragType !== 'none') {
+              setSelectedMosaicIds([mosaicId]);
+              setSelectedArrowIds([]);
+              setSelectedRectIds([]);
+              setSelectedTextIds([]);
+              draggingMosaicRef.current = {
+                type: dragType,
+                mosaicId,
+                startX: coord.x,
+                startY: coord.y,
+                mosaicOrig: { x: mosaic.x, y: mosaic.y, width: mosaic.width, height: mosaic.height },
+              };
+              return;
+            }
           }
         }
 
         for (const rectId of selectedRectIdsRef.current) {
-          const result = checkRectControlPoint(rectId);
-          if (result.found) {
-            setSelectedRectIds([rectId]);
-            setSelectedArrowIds([]);
-            setSelectedTextIds([]);
-            setSelectedMosaicIds([]);
-            draggingRectRef.current = {
-              type: result.dragType,
-              rectId,
-              startX: coord.x,
-              startY: coord.y,
-              rectOrig: {
-                x: currentRects.find(r => r.id === rectId)!.x,
-                y: currentRects.find(r => r.id === rectId)!.y,
-                width: currentRects.find(r => r.id === rectId)!.width,
-                height: currentRects.find(r => r.id === rectId)!.height,
-              },
-            };
-            return;
+          const rect = rectsRef.current.find(r => r.id === rectId);
+          if (rect) {
+            const dragType = getRectDragTypeAtPoint(coord.x, coord.y, rect);
+            if (dragType !== 'none') {
+              setSelectedRectIds([rectId]);
+              setSelectedArrowIds([]);
+              setSelectedTextIds([]);
+              setSelectedMosaicIds([]);
+              draggingRectRef.current = {
+                type: dragType,
+                rectId,
+                startX: coord.x,
+                startY: coord.y,
+                rectOrig: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+              };
+              return;
+            }
           }
         }
 
         for (const arrowId of selectedArrowIdsRef.current) {
-          const result = checkArrowControlPoint(arrowId);
-          if (result.found) {
-            setSelectedArrowIds([arrowId]);
-            setSelectedRectIds([]);
-            setSelectedTextIds([]);
-            setSelectedMosaicIds([]);
-            draggingRef.current = {
-              type: result.dragType,
-              arrowId,
-              startX: coord.x,
-              startY: coord.y,
-              arrowStart: { x: currentArrows.find(a => a.id === arrowId)!.startX, y: currentArrows.find(a => a.id === arrowId)!.startY },
-              arrowEnd: { x: currentArrows.find(a => a.id === arrowId)!.endX, y: currentArrows.find(a => a.id === arrowId)!.endY },
-            };
-            return;
+          const arrow = arrowsRef.current.find(a => a.id === arrowId);
+          if (arrow) {
+            const dragType = getDragTypeAtPoint(coord.x, coord.y, arrow);
+            if (dragType !== 'none') {
+              setSelectedArrowIds([arrowId]);
+              setSelectedRectIds([]);
+              setSelectedTextIds([]);
+              setSelectedMosaicIds([]);
+              draggingRef.current = {
+                type: dragType,
+                arrowId,
+                startX: coord.x,
+                startY: coord.y,
+                arrowStart: { x: arrow.startX, y: arrow.startY },
+                arrowEnd: { x: arrow.endX, y: arrow.endY },
+              };
+              return;
+            }
           }
         }
 
-        // 检测是否点击到对象（用于选择）
-        // 从后往前遍历，先检测最上层
+        // 检测点击对象
         if (ctx) {
-          for (let i = currentTexts.length - 1; i >= 0; i--) {
-            const text = currentTexts[i];
+          for (let i = textsRef.current.length - 1; i >= 0; i--) {
+            const text = textsRef.current[i];
             if (isPointInText(coord.x, coord.y, text, ctx)) {
               if (e.shiftKey) {
-                // Shift+点击：切换选中状态
-                if (isTextSelected(text.id)) {
+                if (selectedTextIdsRef.current.includes(text.id)) {
                   setSelectedTextIds(prev => prev.filter(id => id !== text.id));
                 } else {
                   setSelectedTextIds(prev => [...prev, text.id]);
                 }
               } else {
-                // 普通点击：单选或开始拖拽
-                if (isTextSelected(text.id)) {
-                  // 已选中，准备拖拽
+                if (selectedTextIdsRef.current.includes(text.id)) {
                   draggingTextRef.current = {
                     type: 'move',
                     textId: text.id,
@@ -4332,7 +881,6 @@ const App: React.FC = () => {
                     textOrig: { x: text.x, y: text.y, fontSize: text.fontSize },
                   };
                 } else {
-                  // 未选中，单选
                   setSelectedTextIds([text.id]);
                   setSelectedArrowIds([]);
                   setSelectedRectIds([]);
@@ -4344,17 +892,17 @@ const App: React.FC = () => {
           }
         }
 
-        for (let i = currentMosaics.length - 1; i >= 0; i--) {
-          const mosaic = currentMosaics[i];
+        for (let i = mosaicsRef.current.length - 1; i >= 0; i--) {
+          const mosaic = mosaicsRef.current[i];
           if (isPointInMosaic(coord.x, coord.y, mosaic)) {
             if (e.shiftKey) {
-              if (isMosaicSelected(mosaic.id)) {
+              if (selectedMosaicIdsRef.current.includes(mosaic.id)) {
                 setSelectedMosaicIds(prev => prev.filter(id => id !== mosaic.id));
               } else {
                 setSelectedMosaicIds(prev => [...prev, mosaic.id]);
               }
             } else {
-              if (isMosaicSelected(mosaic.id)) {
+              if (selectedMosaicIdsRef.current.includes(mosaic.id)) {
                 draggingMosaicRef.current = {
                   type: 'move',
                   mosaicId: mosaic.id,
@@ -4373,17 +921,17 @@ const App: React.FC = () => {
           }
         }
 
-        for (let i = currentRects.length - 1; i >= 0; i--) {
-          const rect = currentRects[i];
+        for (let i = rectsRef.current.length - 1; i >= 0; i--) {
+          const rect = rectsRef.current[i];
           if (isPointInRect(coord.x, coord.y, rect)) {
             if (e.shiftKey) {
-              if (isRectSelected(rect.id)) {
+              if (selectedRectIdsRef.current.includes(rect.id)) {
                 setSelectedRectIds(prev => prev.filter(id => id !== rect.id));
               } else {
                 setSelectedRectIds(prev => [...prev, rect.id]);
               }
             } else {
-              if (isRectSelected(rect.id)) {
+              if (selectedRectIdsRef.current.includes(rect.id)) {
                 draggingRectRef.current = {
                   type: 'move',
                   rectId: rect.id,
@@ -4402,17 +950,17 @@ const App: React.FC = () => {
           }
         }
 
-        for (let i = currentArrows.length - 1; i >= 0; i--) {
-          const arrow = currentArrows[i];
+        for (let i = arrowsRef.current.length - 1; i >= 0; i--) {
+          const arrow = arrowsRef.current[i];
           if (isPointNearArrow(coord.x, coord.y, arrow)) {
             if (e.shiftKey) {
-              if (isArrowSelected(arrow.id)) {
+              if (selectedArrowIdsRef.current.includes(arrow.id)) {
                 setSelectedArrowIds(prev => prev.filter(id => id !== arrow.id));
               } else {
                 setSelectedArrowIds(prev => [...prev, arrow.id]);
               }
             } else {
-              if (isArrowSelected(arrow.id)) {
+              if (selectedArrowIdsRef.current.includes(arrow.id)) {
                 draggingRef.current = {
                   type: 'move',
                   arrowId: arrow.id,
@@ -4432,8 +980,7 @@ const App: React.FC = () => {
           }
         }
 
-        // 点击空白区域，开始框选或清除选中
-        // 普通点击空白区域拖拽时开始框选，Shift+框选则添加到已有选择
+        // 开始框选
         isMarqueeSelecting.current = true;
         marqueeStart.current = { x: coord.x, y: coord.y };
         marqueeEnd.current = { x: coord.x, y: coord.y };
@@ -4444,7 +991,7 @@ const App: React.FC = () => {
       const coord = screenToImageCoord(e.clientX, e.clientY);
       if (!coord) return;
 
-      // 处理框选
+      // 框选
       if (isMarqueeSelecting.current && activeTool === 'select') {
         if (marqueeStart.current) {
           marqueeEnd.current = { x: coord.x, y: coord.y };
@@ -4453,7 +1000,7 @@ const App: React.FC = () => {
         return;
       }
 
-      // 处理箭头绘制
+      // 箭头绘制
       if (isDrawingArrow.current && activeTool === 'arrow') {
         if (!drawingArrow.current) return;
         drawingArrow.current.endX = coord.x;
@@ -4462,7 +1009,7 @@ const App: React.FC = () => {
         return;
       }
 
-      // 处理矩形绘制
+      // 矩形绘制
       if (isDrawingRect.current && activeTool === 'rect') {
         if (!drawingRect.current) return;
         drawingRect.current.endX = coord.x;
@@ -4471,7 +1018,7 @@ const App: React.FC = () => {
         return;
       }
 
-      // 处理矩形拖拽
+      // 矩形拖拽
       if (draggingRectRef.current && activeTool === 'select') {
         const drag = draggingRectRef.current;
         const dx = coord.x - drag.startX;
@@ -4481,38 +1028,17 @@ const App: React.FC = () => {
         setRects((prev) =>
           prev.map((r) => {
             if (r.id !== drag.rectId) return r;
-
             switch (drag.type) {
               case 'move':
                 return { ...r, x: orig.x + dx, y: orig.y + dy };
               case 'resize-tl':
-                return {
-                  ...r,
-                  x: orig.x + dx,
-                  y: orig.y + dy,
-                  width: Math.max(5, orig.width - dx),
-                  height: Math.max(5, orig.height - dy),
-                };
+                return { ...r, x: orig.x + dx, y: orig.y + dy, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height - dy) };
               case 'resize-tr':
-                return {
-                  ...r,
-                  y: orig.y + dy,
-                  width: Math.max(5, orig.width + dx),
-                  height: Math.max(5, orig.height - dy),
-                };
+                return { ...r, y: orig.y + dy, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height - dy) };
               case 'resize-bl':
-                return {
-                  ...r,
-                  x: orig.x + dx,
-                  width: Math.max(5, orig.width - dx),
-                  height: Math.max(5, orig.height + dy),
-                };
+                return { ...r, x: orig.x + dx, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height + dy) };
               case 'resize-br':
-                return {
-                  ...r,
-                  width: Math.max(5, orig.width + dx),
-                  height: Math.max(5, orig.height + dy),
-                };
+                return { ...r, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height + dy) };
               case 'resize-t':
                 return { ...r, y: orig.y + dy, height: Math.max(5, orig.height - dy) };
               case 'resize-b':
@@ -4524,13 +1050,13 @@ const App: React.FC = () => {
               default:
                 return r;
             }
-          }),
+          })
         );
         renderShapes();
         return;
       }
 
-      // 处理箭头拖拽
+      // 箭头拖拽
       if (draggingRef.current && activeTool === 'select') {
         const drag = draggingRef.current;
         const dx = coord.x - drag.startX;
@@ -4539,18 +1065,10 @@ const App: React.FC = () => {
         setArrows((prev) =>
           prev.map((a) => {
             if (a.id !== drag.arrowId) return a;
-
             switch (drag.type) {
               case 'move':
               case 'middle':
-                // 中点拖拽和整体移动效果相同
-                return {
-                  ...a,
-                  startX: drag.arrowStart.x + dx,
-                  startY: drag.arrowStart.y + dy,
-                  endX: drag.arrowEnd.x + dx,
-                  endY: drag.arrowEnd.y + dy,
-                };
+                return { ...a, startX: drag.arrowStart.x + dx, startY: drag.arrowStart.y + dy, endX: drag.arrowEnd.x + dx, endY: drag.arrowEnd.y + dy };
               case 'start':
                 return { ...a, startX: drag.arrowStart.x + dx, startY: drag.arrowStart.y + dy };
               case 'end':
@@ -4558,13 +1076,13 @@ const App: React.FC = () => {
               default:
                 return a;
             }
-          }),
+          })
         );
         renderShapes();
         return;
       }
 
-      // 处理文字拖拽（移动和四角调整字号）
+      // 文字拖拽
       if (draggingTextRef.current && activeTool === 'select') {
         const drag = draggingTextRef.current;
         const dx = coord.x - drag.startX;
@@ -4574,49 +1092,38 @@ const App: React.FC = () => {
         setTexts((prev) =>
           prev.map((t) => {
             if (t.id !== drag.textId) return t;
-
-            // 最小字号
             const minFontSize = 8;
             const maxFontSize = 120;
 
             switch (drag.type) {
               case 'move':
                 return { ...t, x: orig.x + dx, y: orig.y + dy };
-              // 四角调整字号：控制点跟随鼠标移动
-              // 右下角(resize-br): 向右下拖放大，向左上拖缩小
               case 'resize-br': {
                 const delta = (dx + dy) / 2;
-                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
-                return { ...t, fontSize: newFontSize };
+                return { ...t, fontSize: Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5)) };
               }
-              // 左上角(resize-tl): 向左上拖放大，向右下拖缩小
               case 'resize-tl': {
                 const delta = (-dx - dy) / 2;
-                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
-                return { ...t, fontSize: newFontSize, x: orig.x + dx, y: orig.y + dy };
+                return { ...t, fontSize: Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5)), x: orig.x + dx, y: orig.y + dy };
               }
-              // 右上角(resize-tr): 向右上拖放大，向左下拖缩小
               case 'resize-tr': {
                 const delta = (dx - dy) / 2;
-                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
-                return { ...t, fontSize: newFontSize, y: orig.y + dy };
+                return { ...t, fontSize: Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5)), y: orig.y + dy };
               }
-              // 左下角(resize-bl): 向左下拖放大，向右上拖缩小
               case 'resize-bl': {
                 const delta = (-dx + dy) / 2;
-                const newFontSize = Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5));
-                return { ...t, fontSize: newFontSize, x: orig.x + dx };
+                return { ...t, fontSize: Math.min(maxFontSize, Math.max(minFontSize, orig.fontSize + delta * 0.5)), x: orig.x + dx };
               }
               default:
                 return t;
             }
-          }),
+          })
         );
         renderShapes();
         return;
       }
 
-      // 处理马赛克绘制
+      // 马赛克绘制
       if (isDrawingMosaic.current && activeTool === 'mosaic') {
         if (!drawingMosaic.current) return;
         drawingMosaic.current.endX = coord.x;
@@ -4625,7 +1132,7 @@ const App: React.FC = () => {
         return;
       }
 
-      // 处理马赛克拖拽
+      // 马赛克拖拽
       if (draggingMosaicRef.current && activeTool === 'select') {
         const drag = draggingMosaicRef.current;
         const dx = coord.x - drag.startX;
@@ -4635,38 +1142,17 @@ const App: React.FC = () => {
         setMosaics((prev) =>
           prev.map((m) => {
             if (m.id !== drag.mosaicId) return m;
-
             switch (drag.type) {
               case 'move':
                 return { ...m, x: orig.x + dx, y: orig.y + dy };
               case 'resize-tl':
-                return {
-                  ...m,
-                  x: orig.x + dx,
-                  y: orig.y + dy,
-                  width: Math.max(5, orig.width - dx),
-                  height: Math.max(5, orig.height - dy),
-                };
+                return { ...m, x: orig.x + dx, y: orig.y + dy, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height - dy) };
               case 'resize-tr':
-                return {
-                  ...m,
-                  y: orig.y + dy,
-                  width: Math.max(5, orig.width + dx),
-                  height: Math.max(5, orig.height - dy),
-                };
+                return { ...m, y: orig.y + dy, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height - dy) };
               case 'resize-bl':
-                return {
-                  ...m,
-                  x: orig.x + dx,
-                  width: Math.max(5, orig.width - dx),
-                  height: Math.max(5, orig.height + dy),
-                };
+                return { ...m, x: orig.x + dx, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height + dy) };
               case 'resize-br':
-                return {
-                  ...m,
-                  width: Math.max(5, orig.width + dx),
-                  height: Math.max(5, orig.height + dy),
-                };
+                return { ...m, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height + dy) };
               case 'resize-t':
                 return { ...m, y: orig.y + dy, height: Math.max(5, orig.height - dy) };
               case 'resize-b':
@@ -4678,26 +1164,24 @@ const App: React.FC = () => {
               default:
                 return m;
             }
-          }),
+          })
         );
         renderShapes();
         return;
       }
 
-      // 处理裁剪框绘制
+      // 裁剪框绘制
       if (isDrawingCrop.current && activeTool === 'crop') {
         if (!drawingCrop.current) return;
         const imgSize = imageNaturalSizeRef.current;
         if (!imgSize) return;
-
-        // 限制在图片范围内
         drawingCrop.current.endX = Math.max(0, Math.min(imgSize.width, coord.x));
         drawingCrop.current.endY = Math.max(0, Math.min(imgSize.height, coord.y));
         renderShapes();
         return;
       }
 
-      // 处理裁剪框拖拽
+      // 裁剪框拖拽
       if (draggingCropRef.current && activeTool === 'crop') {
         const drag = draggingCropRef.current;
         const dx = coord.x - drag.startX;
@@ -4707,7 +1191,6 @@ const App: React.FC = () => {
         if (!imgSize) return;
 
         let newCrop: CropArea;
-
         switch (drag.type) {
           case 'move':
             newCrop = {
@@ -4784,30 +1267,23 @@ const App: React.FC = () => {
           default:
             return;
         }
-
         setCropArea(newCrop);
         renderShapes();
         return;
       }
 
-      // 更新光标样式
+      // 光标更新
       if (activeTool === 'select') {
-        // 如果正在进行框选，显示 crosshair 光标
         if (isMarqueeSelecting.current) {
           el.style.cursor = 'crosshair';
           return;
         }
 
-        const currentRects = rectsRef.current;
-        const currentArrows = arrowsRef.current;
-        const currentTexts = textsRef.current;
-        const currentMosaics = mosaicsRef.current;
         const canvas = annotationCanvasRef.current;
         const ctx = canvas?.getContext('2d');
 
-        // 检测文字光标（已选中对象）
         for (const textId of selectedTextIdsRef.current) {
-          const selectedText = currentTexts.find((t) => t.id === textId);
+          const selectedText = textsRef.current.find((t) => t.id === textId);
           if (selectedText && ctx) {
             const dragType = getTextDragTypeAtPoint(coord.x, coord.y, selectedText, ctx);
             if (dragType !== 'none') {
@@ -4817,9 +1293,8 @@ const App: React.FC = () => {
           }
         }
 
-        // 检测马赛克光标（已选中对象）
         for (const mosaicId of selectedMosaicIdsRef.current) {
-          const selectedMosaic = currentMosaics.find((m) => m.id === mosaicId);
+          const selectedMosaic = mosaicsRef.current.find((m) => m.id === mosaicId);
           if (selectedMosaic) {
             const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, selectedMosaic);
             if (dragType !== 'none') {
@@ -4829,9 +1304,8 @@ const App: React.FC = () => {
           }
         }
 
-        // 检测矩形光标（已选中对象）
         for (const rectId of selectedRectIdsRef.current) {
-          const selectedRect = currentRects.find((r) => r.id === rectId);
+          const selectedRect = rectsRef.current.find((r) => r.id === rectId);
           if (selectedRect) {
             const dragType = getRectDragTypeAtPoint(coord.x, coord.y, selectedRect);
             if (dragType !== 'none') {
@@ -4841,62 +1315,20 @@ const App: React.FC = () => {
           }
         }
 
-        // 检测箭头光标（已选中对象）
         for (const arrowId of selectedArrowIdsRef.current) {
-          const selectedArrow = currentArrows.find((a) => a.id === arrowId);
+          const selectedArrow = arrowsRef.current.find((a) => a.id === arrowId);
           if (selectedArrow) {
             const dragType = getDragTypeAtPoint(coord.x, coord.y, selectedArrow);
             if (dragType !== 'none') {
-              // 控制点和移动都使用 move 光标
               el.style.cursor = 'move';
               return;
             }
           }
         }
 
-        // 检测悬停在未选中对象上（显示 pointer 光标）
-        if (ctx) {
-          // 检测文字
-          for (let i = currentTexts.length - 1; i >= 0; i--) {
-            const dragType = getTextDragTypeAtPoint(coord.x, coord.y, currentTexts[i], ctx);
-            if (dragType !== 'none') {
-              el.style.cursor = 'pointer';
-              return;
-            }
-          }
-        }
-
-        // 检测马赛克
-        for (let i = currentMosaics.length - 1; i >= 0; i--) {
-          const dragType = getMosaicDragTypeAtPoint(coord.x, coord.y, currentMosaics[i]);
-          if (dragType !== 'none') {
-            el.style.cursor = 'pointer';
-            return;
-          }
-        }
-
-        // 检测矩形
-        for (let i = currentRects.length - 1; i >= 0; i--) {
-          const dragType = getRectDragTypeAtPoint(coord.x, coord.y, currentRects[i]);
-          if (dragType !== 'none') {
-            el.style.cursor = 'pointer';
-            return;
-          }
-        }
-
-        // 检测箭头
-        for (let i = currentArrows.length - 1; i >= 0; i--) {
-          const dragType = getDragTypeAtPoint(coord.x, coord.y, currentArrows[i]);
-          if (dragType !== 'none') {
-            el.style.cursor = 'pointer';
-            return;
-          }
-        }
-
         el.style.cursor = 'default';
       }
 
-      // 更新裁剪工具光标样式
       if (activeTool === 'crop') {
         const currentCrop = cropAreaRef.current;
         if (currentCrop) {
@@ -4920,52 +1352,36 @@ const App: React.FC = () => {
           y2: marqueeEnd.current.y,
         };
 
-        // 计算框选区域尺寸
         const width = Math.abs(rect.x2 - rect.x1);
         const height = Math.abs(rect.y2 - rect.y1);
         const minSelectSize = 5;
 
-        // 如果框选区域太小（只是点击），清除选中
         if (width < minSelectSize && height < minSelectSize) {
           setSelectedArrowIds([]);
           setSelectedRectIds([]);
           setSelectedTextIds([]);
           setSelectedMosaicIds([]);
         } else {
-          // 找出框选区域内的所有对象
           const newSelectedArrowIds: string[] = [];
           const newSelectedRectIds: string[] = [];
           const newSelectedTextIds: string[] = [];
           const newSelectedMosaicIds: string[] = [];
 
           arrowsRef.current.forEach(arrow => {
-            if (isArrowInRect(arrow, rect)) {
-              newSelectedArrowIds.push(arrow.id);
-            }
+            if (isArrowInRect(arrow, rect)) newSelectedArrowIds.push(arrow.id);
           });
-
           rectsRef.current.forEach(rectItem => {
-            if (isRectInRect(rectItem, rect)) {
-              newSelectedRectIds.push(rectItem.id);
-            }
+            if (isRectInRect(rectItem, rect)) newSelectedRectIds.push(rectItem.id);
           });
-
           if (ctx) {
             textsRef.current.forEach(text => {
-              if (isTextInRect(text, rect, ctx)) {
-                newSelectedTextIds.push(text.id);
-              }
+              if (isTextInRect(text, rect, ctx)) newSelectedTextIds.push(text.id);
             });
           }
-
           mosaicsRef.current.forEach(mosaic => {
-            if (isMosaicInRect(mosaic, rect)) {
-              newSelectedMosaicIds.push(mosaic.id);
-            }
+            if (isMosaicInRect(mosaic, rect)) newSelectedMosaicIds.push(mosaic.id);
           });
 
-          // 设置选中状态（替换之前的选择）
-          // 如果 Shift 键按下，则添加到已有选择
           if (e.shiftKey) {
             setSelectedArrowIds(prev => [...new Set([...prev, ...newSelectedArrowIds])]);
             setSelectedRectIds(prev => [...new Set([...prev, ...newSelectedRectIds])]);
@@ -4990,16 +1406,11 @@ const App: React.FC = () => {
       if (isDrawingArrow.current && drawingArrow.current) {
         const { startX, startY, endX, endY } = drawingArrow.current;
         const dist = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
-        const minDrawDist = 5;
-        if (dist > minDrawDist) {
-          // 创建前保存历史
+        if (dist > 5) {
           pushHistory();
           const newArrow: ArrowShape = {
-            id: generateId(),
-            startX,
-            startY,
-            endX,
-            endY,
+            id: generateArrowId(),
+            startX, startY, endX, endY,
             ...arrowStyleRef.current,
           };
           setArrows((prev) => [...prev, newArrow]);
@@ -5015,16 +1426,13 @@ const App: React.FC = () => {
         const { startX, startY, endX, endY } = drawingRect.current;
         const width = Math.abs(endX - startX);
         const height = Math.abs(endY - startY);
-        const minSize = 5;
-        if (width >= minSize && height >= minSize) {
-          // 创建前保存历史
+        if (width >= 5 && height >= 5) {
           pushHistory();
           const newRect: RectShape = {
             id: generateRectId(),
             x: Math.min(startX, endX),
             y: Math.min(startY, endY),
-            width,
-            height,
+            width, height,
             ...rectStyleRef.current,
           };
           setRects((prev) => [...prev, newRect]);
@@ -5040,16 +1448,13 @@ const App: React.FC = () => {
         const { startX, startY, endX, endY } = drawingMosaic.current;
         const width = Math.abs(endX - startX);
         const height = Math.abs(endY - startY);
-        const minSize = 5;
-        if (width >= minSize && height >= minSize) {
-          // 创建前保存历史
+        if (width >= 5 && height >= 5) {
           pushHistory();
           const newMosaic: MosaicShape = {
             id: generateMosaicId(),
             x: Math.min(startX, endX),
             y: Math.min(startY, endY),
-            width,
-            height,
+            width, height,
             ...mosaicStyleRef.current,
           };
           setMosaics((prev) => [...prev, newMosaic]);
@@ -5065,31 +1470,21 @@ const App: React.FC = () => {
         const { startX, startY, endX, endY } = drawingCrop.current;
         const width = Math.abs(endX - startX);
         const height = Math.abs(endY - startY);
-        // 裁剪框尺寸大于最小值时才创建
         if (width >= MIN_CROP_SIZE && height >= MIN_CROP_SIZE) {
-          const newCrop: CropArea = {
+          setCropArea({
             x: Math.min(startX, endX),
             y: Math.min(startY, endY),
-            width,
-            height,
-          };
-          setCropArea(newCrop);
+            width, height,
+          });
         }
       }
       isDrawingCrop.current = false;
       drawingCrop.current = null;
 
-      // 结束拖拽 - 拖拽结束时保存历史
-      if (
-        draggingRef.current ||
-        draggingRectRef.current ||
-        draggingTextRef.current ||
-        draggingMosaicRef.current
-      ) {
+      // 结束拖拽
+      if (draggingRef.current || draggingRectRef.current || draggingTextRef.current || draggingMosaicRef.current) {
         pushHistory();
       }
-
-      // 结束拖拽
       draggingRef.current = null;
       draggingRectRef.current = null;
       draggingTextRef.current = null;
@@ -5126,7 +1521,6 @@ const App: React.FC = () => {
       const canvas = annotationCanvasRef.current;
       const container = canvasRef.current;
       if (!canvas || !container) return;
-
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
       renderShapes();
@@ -5137,7 +1531,9 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', resizeCanvas);
   }, [renderShapes]);
 
-  // 执行裁剪操作
+  // ---------------------------------------------------------------------------
+  // 裁剪操作
+  // ---------------------------------------------------------------------------
   const applyCrop = useCallback(() => {
     const currentCropArea = cropAreaRef.current;
     const naturalSize = imageNaturalSizeRef.current;
@@ -5145,128 +1541,75 @@ const App: React.FC = () => {
 
     if (!currentCropArea || !imageData || !naturalSize || !displaySize) return;
 
-    // 裁剪前保存历史（包含原始图片和标注）
     pushHistory();
 
-    // 计算显示坐标到原始坐标的缩放比例
     const scaleX = naturalSize.width / displaySize.width;
     const scaleY = naturalSize.height / displaySize.height;
 
-    // 转换为原始图片坐标
     const cropX = Math.round(currentCropArea.x * scaleX);
     const cropY = Math.round(currentCropArea.y * scaleY);
     const cropWidth = Math.round(currentCropArea.width * scaleX);
     const cropHeight = Math.round(currentCropArea.height * scaleY);
 
-    // 创建临时图片来获取原始图片数据
     const img = new window.Image();
     img.onload = () => {
-      // 创建临时 Canvas 进行裁剪
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = cropWidth;
       tempCanvas.height = cropHeight;
       const tempCtx = tempCanvas.getContext('2d');
       if (!tempCtx) return;
 
-      // 绘制裁剪区域（使用原始坐标）
-      tempCtx.drawImage(
-        img,
-        cropX,
-        cropY,
-        cropWidth,
-        cropHeight,
-        0,
-        0,
-        cropWidth,
-        cropHeight,
-      );
-
-      // 获取裁剪后的图片数据
+      tempCtx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
       const croppedImageData = tempCanvas.toDataURL('image/png');
 
-      // 更新图片数据
       setImageData(croppedImageData);
-
-      // 清除所有标注
       setArrows([]);
       setRects([]);
       setTexts([]);
       setMosaics([]);
-
-      // 清除选中状态
       setSelectedArrowIds([]);
       setSelectedRectIds([]);
       setSelectedTextIds([]);
       setSelectedMosaicIds([]);
-
-      // 清除裁剪状态
       setCropArea(null);
       setImageNaturalSize({ width: cropWidth, height: cropHeight });
       setImageDisplaySize(null);
-
-      // 切换到选择工具
       setActiveTool('select');
-
-      // 重置视图
       scaleRef.current = 1;
       offsetRef.current = { x: 0, y: 0 };
       setScale(1);
       setOffset({ x: 0, y: 0 });
     };
     img.src = imageData;
-  }, [imageData, pushHistory]);
+  }, [imageData, pushHistory, setScale, setOffset]);
 
-  // 取消裁剪操作
   const cancelCrop = useCallback(() => {
     setCropArea(null);
     setActiveTool('select');
   }, []);
 
-  // Delete 键删除选中的箭头、矩形或文字 / Ctrl+Z 撤销 / Ctrl+Shift+Z 重做 / Ctrl+A 全选 / Escape 取消选择
+  // ---------------------------------------------------------------------------
+  // 键盘快捷键
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 撤销快捷键：Ctrl+Z / Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        // 避免在输入框中触发
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         e.preventDefault();
         handleUndo();
         return;
       }
 
-      // 重做快捷键：Ctrl+Shift+Z / Cmd+Shift+Z 或 Ctrl+Y / Cmd+Y
-      if (
-        ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
-        ((e.ctrlKey || e.metaKey) && e.key === 'y')
-      ) {
-        // 避免在输入框中触发
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
+      if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) || ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         e.preventDefault();
         handleRedo();
         return;
       }
 
-      // 全选快捷键：Ctrl+A / Cmd+A
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        // 避免在输入框中触发
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         e.preventDefault();
-        // 选中所有对象
         setSelectedArrowIds(arrowsRef.current.map(a => a.id));
         setSelectedRectIds(rectsRef.current.map(r => r.id));
         setSelectedTextIds(textsRef.current.map(t => t.id));
@@ -5274,16 +1617,8 @@ const App: React.FC = () => {
         return;
       }
 
-      // Escape 取消选择或取消框选
       if (e.key === 'Escape') {
-        // 避免在输入框中触发
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
-        // 如果正在框选，取消框选
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         if (isMarqueeSelecting.current) {
           isMarqueeSelecting.current = false;
           marqueeStart.current = null;
@@ -5291,7 +1626,6 @@ const App: React.FC = () => {
           renderShapes();
           return;
         }
-        // 否则取消所有选择
         setSelectedArrowIds([]);
         setSelectedRectIds([]);
         setSelectedTextIds([]);
@@ -5299,7 +1633,6 @@ const App: React.FC = () => {
         return;
       }
 
-      // 裁剪工具快捷键
       if (activeTool === 'crop') {
         if (e.key === 'Enter' && cropArea) {
           e.preventDefault();
@@ -5314,41 +1647,23 @@ const App: React.FC = () => {
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        // 避免在输入框中触发
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-        // 删除前保存历史
-        const hasSelection =
-          selectedArrowIds.length > 0 || selectedRectIds.length > 0 ||
-          selectedTextIds.length > 0 || selectedMosaicIds.length > 0;
-        if (hasSelection) {
-          pushHistory();
-        }
+        const hasSelection = selectedArrowIds.length > 0 || selectedRectIds.length > 0 || selectedTextIds.length > 0 || selectedMosaicIds.length > 0;
+        if (hasSelection) pushHistory();
 
-        // 批量删除选中的箭头
         if (selectedArrowIds.length > 0) {
           setArrows((prev) => prev.filter((a) => !selectedArrowIds.includes(a.id)));
           setSelectedArrowIds([]);
         }
-
-        // 批量删除选中的矩形
         if (selectedRectIds.length > 0) {
           setRects((prev) => prev.filter((r) => !selectedRectIds.includes(r.id)));
           setSelectedRectIds([]);
         }
-
-        // 批量删除选中的文字
         if (selectedTextIds.length > 0) {
           setTexts((prev) => prev.filter((t) => !selectedTextIds.includes(t.id)));
           setSelectedTextIds([]);
         }
-
-        // 批量删除选中的马赛克
         if (selectedMosaicIds.length > 0) {
           setMosaics((prev) => prev.filter((m) => !selectedMosaicIds.includes(m.id)));
           setSelectedMosaicIds([]);
@@ -5360,7 +1675,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedArrowIds, selectedRectIds, selectedTextIds, selectedMosaicIds, activeTool, cropArea, applyCrop, cancelCrop, handleUndo, handleRedo, pushHistory, renderShapes]);
 
-  // 双击文字进入编辑模式 / 双击确认裁剪
+  // 双击文字编辑
   useEffect(() => {
     const el = canvasRef.current;
     if (!el || !imageData) return;
@@ -5369,7 +1684,6 @@ const App: React.FC = () => {
       const coord = screenToImageCoord(e.clientX, e.clientY);
       if (!coord) return;
 
-      // 裁剪工具：双击确认裁剪
       if (activeTool === 'crop' && cropArea) {
         if (isPointInCrop(coord.x, coord.y, cropArea)) {
           applyCrop();
@@ -5384,15 +1698,12 @@ const App: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // 检测是否双击到文字
-      const currentTexts = textsRef.current;
-      for (let i = currentTexts.length - 1; i >= 0; i--) {
-        const text = currentTexts[i];
+      for (let i = textsRef.current.length - 1; i >= 0; i--) {
+        const text = textsRef.current[i];
         if (isPointInText(coord.x, coord.y, text, ctx)) {
           setEditingTextId(text.id);
           setEditingTextValue(text.text);
           setSelectedTextIds([text.id]);
-          // 聚焦输入框
           setTimeout(() => {
             textInputRef.current?.focus();
             textInputRef.current?.select();
@@ -5406,135 +1717,16 @@ const App: React.FC = () => {
     return () => el.removeEventListener('dblclick', onDoubleClick);
   }, [activeTool, imageData, screenToImageCoord, cropArea, applyCrop]);
 
-  // 工具切换时处理裁剪状态
+  // 工具切换时清除裁剪状态
   useEffect(() => {
-    if (activeTool !== 'crop') {
-      // 切换到其他工具时，清除裁剪状态
-      if (cropArea) {
-        setCropArea(null);
-      }
+    if (activeTool !== 'crop' && cropArea) {
+      setCropArea(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool]);
+  }, [activeTool, cropArea]);
 
-  // 锚点缩放
-  const zoomAt = useCallback(
-    (newScale: number, anchorX: number, anchorY: number) => {
-      const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
-      const oldScale = scaleRef.current;
-      const ratio = clamped / oldScale;
-      const old = offsetRef.current;
-      const newOffset = {
-        x: anchorX * (1 - ratio) + old.x * ratio,
-        y: anchorY * (1 - ratio) + old.y * ratio,
-      };
-      scaleRef.current = clamped;
-      offsetRef.current = newOffset;
-      setScale(clamped);
-      setOffset(newOffset);
-    },
-    [],
-  );
-
-  // 鼠标滚轮缩放
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const factor = e.deltaY > 0 ? 0.92 : 1.08;
-      zoomAt(
-        scaleRef.current * factor,
-        rect.width / 2,
-        rect.height / 2,
-      );
-    };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, [zoomAt]);
-
-  // 画布拖拽平移
-  const isPanning = useRef(false);
-  const panStart = useRef({ x: 0, y: 0 });
-  const panOffsetStart = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-
-    const onDown = (e: MouseEvent) => {
-      if (e.button !== 0 || !imageData || activeTool !== 'move') return;
-      isPanning.current = true;
-      panStart.current = { x: e.clientX, y: e.clientY };
-      panOffsetStart.current = offsetRef.current;
-      el.style.cursor = 'grabbing';
-    };
-
-    const onMove = (e: MouseEvent) => {
-      if (!isPanning.current) return;
-      const dx = e.clientX - panStart.current.x;
-      const dy = e.clientY - panStart.current.y;
-      const newOffset = {
-        x: panOffsetStart.current.x + dx,
-        y: panOffsetStart.current.y + dy,
-      };
-      offsetRef.current = newOffset;
-      setOffset(newOffset);
-    };
-
-    const onUp = () => {
-      isPanning.current = false;
-      if (activeTool === 'move') {
-        el.style.cursor = 'grab';
-      }
-    };
-
-    el.addEventListener('mousedown', onDown);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      el.removeEventListener('mousedown', onDown);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [activeTool, imageData]);
-
-  // 缩放控制
-  const zoomIn = useCallback(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    zoomAt(scaleRef.current * 1.2, rect.width / 2, rect.height / 2);
-  }, [zoomAt]);
-
-  const zoomOut = useCallback(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    zoomAt(scaleRef.current / 1.2, rect.width / 2, rect.height / 2);
-  }, [zoomAt]);
-
-  const resetView = useCallback(() => {
-    scaleRef.current = 1;
-    offsetRef.current = { x: 0, y: 0 };
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-  }, []);
-
-  const handleSlider = useCallback(
-    (newScale: number) => {
-      const el = canvasRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      zoomAt(newScale, rect.width / 2, rect.height / 2);
-    },
-    [zoomAt],
-  );
-
-  const zoomPercent = Math.round(scale * 100);
-
-  // 解析 URL 参数
+  // ---------------------------------------------------------------------------
+  // 初始化和粘贴监听
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -5543,13 +1735,8 @@ const App: React.FC = () => {
     setSource(src);
 
     if (src === 'capture') {
-      // 带图模式：从 storage 读取截图
       chrome.storage.local.get(STORAGE_KEYS.CAPTURE_RESULT, (result) => {
-        const data = result[STORAGE_KEYS.CAPTURE_RESULT] as {
-          success: boolean;
-          imageData?: string;
-          error?: string;
-        } | undefined;
+        const data = result[STORAGE_KEYS.CAPTURE_RESULT] as { success: boolean; imageData?: string; error?: string } | undefined;
         if (data?.success && data.imageData) {
           setImageData(data.imageData);
         } else if (data?.error) {
@@ -5561,7 +1748,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // 空画布模式全局粘贴监听
+  // 粘贴监听
   useEffect(() => {
     if (source !== 'upload') return;
 
@@ -5583,17 +1770,14 @@ const App: React.FC = () => {
     };
 
     document.addEventListener('paste', handlePaste);
-    return () => {
-      document.removeEventListener('paste', handlePaste);
-    };
+    return () => document.removeEventListener('paste', handlePaste);
   }, [source]);
 
-  // 图片加载后初始化/重置历史
+  // 图片加载后初始化历史
   const imageLoadedRef = useRef(false);
   useEffect(() => {
     if (imageData && !imageLoadedRef.current) {
       imageLoadedRef.current = true;
-      // 重置历史状态
       historyActions.resetToState({
         arrows: [],
         rects: [],
@@ -5610,13 +1794,70 @@ const App: React.FC = () => {
     }
   }, [imageData, historyActions, updateHistoryButtons]);
 
-  const handleImageLoad = useCallback((dataUrl: string) => {
-    setImageData(dataUrl);
-    setError(null);
-    // 新图片加载时重置历史初始化标记
-    imageLoadedRef.current = false;
-  }, []);
+  // ---------------------------------------------------------------------------
+  // 属性更新函数
+  // ---------------------------------------------------------------------------
+  const updateArrow = useCallback(
+    (updates: Partial<ArrowShape>) => {
+      if (selectedArrowIds.length !== 1) return;
+      const selectedArrowId = selectedArrowIds[0];
+      pushHistory();
+      setArrows((prev) => prev.map((a) => (a.id === selectedArrowId ? { ...a, ...updates } : a)));
+    },
+    [selectedArrowIds, pushHistory]
+  );
 
+  const updateRect = useCallback(
+    (updates: Partial<RectShape>) => {
+      if (selectedRectIds.length !== 1) return;
+      const selectedRectId = selectedRectIds[0];
+      pushHistory();
+      setRects((prev) => prev.map((r) => (r.id === selectedRectId ? { ...r, ...updates } : r)));
+    },
+    [selectedRectIds, pushHistory]
+  );
+
+  const updateText = useCallback(
+    (updates: Partial<TextShape>) => {
+      if (selectedTextIds.length !== 1) return;
+      const selectedTextId = selectedTextIds[0];
+      pushHistory();
+      setTexts((prev) => prev.map((t) => (t.id === selectedTextId ? { ...t, ...updates } : t)));
+    },
+    [selectedTextIds, pushHistory]
+  );
+
+  const updateMosaic = useCallback(
+    (updates: Partial<MosaicShape>) => {
+      if (selectedMosaicIds.length !== 1) return;
+      const selectedMosaicId = selectedMosaicIds[0];
+      pushHistory();
+      setMosaics((prev) => prev.map((m) => (m.id === selectedMosaicId ? { ...m, ...updates } : m)));
+    },
+    [selectedMosaicIds, pushHistory]
+  );
+
+  // 选中的对象
+  const selectedArrow = useMemo(
+    () => (selectedArrowIds.length === 1 ? arrows.find((a) => a.id === selectedArrowIds[0]) || null : null),
+    [arrows, selectedArrowIds]
+  );
+  const selectedRect = useMemo(
+    () => (selectedRectIds.length === 1 ? rects.find((r) => r.id === selectedRectIds[0]) || null : null),
+    [rects, selectedRectIds]
+  );
+  const selectedText = useMemo(
+    () => (selectedTextIds.length === 1 ? texts.find((t) => t.id === selectedTextIds[0]) || null : null),
+    [texts, selectedTextIds]
+  );
+  const selectedMosaic = useMemo(
+    () => (selectedMosaicIds.length === 1 ? mosaics.find((m) => m.id === selectedMosaicIds[0]) || null : null),
+    [mosaics, selectedMosaicIds]
+  );
+
+  // ---------------------------------------------------------------------------
+  // 渲染
+  // ---------------------------------------------------------------------------
   const showPlaceholder = source === 'upload' && !imageData && !error;
 
   return (
@@ -5647,12 +1888,8 @@ const App: React.FC = () => {
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <p className="text-[13px] text-[var(--color-editor-error)] font-body mb-1">
-                // capture error
-              </p>
-              <p className="text-[11px] text-[var(--color-editor-hint)] font-body">
-                {error}
-              </p>
+              <p className="text-[13px] text-[var(--color-editor-error)] font-body mb-1">// capture error</p>
+              <p className="text-[11px] text-[var(--color-editor-hint)] font-body">{error}</p>
             </div>
           </div>
         ) : imageData ? (
@@ -5666,26 +1903,16 @@ const App: React.FC = () => {
                 transformOrigin: '0 0',
               }}
             >
-              {/* 计算比例约束后的容器尺寸 */}
               {(() => {
                 const imgDisplaySize = imageDisplaySizeRef.current || imageDisplaySize;
-                
-                // 图片未加载时，使用默认渲染（不应用比例约束）
+
                 if (!imgDisplaySize) {
                   return (
                     <div
                       ref={exportContainerRef}
                       style={{
                         ...getBackgroundStyle(frameSettings.background),
-                        borderRadius: `${
-                          frameSettings.borderRadius.topLeft
-                        }${frameSettings.borderRadius.unit} ${
-                          frameSettings.borderRadius.topRight
-                        }${frameSettings.borderRadius.unit} ${
-                          frameSettings.borderRadius.bottomRight
-                        }${frameSettings.borderRadius.unit} ${
-                          frameSettings.borderRadius.bottomLeft
-                        }${frameSettings.borderRadius.unit}`,
+                        borderRadius: `${frameSettings.borderRadius.topLeft}${frameSettings.borderRadius.unit} ${frameSettings.borderRadius.topRight}${frameSettings.borderRadius.unit} ${frameSettings.borderRadius.bottomRight}${frameSettings.borderRadius.unit} ${frameSettings.borderRadius.bottomLeft}${frameSettings.borderRadius.unit}`,
                         padding: frameSettings.padding.linked
                           ? frameSettings.padding.top
                           : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
@@ -5697,54 +1924,38 @@ const App: React.FC = () => {
                         position: 'relative',
                       }}
                     >
-                      <div style={{
-                        borderRadius: `${
-                          frameSettings.imageRadius.topLeft
-                        }${frameSettings.imageRadius.unit} ${
-                          frameSettings.imageRadius.topRight
-                        }${frameSettings.imageRadius.unit} ${
-                          frameSettings.imageRadius.bottomRight
-                        }${frameSettings.imageRadius.unit} ${
-                          frameSettings.imageRadius.bottomLeft
-                        }${frameSettings.imageRadius.unit}`,
-                        overflow: 'hidden',
-                        display: 'inline-block',
-                        boxShadow: frameSettings.imageShadow.enabled
-                          ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
-                          : 'none',
-                      }}>
+                      <div
+                        style={{
+                          borderRadius: `${frameSettings.imageRadius.topLeft}${frameSettings.imageRadius.unit} ${frameSettings.imageRadius.topRight}${frameSettings.imageRadius.unit} ${frameSettings.imageRadius.bottomRight}${frameSettings.imageRadius.unit} ${frameSettings.imageRadius.bottomLeft}${frameSettings.imageRadius.unit}`,
+                          overflow: 'hidden',
+                          display: 'inline-block',
+                          boxShadow: frameSettings.imageShadow.enabled
+                            ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
+                            : 'none',
+                        }}
+                      >
                         <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
                       </div>
-                      {/* 水印 */}
                       <WatermarkRenderer watermark={frameSettings.watermark} bgColor={frameSettings.background} />
                     </div>
                   );
                 }
-                
+
                 const containerSize = calculateAspectRatioSize(
                   frameSettings.aspectRatio,
                   imgDisplaySize.width,
                   imgDisplaySize.height,
                   frameSettings.customAspectRatio
                 );
-                
-                // auto 模式：不设置容器尺寸，让容器自适应图片大小
+
                 const isAuto = frameSettings.aspectRatio === 'auto';
-                
+
                 return (
                   <div
                     ref={exportContainerRef}
                     style={{
                       ...getBackgroundStyle(frameSettings.background),
-                      borderRadius: `${
-                        frameSettings.borderRadius.topLeft
-                      }${frameSettings.borderRadius.unit} ${
-                        frameSettings.borderRadius.topRight
-                      }${frameSettings.borderRadius.unit} ${
-                        frameSettings.borderRadius.bottomRight
-                      }${frameSettings.borderRadius.unit} ${
-                        frameSettings.borderRadius.bottomLeft
-                      }${frameSettings.borderRadius.unit}`,
+                      borderRadius: `${frameSettings.borderRadius.topLeft}${frameSettings.borderRadius.unit} ${frameSettings.borderRadius.topRight}${frameSettings.borderRadius.unit} ${frameSettings.borderRadius.bottomRight}${frameSettings.borderRadius.unit} ${frameSettings.borderRadius.bottomLeft}${frameSettings.borderRadius.unit}`,
                       padding: frameSettings.padding.linked
                         ? frameSettings.padding.top
                         : `${frameSettings.padding.top}px ${frameSettings.padding.right}px ${frameSettings.padding.bottom}px ${frameSettings.padding.left}px`,
@@ -5754,41 +1965,32 @@ const App: React.FC = () => {
                         : 'none',
                       overflow: 'hidden',
                       position: 'relative',
-                      // 仅在非 auto 模式下设置容器尺寸
-                      ...(isAuto ? {} : {
-                        width: containerSize.width,
-                        height: containerSize.height,
-                      }),
+                      ...(isAuto ? {} : { width: containerSize.width, height: containerSize.height }),
                     }}
                   >
-                    <div style={{
-                      position: 'relative',
-                      width: isAuto ? 'auto' : '100%',
-                      height: isAuto ? 'auto' : '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <div style={{
-                        borderRadius: `${
-                          frameSettings.imageRadius.topLeft
-                        }${frameSettings.imageRadius.unit} ${
-                          frameSettings.imageRadius.topRight
-                        }${frameSettings.imageRadius.unit} ${
-                          frameSettings.imageRadius.bottomRight
-                        }${frameSettings.imageRadius.unit} ${
-                          frameSettings.imageRadius.bottomLeft
-                        }${frameSettings.imageRadius.unit}`,
-                        overflow: 'hidden',
-                        display: 'inline-block',
-                        boxShadow: frameSettings.imageShadow.enabled
-                          ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
-                          : 'none',
-                      }}>
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: isAuto ? 'auto' : '100%',
+                        height: isAuto ? 'auto' : '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <div
+                        style={{
+                          borderRadius: `${frameSettings.imageRadius.topLeft}${frameSettings.imageRadius.unit} ${frameSettings.imageRadius.topRight}${frameSettings.imageRadius.unit} ${frameSettings.imageRadius.bottomRight}${frameSettings.imageRadius.unit} ${frameSettings.imageRadius.bottomLeft}${frameSettings.imageRadius.unit}`,
+                          overflow: 'hidden',
+                          display: 'inline-block',
+                          boxShadow: frameSettings.imageShadow.enabled
+                            ? `${frameSettings.imageShadow.offsetX}px ${frameSettings.imageShadow.offsetY}px ${frameSettings.imageShadow.blur}px ${frameSettings.imageShadow.color}40`
+                            : 'none',
+                        }}
+                      >
                         <CanvasImage src={imageData} onSizeChange={handleImageSizeChange} onNaturalSizeChange={handleImageNaturalSizeChange} />
                       </div>
                     </div>
-                    {/* 水印 */}
                     <WatermarkRenderer watermark={frameSettings.watermark} bgColor={frameSettings.background} />
                   </div>
                 );
@@ -5796,78 +1998,63 @@ const App: React.FC = () => {
             </div>
 
             {/* Annotation Canvas Layer */}
-            <canvas
-              ref={annotationCanvasRef}
-              className="absolute inset-0 pointer-events-none"
-              style={{ pointerEvents: 'auto' }}
-            />
+            <canvas ref={annotationCanvasRef} className="absolute inset-0 pointer-events-none" style={{ pointerEvents: 'auto' }} />
 
             {/* 文字编辑输入框 */}
-            {editingTextId && (() => {
-              const editingText = texts.find(t => t.id === editingTextId);
-              if (!editingText) return null;
-              
-              // 计算相对于容器的位置：文字坐标 * scale + offset
-              const containerX = editingText.x * scale + offset.x;
-              const containerY = editingText.y * scale + offset.y;
-              
-              return (
-                <input
-                  ref={textInputRef}
-                  type="text"
-                  value={editingTextValue}
-                  onChange={(e) => setEditingTextValue(e.target.value)}
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      // 确认编辑
+            {editingTextId &&
+              (() => {
+                const editingText = texts.find((t) => t.id === editingTextId);
+                if (!editingText) return null;
+
+                const containerX = editingText.x * scale + offset.x;
+                const containerY = editingText.y * scale + offset.y;
+
+                return (
+                  <input
+                    ref={textInputRef}
+                    type="text"
+                    value={editingTextValue}
+                    onChange={(e) => setEditingTextValue(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (editingTextId && editingTextValue.trim()) {
+                          setTexts((prev) => prev.map((t) => (t.id === editingTextId ? { ...t, text: editingTextValue } : t)));
+                        }
+                        setEditingTextId(null);
+                        setEditingTextValue('');
+                      } else if (e.key === 'Escape') {
+                        setEditingTextId(null);
+                        setEditingTextValue('');
+                      }
+                    }}
+                    onBlur={() => {
                       if (editingTextId && editingTextValue.trim()) {
-                        setTexts((prev) =>
-                          prev.map((t) =>
-                            t.id === editingTextId ? { ...t, text: editingTextValue } : t,
-                          ),
-                        );
+                        setTexts((prev) => prev.map((t) => (t.id === editingTextId ? { ...t, text: editingTextValue } : t)));
                       }
                       setEditingTextId(null);
                       setEditingTextValue('');
-                    } else if (e.key === 'Escape') {
-                      // 取消编辑
-                      setEditingTextId(null);
-                      setEditingTextValue('');
-                    }
-                  }}
-                  onBlur={() => {
-                    // 失去焦点时保存
-                    if (editingTextId && editingTextValue.trim()) {
-                      setTexts((prev) =>
-                        prev.map((t) =>
-                          t.id === editingTextId ? { ...t, text: editingTextValue } : t,
-                        ),
-                      );
-                    }
-                    setEditingTextId(null);
-                    setEditingTextValue('');
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: containerX,
-                    top: containerY,
-                    fontSize: editingText.fontSize * scale,
-                    fontWeight: editingText.fontWeight,
-                    fontStyle: editingText.fontStyle,
-                    color: editingText.color,
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    minWidth: 50,
-                    fontFamily: 'sans-serif',
-                    padding: 0,
-                    margin: 0,
-                    zIndex: 1000,
-                  }}
-                />
-              );
-            })()}
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: containerX,
+                      top: containerY,
+                      fontSize: editingText.fontSize * scale,
+                      fontWeight: editingText.fontWeight,
+                      fontStyle: editingText.fontStyle,
+                      color: editingText.color,
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      minWidth: 50,
+                      fontFamily: 'sans-serif',
+                      padding: 0,
+                      margin: 0,
+                      zIndex: 1000,
+                    }}
+                  />
+                );
+              })()}
 
             {/* 裁剪操作提示 */}
             {activeTool === 'crop' && (
@@ -5880,17 +2067,11 @@ const App: React.FC = () => {
                   transform: 'translateX(-50%)',
                 }}
               >
-                <span className="text-[12px] text-white">
-                  {cropArea ? t('crop.adjustHint') : t('crop.drawHint')}
-                </span>
-                <span className="text-[12px]" style={{ color: '#a5b4fc' }}>
-                  Enter
-                </span>
+                <span className="text-[12px] text-white">{cropArea ? t('crop.adjustHint') : t('crop.drawHint')}</span>
+                <span className="text-[12px]" style={{ color: '#a5b4fc' }}>Enter</span>
                 <span className="text-[12px] text-white">{t('crop.confirm')}</span>
                 <span className="text-[12px] text-gray-400 mx-1">|</span>
-                <span className="text-[12px] text-amber-400">
-                  Esc
-                </span>
+                <span className="text-[12px] text-amber-400">Esc</span>
                 <span className="text-[12px] text-white">{t('crop.cancel')}</span>
               </div>
             )}
@@ -5907,16 +2088,10 @@ const App: React.FC = () => {
                 transform: 'translateX(-50%)',
               }}
             >
-              <button
-                onClick={zoomOut}
-                className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"
-              >
+              <button onClick={zoomOut} className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5">
                 <Minus size={14} />
               </button>
-              <span
-                className="text-[12px] w-10 text-center tabular-nums"
-                style={{ color: '#333' }}
-              >
+              <span className="text-[12px] w-10 text-center tabular-nums" style={{ color: '#333' }}>
                 {zoomPercent}%
               </span>
               <input
@@ -5925,23 +2100,15 @@ const App: React.FC = () => {
                 max={MAX_SCALE}
                 step={0.01}
                 value={scale}
-                onChange={(e) =>
-                  handleSlider(parseFloat(e.target.value))
-                }
+                onChange={(e) => handleSlider(parseFloat(e.target.value))}
                 className="w-20"
                 style={{ accentColor: 'var(--color-field-focus)' }}
               />
-              <button
-                onClick={zoomIn}
-                className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"
-              >
+              <button onClick={zoomIn} className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5">
                 <Plus size={14} />
               </button>
               <div className="w-px h-4 bg-gray-300" />
-              <button
-                onClick={resetView}
-                className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"
-              >
+              <button onClick={resetView} className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5">
                 <RotateCcw size={14} />
               </button>
             </div>
@@ -5952,9 +2119,7 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-[13px] text-[var(--color-editor-comment)] font-body">
-              // editor_canvas
-            </p>
+            <p className="text-[13px] text-[var(--color-editor-comment)] font-body">// editor_canvas</p>
           </div>
         )}
       </main>
@@ -5970,9 +2135,7 @@ const App: React.FC = () => {
         selectedMosaic={selectedMosaic}
         onUpdateMosaic={updateMosaic}
         frameSettings={frameSettings}
-        onUpdateFrameSettings={(updates) =>
-          setFrameSettings((prev) => ({ ...prev, ...updates }))
-        }
+        onUpdateFrameSettings={(updates) => setFrameSettings((prev) => ({ ...prev, ...updates }))}
         collapsedSections={collapsedSections}
         onCollapsedChange={setCollapsedSections}
         onExportImage={handleExportImage}

@@ -211,3 +211,51 @@ export interface HistoryActions {
   // 重置到新状态（清除所有历史）
   resetToState: (state: EditorState) => void;
 }
+
+// ---------------------------------------------------------------------------
+// 工具相关类型
+// ---------------------------------------------------------------------------
+
+// Editor 来源类型
+export type EditorSource = 'capture' | 'upload';
+
+// ---------------------------------------------------------------------------
+// 拖拽类型
+// ---------------------------------------------------------------------------
+
+// 箭头拖拽类型（起点、终点、中点、移动）
+export type DragType = 'none' | 'move' | 'start' | 'end' | 'middle';
+
+// 矩形拖拽类型（8个控制点 + 移动）
+export type RectDragType =
+  | 'none'
+  | 'move'
+  | 'resize-tl'
+  | 'resize-tr'
+  | 'resize-bl'
+  | 'resize-br'
+  | 'resize-t'
+  | 'resize-r'
+  | 'resize-b'
+  | 'resize-l';
+
+// 文字拖拽类型（四角调整字号）
+export type TextDragType =
+  | 'none'
+  | 'move'
+  | 'resize-tl'
+  | 'resize-tr'
+  | 'resize-bl'
+  | 'resize-br';
+
+// 马赛克拖拽类型（与矩形相同）
+export type MosaicDragType = RectDragType;
+
+// 裁剪框拖拽类型（与矩形相同）
+export type CropDragType = RectDragType;
+
+// ---------------------------------------------------------------------------
+// 水印位置类型
+// ---------------------------------------------------------------------------
+
+export type WatermarkPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';

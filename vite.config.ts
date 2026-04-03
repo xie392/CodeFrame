@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
@@ -29,6 +30,29 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       port: 5173,
+    },
+  },
+  // Vitest 配置
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+    include: ['src/**/__tests__/**/*.test.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/editor/**/*.ts', 'src/editor/**/*.tsx'],
+      exclude: [
+        'src/editor/**/*.d.ts',
+        'src/editor/**/__tests__/**',
+        'src/editor/**/index.ts',
+      ],
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        branches: 60,
+        statements: 60,
+      },
     },
   },
 })

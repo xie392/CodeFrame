@@ -8,7 +8,6 @@ import { SettingSlider } from './components/SettingSlider';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { useSettingsStore } from '@shared/stores/settings-store';
 import {
-  THEME_LABELS,
   EXPORT_FORMAT_LABELS,
   QUALITY_LABELS,
   LANGUAGE_LABELS,
@@ -19,7 +18,6 @@ import {
   REPOSITORY_URL,
 } from '@shared/constants';
 import {
-  Globe,
   Image,
   Maximize2,
   Languages,
@@ -87,16 +85,6 @@ const OptionsPage: React.FC = () => {
         <div className="w-full p-10 flex flex-col gap-6">
           {/* [通用设置] */}
           <SettingsSection title="通用设置">
-            <SettingItem icon={Globe} label="默认主题">
-              <SettingSelect
-                value={settings.theme}
-                options={Object.entries(THEME_LABELS).map(([value, label]) => ({
-                  value,
-                  label,
-                }))}
-                onChange={(value) => updateSettings('theme', value as typeof settings.theme)}
-              />
-            </SettingItem>
             <SettingItem icon={Image} label="默认导出格式">
               <SettingSelect
                 value={settings.defaultFormat}

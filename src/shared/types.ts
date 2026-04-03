@@ -75,7 +75,6 @@ export interface RegionRect {
 // 用户设置
 export interface UserSettings {
   // 通用设置
-  theme: 'dark' | 'light' | 'system';
   defaultFormat: ExportFormat;
   quality: '1x' | '2x' | '3x';
   language: 'zh-CN' | 'en-US';

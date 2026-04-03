@@ -28,7 +28,6 @@ interface SettingsState {
 }
 
 const defaultSettings: UserSettings = {
-  theme: DEFAULT_SETTINGS.theme as UserSettings['theme'],
   defaultFormat: DEFAULT_SETTINGS.defaultFormat as UserSettings['defaultFormat'],
   quality: DEFAULT_SETTINGS.quality as UserSettings['quality'],
   language: DEFAULT_SETTINGS.language as UserSettings['language'],

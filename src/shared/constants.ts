@@ -54,20 +54,6 @@ export const QUALITY_LABELS: Record<string, string> = {
   '3x': '超高清',
 };
 
-// 主题选项
-export const THEME_OPTIONS = {
-  DARK: 'dark',
-  LIGHT: 'light',
-  SYSTEM: 'system',
-} as const;
-
-// 主题中文标签
-export const THEME_LABELS: Record<string, string> = {
-  dark: '深色',
-  light: '浅色',
-  system: '跟随系统',
-};
-
 // 语言选项
 export const LANGUAGE_OPTIONS = {
   ZH_CN: 'zh-CN',
@@ -109,7 +95,6 @@ export const CODE_THEME_OPTIONS = [
 // 默认设置
 export const DEFAULT_SETTINGS = {
   // 通用设置
-  theme: 'dark',
   defaultFormat: 'png',
   quality: '2x',
   language: 'zh-CN',

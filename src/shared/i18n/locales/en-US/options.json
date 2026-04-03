@@ -16,6 +16,7 @@
     "quality": "Screenshot Quality",
     "language": "Language",
     "saveOperationHistory": "Save Operation History",
+    "clearHistory": "Clear History",
     "delayTime": "Delay Screenshot Time",
     "historyRetention": "History Retention",
     "watermarkEnabled": "Add Watermark by Default",
@@ -29,8 +30,12 @@
   },
   "hint": {
     "saveOperationHistory": "When enabled, your settings in editor and code generator will be saved and restored next time",
+    "confirmClearHistory": "Are you sure you want to clear all operation history? This will reset to default settings.",
     "shortcutsConfig": "Shortcuts can be customized in Chrome extension management page",
     "watermarkPlaceholder": "Enter watermark text"
+  },
+  "action": {
+    "clear": "Clear"
   },
   "quality": {
     "standard": "Standard",

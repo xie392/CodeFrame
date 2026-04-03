@@ -31,11 +31,19 @@ import {
   Hash,
   Camera,
   Terminal,
+  Trash2,
 } from 'lucide-react';
 
 const OptionsPage: React.FC = () => {
   const { t } = useTranslation('options');
-  const { settings, isLoading, updateSettings } = useSettingsStore();
+  const { settings, isLoading, updateSettings, clearOperationHistory } = useSettingsStore();
+
+  // 清除操作历史
+  const handleClearHistory = () => {
+    if (window.confirm(t('hint.confirmClearHistory'))) {
+      clearOperationHistory();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -130,6 +138,25 @@ const OptionsPage: React.FC = () => {
             <div className="px-5 py-2 text-[11px] text-[#999999] font-body">
               {t('hint.saveOperationHistory')}
             </div>
+            <SettingItem icon={Trash2} label={t('label.clearHistory')}>
+              <button
+                onClick={handleClearHistory}
+                className="px-3 py-1.5 text-[11px] font-body rounded-[6px] transition-colors"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#EF4444',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                }}
+              >
+                {t('action.clear')}
+              </button>
+            </SettingItem>
           </SettingsSection>
 
           {/* [截图设置] */}

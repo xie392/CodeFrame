@@ -41,11 +41,19 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/editor/**/*.ts', 'src/editor/**/*.tsx'],
+      include: [
+        'src/editor/**/*.ts',
+        'src/editor/**/*.tsx',
+        'src/background/**/*.ts',
+        'src/content/**/*.ts',
+        'src/codegen/**/*.ts',
+        'src/shared/stores/**/*.ts',
+        'src/shared/components/ui/**/*.tsx',
+      ],
       exclude: [
-        'src/editor/**/*.d.ts',
-        'src/editor/**/__tests__/**',
-        'src/editor/**/index.ts',
+        'src/**/*.d.ts',
+        'src/**/__tests__/**',
+        'src/**/index.ts',
       ],
       thresholds: {
         lines: 60,

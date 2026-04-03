@@ -24,6 +24,9 @@ import {
   isRectInRect,
   isTextInRect,
   isMosaicInRect,
+  type RectDragType,
+  type MosaicDragType,
+  type CropDragType,
 } from '../utils/shape-helpers';
 import { SHAPE_MIN_SIZE, DRAW_MIN_DISTANCE, FONT_SIZE_MIN, FONT_SIZE_MAX, MIN_CROP_SIZE, RECT_CURSOR_MAP, TEXT_CURSOR_MAP, MOSAIC_CURSOR_MAP, CROP_CURSOR_MAP, SELECT_MIN_SIZE } from '../constants';
 import { generateArrowId, generateRectId, generateMosaicId, generateTextId } from '../utils/editor';
@@ -446,7 +449,7 @@ export function useEditorEvents(
           callbacks.setRects((prev) =>
             prev.map((r) => {
               if (r.id !== rectDrag.id) return r;
-              return applyDragResize(r, rectDrag.type as any, dx, dy, rectDrag.orig, SHAPE_MIN_SIZE);
+              return applyDragResize(r, rectDrag.type as RectDragType, dx, dy, rectDrag.orig, SHAPE_MIN_SIZE);
             })
           );
           callbacks.renderShapes();
@@ -514,7 +517,7 @@ export function useEditorEvents(
           callbacks.setMosaics((prev) =>
             prev.map((m) => {
               if (m.id !== mosaicDrag.id) return m;
-              return applyDragResize(m, mosaicDrag.type as any, dx, dy, mosaicDrag.orig, SHAPE_MIN_SIZE);
+              return applyDragResize(m, mosaicDrag.type as MosaicDragType, dx, dy, mosaicDrag.orig, SHAPE_MIN_SIZE);
             })
           );
           callbacks.renderShapes();
@@ -532,7 +535,7 @@ export function useEditorEvents(
           const bounds = { minX: 0, minY: 0, maxX: imgSize.width, maxY: imgSize.height };
           const newCrop = applyDragResize(
             { x: cropDrag.orig.x, y: cropDrag.orig.y, width: cropDrag.orig.width, height: cropDrag.orig.height },
-            cropDrag.type as any,
+            cropDrag.type as CropDragType,
             dx, dy,
             cropDrag.orig,
             MIN_CROP_SIZE,

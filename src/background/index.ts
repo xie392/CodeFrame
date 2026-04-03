@@ -11,6 +11,55 @@ import type { CaptureResult, RegionRect } from '@shared/types';
 
 logger.log('Service Worker started');
 
+// ---------------------------------------------------------------------------
+// 消息验证安全层
+// ---------------------------------------------------------------------------
+
+interface ValidatedMessage {
+  type: string;
+  payload?: unknown;
+  timestamp?: number;
+}
+
+/**
+ * 验证消息来源和结构
+ * 确保消息来自同一扩展且格式正确
+ */
+function validateMessage(
+  message: unknown,
+  sender: chrome.runtime.MessageSender,
+): ValidatedMessage | null {
+  // 验证来源：确保消息来自同一扩展
+  if (!sender.id || sender.id !== chrome.runtime.id) {
+    logger.warn('Rejected message from unknown sender:', sender.id);
+    return null;
+  }
+
+  // 验证消息结构
+  if (!message || typeof message !== 'object') {
+    logger.warn('Rejected invalid message structure');
+    return null;
+  }
+
+  const msg = message as Record<string, unknown>;
+
+  // 验证 type 字段
+  if (typeof msg.type !== 'string' || msg.type.length === 0) {
+    logger.warn('Rejected message with invalid type');
+    return null;
+  }
+
+  return {
+    type: msg.type,
+    payload: msg.payload,
+    timestamp: typeof msg.timestamp === 'number' ? msg.timestamp : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 扩展生命周期监听
+// ---------------------------------------------------------------------------
+
 // 监听扩展安装
 chrome.runtime.onInstalled.addListener((details) => {
   logger.log('Extension installed:', details.reason);
@@ -31,6 +80,10 @@ chrome.contextMenus.onClicked.addListener((info) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// 辅助函数
+// ---------------------------------------------------------------------------
 
 // 校验 RegionRect payload
 function validateRegionRect(
@@ -78,13 +131,24 @@ async function startDelayedCapture(delay: number): Promise<CaptureResult> {
   return { success: true };
 }
 
-// 监听消息
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  logger.log('Message received:', message.type);
+// ---------------------------------------------------------------------------
+// 消息处理
+// ---------------------------------------------------------------------------
 
-  switch (message.type) {
+// 监听消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // 验证消息来源和结构
+  const validatedMsg = validateMessage(message, sender);
+  if (!validatedMsg) {
+    sendResponse({ success: false, error: '消息验证失败' } as CaptureResult);
+    return false;
+  }
+
+  logger.log('Message received:', validatedMsg.type);
+
+  switch (validatedMsg.type) {
     case 'CAPTURE_REQUEST': {
-      const { mode, delay } = message.payload as CaptureRequestPayload;
+      const { mode, delay } = (validatedMsg.payload as CaptureRequestPayload) ?? {};
       if (mode === 'visible') {
         handleCaptureRequest()
           .then(sendResponse)
@@ -139,7 +203,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     case 'CAPTURE_REGION': {
       const region = validateRegionRect(
-        message.payload as Record<string, unknown>,
+        validatedMsg.payload as Record<string, unknown>,
       );
       if (!region) {
         sendResponse({
@@ -179,7 +243,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return false;
 
     default:
-      logger.log('Unknown message type:', message.type);
+      logger.log('Unknown message type:', validatedMsg.type);
       break;
   }
 

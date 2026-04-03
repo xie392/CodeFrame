@@ -16,7 +16,10 @@ interface Selection {
 
 let overlayHost: HTMLElement | null = null;
 
-function getSelectionRect(sel: Selection): {
+/**
+ * 计算选区的矩形位置和尺寸
+ */
+export function getSelectionRect(sel: Selection): {
   x: number;
   y: number;
   width: number;
@@ -144,7 +147,10 @@ function getOverlayStyles(): string {
   `;
 }
 
-function createOverlay(): ShadowRoot {
+/**
+ * 创建选区覆盖层
+ */
+export function createOverlay(): ShadowRoot {
   destroyOverlay();
 
   const host = document.createElement('div');
@@ -164,18 +170,37 @@ function createOverlay(): ShadowRoot {
   // 选区（box-shadow 实现镂空遮罩）
   const selection = document.createElement('div');
   selection.className = 'cf-selection';
-  selection.innerHTML = `
-    <div class="cf-corner cf-corner--tl"></div>
-    <div class="cf-corner cf-corner--tr"></div>
-    <div class="cf-corner cf-corner--bl"></div>
-    <div class="cf-corner cf-corner--br"></div>
-    <div class="cf-label"></div>
-    <div class="cf-error-tip"></div>
-    <div class="cf-actions">
-      <button class="cf-btn cf-btn--confirm">${t('confirmScreenshot')}</button>
-      <button class="cf-btn cf-btn--cancel">${t('cancel')}</button>
-    </div>
-  `;
+
+  // 使用 DOM API 创建子元素，避免 innerHTML XSS 风险
+  const corners = ['tl', 'tr', 'bl', 'br'];
+  corners.forEach((pos) => {
+    const corner = document.createElement('div');
+    corner.className = `cf-corner cf-corner--${pos}`;
+    selection.appendChild(corner);
+  });
+
+  const label = document.createElement('div');
+  label.className = 'cf-label';
+  selection.appendChild(label);
+
+  const errorTip = document.createElement('div');
+  errorTip.className = 'cf-error-tip';
+  selection.appendChild(errorTip);
+
+  const actions = document.createElement('div');
+  actions.className = 'cf-actions';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'cf-btn cf-btn--confirm';
+  confirmBtn.textContent = t('confirmScreenshot');
+  actions.appendChild(confirmBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'cf-btn cf-btn--cancel';
+  cancelBtn.textContent = t('cancel');
+  actions.appendChild(cancelBtn);
+
+  selection.appendChild(actions);
   container.appendChild(selection);
 
   // 提示
@@ -189,14 +214,20 @@ function createOverlay(): ShadowRoot {
   return root;
 }
 
-function destroyOverlay(): void {
+/**
+ * 销毁选区覆盖层
+ */
+export function destroyOverlay(): void {
   if (overlayHost) {
     overlayHost.remove();
     overlayHost = null;
   }
 }
 
-function updateSelectionUI(
+/**
+ * 更新选区 UI 显示
+ */
+export function updateSelectionUI(
   root: ShadowRoot,
   rect: { x: number; y: number; width: number; height: number },
   isTooSmall: boolean,

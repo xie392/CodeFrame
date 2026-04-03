@@ -16,6 +16,7 @@
     "quality": "截图质量",
     "language": "界面语言",
     "saveOperationHistory": "保存操作历史",
+    "clearHistory": "清除历史记录",
     "delayTime": "延迟截图时间",
     "historyRetention": "历史保留天数",
     "watermarkEnabled": "默认添加水印",
@@ -29,8 +30,12 @@
   },
   "hint": {
     "saveOperationHistory": "开启后将记录您在编辑器、代码生成器的设置，下次使用时自动恢复",
+    "confirmClearHistory": "确定要清除所有操作历史记录吗？清除后将恢复默认配置。",
     "shortcutsConfig": "快捷键可在 Chrome 扩展管理页面中自定义配置",
     "watermarkPlaceholder": "输入水印文字"
+  },
+  "action": {
+    "clear": "清除"
   },
   "quality": {
     "standard": "标准",

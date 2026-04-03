@@ -127,8 +127,8 @@ function applyResizeTopLeft(
 ): Partial<RectLike> {
   let newX = orig.x + dx;
   let newY = orig.y + dy;
-  let newWidth = Math.max(minSize, orig.width - dx);
-  let newHeight = Math.max(minSize, orig.height - dy);
+  const newWidth = Math.max(minSize, orig.width - dx);
+  const newHeight = Math.max(minSize, orig.height - dy);
 
   if (bounds?.minX !== undefined) {
     newX = Math.max(bounds.minX, newX);
@@ -149,7 +149,7 @@ function applyResizeTopRight(
 ): Partial<RectLike> {
   let newY = orig.y + dy;
   let newWidth = Math.max(minSize, orig.width + dx);
-  let newHeight = Math.max(minSize, orig.height - dy);
+  const newHeight = Math.max(minSize, orig.height - dy);
 
   if (bounds?.maxX !== undefined) {
     newWidth = Math.min(bounds.maxX - orig.x, newWidth);
@@ -169,7 +169,7 @@ function applyResizeBottomLeft(
   bounds?: BoundsConstraint
 ): Partial<RectLike> {
   let newX = orig.x + dx;
-  let newWidth = Math.max(minSize, orig.width - dx);
+  const newWidth = Math.max(minSize, orig.width - dx);
   let newHeight = Math.max(minSize, orig.height + dy);
 
   if (bounds?.minX !== undefined) {
@@ -209,7 +209,7 @@ function applyResizeTop(
   bounds?: BoundsConstraint
 ): Partial<RectLike> {
   let newY = orig.y + dy;
-  let newHeight = Math.max(minSize, orig.height - dy);
+  const newHeight = Math.max(minSize, orig.height - dy);
 
   if (bounds?.minY !== undefined) {
     newY = Math.max(bounds.minY, newY);
@@ -240,7 +240,7 @@ function applyResizeLeft(
   bounds?: BoundsConstraint
 ): Partial<RectLike> {
   let newX = orig.x + dx;
-  let newWidth = Math.max(minSize, orig.width - dx);
+  const newWidth = Math.max(minSize, orig.width - dx);
 
   if (bounds?.minX !== undefined) {
     newX = Math.max(bounds.minX, newX);

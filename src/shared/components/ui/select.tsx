@@ -7,7 +7,7 @@ export interface SelectProps
 }
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, selectSize = "default", children, ...props }, ref) => {
+  ({ className: _className, selectSize = "default", children, ...props }, ref) => {
     return (
       <select
         className={cn(

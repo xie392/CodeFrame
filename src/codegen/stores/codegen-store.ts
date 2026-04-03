@@ -11,6 +11,8 @@ import {
   DEFAULT_INNER_BORDER_RADIUS,
   FONT_OPTIONS,
 } from '../constants';
+import { THEMES } from '../config/themes';
+import { BACKGROUNDS } from '../config/backgrounds';
 import type { Padding } from '../utils/layout';
 
 // ---------------------------------------------------------------------------
@@ -172,50 +174,42 @@ export const useCodegenStore = create<CodegenState>((set, get) => ({
   restoreFromHistory: (saved) => {
     const updates: Partial<CodegenState> = {};
 
-    if (saved.selectedTheme) {
-      updates.theme = { ...get().theme, selectedTheme: saved.selectedTheme as string };
+    // 先收集所有需要更新的主题状态
+    const themeUpdates: Partial<ThemeState> = {};
+    if (saved.selectedTheme) themeUpdates.selectedTheme = saved.selectedTheme as string;
+    if (saved.selectedBg) themeUpdates.selectedBg = saved.selectedBg as string;
+    if (Object.keys(themeUpdates).length > 0) {
+      updates.theme = { ...get().theme, ...themeUpdates };
     }
-    if (saved.selectedBg) {
-      updates.theme = { ...get().theme, selectedBg: saved.selectedBg as string };
+
+    // 收集所有需要更新的编辑器状态
+    const editorUpdates: Partial<EditorState> = {};
+    if (saved.selectedFont) editorUpdates.selectedFont = saved.selectedFont as string;
+    if (saved.fontSize) editorUpdates.fontSize = saved.fontSize as number;
+    if (saved.showLineNumbers !== undefined) editorUpdates.showLineNumbers = saved.showLineNumbers as boolean;
+    if (Object.keys(editorUpdates).length > 0) {
+      updates.editor = { ...get().editor, ...editorUpdates };
     }
-    if (saved.selectedFont) {
-      updates.editor = { ...get().editor, selectedFont: saved.selectedFont as string };
+
+    // 收集所有需要更新的窗口状态
+    const windowUpdates: Partial<WindowState> = {};
+    if (saved.padding) windowUpdates.padding = saved.padding as Padding;
+    if (saved.borderRadius) windowUpdates.borderRadius = saved.borderRadius as { outer: number; inner: number };
+    if (saved.shadowEnabled !== undefined) windowUpdates.shadowEnabled = saved.shadowEnabled as boolean;
+    if (saved.shadowIntensity !== undefined) windowUpdates.shadowIntensity = saved.shadowIntensity as number;
+    if (saved.showHeader !== undefined) windowUpdates.showHeader = saved.showHeader as boolean;
+    if (saved.fileName) windowUpdates.fileName = saved.fileName as string;
+    if (Object.keys(windowUpdates).length > 0) {
+      updates.window = { ...get().window, ...windowUpdates };
     }
-    if (saved.fontSize) {
-      updates.editor = { ...get().editor, fontSize: saved.fontSize as number };
-    }
-    if (saved.showLineNumbers !== undefined) {
-      updates.editor = { ...get().editor, showLineNumbers: saved.showLineNumbers as boolean };
-    }
-    if (saved.padding) {
-      updates.window = { ...get().window, padding: saved.padding as Padding };
-    }
-    if (saved.borderRadius) {
-      updates.window = {
-        ...get().window,
-        borderRadius: saved.borderRadius as { outer: number; inner: number },
-      };
-    }
-    if (saved.shadowEnabled !== undefined) {
-      updates.window = { ...get().window, shadowEnabled: saved.shadowEnabled as boolean };
-    }
-    if (saved.shadowIntensity !== undefined) {
-      updates.window = { ...get().window, shadowIntensity: saved.shadowIntensity as number };
-    }
-    if (saved.showHeader !== undefined) {
-      updates.window = { ...get().window, showHeader: saved.showHeader as boolean };
-    }
-    if (saved.fileName) {
-      updates.window = { ...get().window, fileName: saved.fileName as string };
-    }
-    if (saved.watermarkEnabled !== undefined) {
-      updates.watermark = { ...get().watermark, enabled: saved.watermarkEnabled as boolean };
-    }
-    if (saved.watermarkText) {
-      updates.watermark = { ...get().watermark, text: saved.watermarkText as string };
-    }
-    if (saved.watermarkOpacity !== undefined) {
-      updates.watermark = { ...get().watermark, opacity: saved.watermarkOpacity as number };
+
+    // 收集所有需要更新的水印状态
+    const watermarkUpdates: Partial<WatermarkState> = {};
+    if (saved.watermarkEnabled !== undefined) watermarkUpdates.enabled = saved.watermarkEnabled as boolean;
+    if (saved.watermarkText) watermarkUpdates.text = saved.watermarkText as string;
+    if (saved.watermarkOpacity !== undefined) watermarkUpdates.opacity = saved.watermarkOpacity as number;
+    if (Object.keys(watermarkUpdates).length > 0) {
+      updates.watermark = { ...get().watermark, ...watermarkUpdates };
     }
 
     set(updates);
@@ -252,8 +246,7 @@ export const useCodegenStore = create<CodegenState>((set, get) => ({
  */
 export function useCurrentTheme() {
   const selectedTheme = useCodegenStore((s) => s.theme.selectedTheme);
-  const { THEMES } = require('../config/themes');
-  return THEMES.find((t: { id: string }) => t.id === selectedTheme) ?? THEMES[0];
+  return THEMES.find((t) => t.id === selectedTheme) ?? THEMES[0];
 }
 
 /**
@@ -261,8 +254,7 @@ export function useCurrentTheme() {
  */
 export function useCurrentBackground() {
   const selectedBg = useCodegenStore((s) => s.theme.selectedBg);
-  const { BACKGROUNDS } = require('../config/backgrounds');
-  return BACKGROUNDS.find((b: { id: string }) => b.id === selectedBg);
+  return BACKGROUNDS.find((b) => b.id === selectedBg);
 }
 
 /**

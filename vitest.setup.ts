@@ -2,6 +2,25 @@
  * Vitest 测试设置文件
  */
 import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
+
+// Mock Chrome APIs
+const mockChromeStorage = {
+  local: {
+    get: vi.fn().mockResolvedValue({}),
+    set: vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn().mockResolvedValue(undefined),
+  },
+};
+
+vi.stubGlobal('chrome', {
+  storage: mockChromeStorage,
+  runtime: {
+    id: 'test-extension-id',
+    getURL: (path: string) => `chrome-extension://test-id/${path}`,
+    sendMessage: vi.fn(),
+  },
+});
 
 // Mock Canvas API
 class MockCanvasRenderingContext2D {

@@ -7,12 +7,19 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { CanvasRenderer, createCanvasRenderer } from '../canvas-renderer';
 import type { ArrowShape, RectShape, TextShape, MosaicShape, CropArea } from '../../types';
 
+/** Mock 函数调用参数类型 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockCallArgs = any[];
+
+/** Mock 函数调用记录 */
+type MockCallRecord = Record<string, MockCallArgs>;
+
 // 创建 Mock Canvas 上下文
 function createMockContext(): {
   ctx: CanvasRenderingContext2D;
-  mockCalls: Record<string, any[]>;
+  mockCalls: MockCallRecord;
 } {
-  const mockCalls: Record<string, any[]> = {
+  const mockCalls: MockCallRecord = {
     clearRect: [],
     fillRect: [],
     strokeRect: [],

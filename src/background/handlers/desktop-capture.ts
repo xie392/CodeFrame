@@ -12,6 +12,23 @@ function openEditor(): void {
   });
 }
 
+/**
+ * Chrome 桌面媒体约束接口
+ * 用于 desktopCapture API 的 getUserMedia 调用
+ *
+ * 注意：这是 Chrome 扩展特有的非标准 API
+ * Chrome 扩展支持 `mandatory.chromeMediaSource` 属性
+ * 参考：https://developer.chrome.com/docs/extensions/reference/api/desktopCapture
+ */
+interface ChromeDesktopConstraints {
+  video: {
+    mandatory: {
+      chromeMediaSource: 'desktop';
+      chromeMediaSourceId: string;
+    };
+  };
+}
+
 // 注入到目标标签页的截图函数（自包含，不能引用外部变量）
 function captureDesktopStream(streamId: string): Promise<{
   success: boolean;
@@ -19,15 +36,18 @@ function captureDesktopStream(streamId: string): Promise<{
   error?: string;
 }> {
   return (async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stream = await navigator.mediaDevices.getUserMedia({
+    // Chrome 扩展桌面捕获约束，需要类型断言因为 TypeScript 不识别 Chrome 特有属性
+    const constraints: ChromeDesktopConstraints = {
       video: {
         mandatory: {
           chromeMediaSource: 'desktop',
           chromeMediaSourceId: String(streamId),
         },
-      } as any,
-    });
+      },
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(
+      constraints as MediaStreamConstraints
+    );
 
     const video = document.createElement('video');
     video.srcObject = stream;

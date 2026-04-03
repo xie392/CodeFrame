@@ -278,3 +278,10 @@ html {
 .copy-btn:hover {
   background: rgba(0, 0, 0, 0.08);
 }
+
+/* ===== Options 设置页面样式 ===== */
+
+/* options 主容器渐变背景 */
+.options-container {
+  background: linear-gradient(180deg, #f0f0f8 0%, #eaeaf2 50%, #e0e0ea 100%);
+}

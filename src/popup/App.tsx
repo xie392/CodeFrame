@@ -122,6 +122,13 @@ function handleOpenCodeEditor(): void {
   window.close();
 }
 
+function handleOpenSettings(): void {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('src/options/index.html'),
+  });
+  window.close();
+}
+
 function handleDesktopCapture(): void {
   const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
     mode: 'desktop',
@@ -235,6 +242,7 @@ const App: React.FC = () => {
             aria-label="设置"
             className="w-[32px] h-[32px] rounded-[8px] flex items-center justify-center cursor-pointer transition-colors duration-200 hover:brightness-125"
             style={{ backgroundColor: 'var(--color-header-btn)' }}
+            onClick={handleOpenSettings}
           >
             <Settings
               size={15}

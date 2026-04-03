@@ -74,10 +74,48 @@ export interface RegionRect {
 
 // 用户设置
 export interface UserSettings {
+  // 通用设置
+  theme: 'dark' | 'light' | 'system';
   defaultFormat: ExportFormat;
-  defaultQuality: number;
-  language: 'zh-CN' | 'en';
+  quality: '1x' | '2x' | '3x';
+  language: 'zh-CN' | 'en-US';
+  
+  // 操作历史
+  saveOperationHistory: boolean;
+  
+  // 截图设置
+  delayTime: 3 | 5 | 10;
+  historyRetention: 7 | 30 | 90 | -1;
+  
+  // 水印设置
+  watermarkEnabled: boolean;
+  watermarkText: string;
+  watermarkOpacity: number;
+  
+  // 代码美化设置
+  codeTheme: string;
+  codeFontSize: number;
+  codeShowLineNumbers: boolean;
+  
+  // 快捷键配置
   shortcuts: ShortcutConfig;
+}
+
+// 操作历史记录（用于恢复用户设置）
+export interface OperationHistory {
+  // 编辑器标注设置
+  editor?: {
+    lastTool?: string;
+    lastColor?: string;
+    lastStrokeWidth?: number;
+  };
+  // 代码生成设置
+  codegen?: {
+    lastTheme?: string;
+    lastFontSize?: number;
+    lastBackground?: string;
+    showLineNumbers?: boolean;
+  };
 }
 
 // 快捷键配置

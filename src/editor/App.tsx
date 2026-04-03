@@ -39,6 +39,11 @@ import {
   TEXT_CURSOR_MAP,
   MOSAIC_CURSOR_MAP,
   CROP_CURSOR_MAP,
+  DRAW_MIN_DISTANCE,
+  SELECT_MIN_SIZE,
+  SHAPE_MIN_SIZE,
+  FONT_SIZE_MIN,
+  FONT_SIZE_MAX,
 } from './constants';
 
 // 导入工具函数
@@ -84,6 +89,7 @@ import { CanvasRenderer } from './services/canvas-renderer';
 import { useEditorHistory } from './hooks/useEditorHistory';
 import { useZoomPan } from './hooks/useZoomPan';
 import { useExport } from './hooks/useExport';
+import { useSyncedRef } from './hooks/useSyncedRef';
 
 // 导入 Store
 import { useEditorStore } from './store/editor-store';
@@ -94,6 +100,35 @@ import { PropertiesPanel } from './components/PropertiesPanel';
 import { CanvasImage } from './components/CanvasImage';
 import { WatermarkRenderer } from './components/WatermarkRenderer';
 import { UploadPlaceholder } from './components/UploadPlaceholder';
+
+// ---------------------------------------------------------------------------
+// 类型守卫和验证函数
+// ---------------------------------------------------------------------------
+
+/**
+ * 验证截图结果数据格式
+ */
+interface CaptureResult {
+  success: boolean;
+  imageData?: string;
+  error?: string;
+}
+
+function isValidCaptureResult(data: unknown): data is CaptureResult {
+  if (typeof data !== 'object' || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  if (typeof obj.success !== 'boolean') return false;
+  if (obj.imageData !== undefined && typeof obj.imageData !== 'string') return false;
+  if (obj.error !== undefined && typeof obj.error !== 'string') return false;
+  return true;
+}
+
+/**
+ * 验证 base64 图片数据格式
+ */
+function isValidImageData(imageData: string): boolean {
+  return imageData.startsWith('data:image/');
+}
 
 // ---------------------------------------------------------------------------
 // 主组件
@@ -258,31 +293,20 @@ const App: React.FC = () => {
   const textStyleRef = useRef(DEFAULT_TEXT_STYLE);
   const mosaicStyleRef = useRef(DEFAULT_MOSAIC_STYLE);
 
-  // 数据 Refs（避免闭包问题）
-  const arrowsRef = useRef(arrows);
-  arrowsRef.current = arrows;
-  const rectsRef = useRef(rects);
-  rectsRef.current = rects;
-  const textsRef = useRef(texts);
-  textsRef.current = texts;
-  const mosaicsRef = useRef(mosaics);
-  mosaicsRef.current = mosaics;
+  // 数据 Refs（避免闭包问题）- 使用 useSyncedRef 自动同步
+  const arrowsRef = useSyncedRef(arrows);
+  const rectsRef = useSyncedRef(rects);
+  const textsRef = useSyncedRef(texts);
+  const mosaicsRef = useSyncedRef(mosaics);
 
-  const selectedArrowIdsRef = useRef(selectedArrowIds);
-  selectedArrowIdsRef.current = selectedArrowIds;
-  const selectedRectIdsRef = useRef(selectedRectIds);
-  selectedRectIdsRef.current = selectedRectIds;
-  const selectedTextIdsRef = useRef(selectedTextIds);
-  selectedTextIdsRef.current = selectedTextIds;
-  const selectedMosaicIdsRef = useRef(selectedMosaicIds);
-  selectedMosaicIdsRef.current = selectedMosaicIds;
+  const selectedArrowIdsRef = useSyncedRef(selectedArrowIds);
+  const selectedRectIdsRef = useSyncedRef(selectedRectIds);
+  const selectedTextIdsRef = useSyncedRef(selectedTextIds);
+  const selectedMosaicIdsRef = useSyncedRef(selectedMosaicIds);
 
-  const cropAreaRef = useRef(cropArea);
-  cropAreaRef.current = cropArea;
-  const imageNaturalSizeRef = useRef(imageNaturalSize);
-  imageNaturalSizeRef.current = imageNaturalSize;
-  const imageDisplaySizeRef = useRef(imageDisplaySize);
-  imageDisplaySizeRef.current = imageDisplaySize;
+  const cropAreaRef = useSyncedRef(cropArea);
+  const imageNaturalSizeRef = useSyncedRef(imageNaturalSize);
+  const imageDisplaySizeRef = useSyncedRef(imageDisplaySize);
 
   // ---------------------------------------------------------------------------
   // 历史记录
@@ -296,10 +320,10 @@ const App: React.FC = () => {
 
   const pushHistory = useCallback(() => {
     const state: EditorState = {
-      arrows: JSON.parse(JSON.stringify(arrowsRef.current)),
-      rects: JSON.parse(JSON.stringify(rectsRef.current)),
-      texts: JSON.parse(JSON.stringify(textsRef.current)),
-      mosaics: JSON.parse(JSON.stringify(mosaicsRef.current)),
+      arrows: structuredClone(arrowsRef.current),
+      rects: structuredClone(rectsRef.current),
+      texts: structuredClone(textsRef.current),
+      mosaics: structuredClone(mosaicsRef.current),
       imageData: imageData,
       view: {
         scale: scaleRef.current,
@@ -1032,21 +1056,21 @@ const App: React.FC = () => {
               case 'move':
                 return { ...r, x: orig.x + dx, y: orig.y + dy };
               case 'resize-tl':
-                return { ...r, x: orig.x + dx, y: orig.y + dy, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height - dy) };
+                return { ...r, x: orig.x + dx, y: orig.y + dy, width: Math.max(SHAPE_MIN_SIZE, orig.width - dx), height: Math.max(SHAPE_MIN_SIZE, orig.height - dy) };
               case 'resize-tr':
-                return { ...r, y: orig.y + dy, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height - dy) };
+                return { ...r, y: orig.y + dy, width: Math.max(SHAPE_MIN_SIZE, orig.width + dx), height: Math.max(SHAPE_MIN_SIZE, orig.height - dy) };
               case 'resize-bl':
-                return { ...r, x: orig.x + dx, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height + dy) };
+                return { ...r, x: orig.x + dx, width: Math.max(SHAPE_MIN_SIZE, orig.width - dx), height: Math.max(SHAPE_MIN_SIZE, orig.height + dy) };
               case 'resize-br':
-                return { ...r, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height + dy) };
+                return { ...r, width: Math.max(SHAPE_MIN_SIZE, orig.width + dx), height: Math.max(SHAPE_MIN_SIZE, orig.height + dy) };
               case 'resize-t':
-                return { ...r, y: orig.y + dy, height: Math.max(5, orig.height - dy) };
+                return { ...r, y: orig.y + dy, height: Math.max(SHAPE_MIN_SIZE, orig.height - dy) };
               case 'resize-b':
-                return { ...r, height: Math.max(5, orig.height + dy) };
+                return { ...r, height: Math.max(SHAPE_MIN_SIZE, orig.height + dy) };
               case 'resize-l':
-                return { ...r, x: orig.x + dx, width: Math.max(5, orig.width - dx) };
+                return { ...r, x: orig.x + dx, width: Math.max(SHAPE_MIN_SIZE, orig.width - dx) };
               case 'resize-r':
-                return { ...r, width: Math.max(5, orig.width + dx) };
+                return { ...r, width: Math.max(SHAPE_MIN_SIZE, orig.width + dx) };
               default:
                 return r;
             }
@@ -1092,8 +1116,8 @@ const App: React.FC = () => {
         setTexts((prev) =>
           prev.map((t) => {
             if (t.id !== drag.textId) return t;
-            const minFontSize = 8;
-            const maxFontSize = 120;
+            const minFontSize = FONT_SIZE_MIN;
+            const maxFontSize = FONT_SIZE_MAX;
 
             switch (drag.type) {
               case 'move':
@@ -1146,21 +1170,21 @@ const App: React.FC = () => {
               case 'move':
                 return { ...m, x: orig.x + dx, y: orig.y + dy };
               case 'resize-tl':
-                return { ...m, x: orig.x + dx, y: orig.y + dy, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height - dy) };
+                return { ...m, x: orig.x + dx, y: orig.y + dy, width: Math.max(SHAPE_MIN_SIZE, orig.width - dx), height: Math.max(SHAPE_MIN_SIZE, orig.height - dy) };
               case 'resize-tr':
-                return { ...m, y: orig.y + dy, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height - dy) };
+                return { ...m, y: orig.y + dy, width: Math.max(SHAPE_MIN_SIZE, orig.width + dx), height: Math.max(SHAPE_MIN_SIZE, orig.height - dy) };
               case 'resize-bl':
-                return { ...m, x: orig.x + dx, width: Math.max(5, orig.width - dx), height: Math.max(5, orig.height + dy) };
+                return { ...m, x: orig.x + dx, width: Math.max(SHAPE_MIN_SIZE, orig.width - dx), height: Math.max(SHAPE_MIN_SIZE, orig.height + dy) };
               case 'resize-br':
-                return { ...m, width: Math.max(5, orig.width + dx), height: Math.max(5, orig.height + dy) };
+                return { ...m, width: Math.max(SHAPE_MIN_SIZE, orig.width + dx), height: Math.max(SHAPE_MIN_SIZE, orig.height + dy) };
               case 'resize-t':
-                return { ...m, y: orig.y + dy, height: Math.max(5, orig.height - dy) };
+                return { ...m, y: orig.y + dy, height: Math.max(SHAPE_MIN_SIZE, orig.height - dy) };
               case 'resize-b':
-                return { ...m, height: Math.max(5, orig.height + dy) };
+                return { ...m, height: Math.max(SHAPE_MIN_SIZE, orig.height + dy) };
               case 'resize-l':
-                return { ...m, x: orig.x + dx, width: Math.max(5, orig.width - dx) };
+                return { ...m, x: orig.x + dx, width: Math.max(SHAPE_MIN_SIZE, orig.width - dx) };
               case 'resize-r':
-                return { ...m, width: Math.max(5, orig.width + dx) };
+                return { ...m, width: Math.max(SHAPE_MIN_SIZE, orig.width + dx) };
               default:
                 return m;
             }
@@ -1354,7 +1378,7 @@ const App: React.FC = () => {
 
         const width = Math.abs(rect.x2 - rect.x1);
         const height = Math.abs(rect.y2 - rect.y1);
-        const minSelectSize = 5;
+        const minSelectSize = SELECT_MIN_SIZE;
 
         if (width < minSelectSize && height < minSelectSize) {
           setSelectedArrowIds([]);
@@ -1406,7 +1430,7 @@ const App: React.FC = () => {
       if (isDrawingArrow.current && drawingArrow.current) {
         const { startX, startY, endX, endY } = drawingArrow.current;
         const dist = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
-        if (dist > 5) {
+        if (dist > DRAW_MIN_DISTANCE) {
           pushHistory();
           const newArrow: ArrowShape = {
             id: generateArrowId(),
@@ -1736,10 +1760,22 @@ const App: React.FC = () => {
 
     if (src === 'capture') {
       chrome.storage.local.get(STORAGE_KEYS.CAPTURE_RESULT, (result) => {
-        const data = result[STORAGE_KEYS.CAPTURE_RESULT] as { success: boolean; imageData?: string; error?: string } | undefined;
-        if (data?.success && data.imageData) {
-          setImageData(data.imageData);
-        } else if (data?.error) {
+        const data = result[STORAGE_KEYS.CAPTURE_RESULT];
+
+        // 运行时类型验证
+        if (!isValidCaptureResult(data)) {
+          setError('无效的截图数据格式');
+          return;
+        }
+
+        if (data.success && data.imageData) {
+          // 验证图片数据格式
+          if (isValidImageData(data.imageData)) {
+            setImageData(data.imageData);
+          } else {
+            setError('无效的图片数据格式');
+          }
+        } else if (data.error) {
           setError(data.error);
         } else {
           setError('未找到截图数据');

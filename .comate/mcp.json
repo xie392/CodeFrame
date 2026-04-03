@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "pencil": {
-      "command": "~/.comate/extensions/highagency.pencildev-0.6.38-universal/out/mcp-server-darwin-x64",
+      "command": "~/.comate/extensions/highagency.pencildev-0.6.39-universal/out/mcp-server-darwin-x64",
       "args": ["--app", "comate"],
       "env": {}
     }

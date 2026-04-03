@@ -1,5 +1,5 @@
 {
-  "version": "2.9",
+  "version": "2.10",
   "children": [
     {
       "type": "frame",
@@ -5727,7 +5727,7 @@
               "id": "2kjHO",
               "name": "optTitle",
               "fill": "#1A1A1A",
-              "content": "> settings",
+              "content": "settings",
               "fontFamily": "Oswald",
               "fontSize": 20,
               "fontWeight": "600"

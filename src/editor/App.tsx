@@ -1683,20 +1683,23 @@ const SelectControl: React.FC<{
   value: string;
   options: { name: string; value: string }[];
   onChange: (value: string) => void;
-}> = ({ value, options, onChange }) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    className="prop-field-sm h-[28px] px-2 rounded-[6px] text-[11px] font-body text-foreground cursor-pointer outline-none"
-    style={{ backgroundColor: '#FAFAFA' }}
-  >
-    {options.map((opt) => (
-      <option key={opt.value} value={opt.value} className="bg-white">
-        {opt.name}
-      </option>
-    ))}
-  </select>
-);
+}> = ({ value, options, onChange }) => {
+  const { t } = useTranslation('editor');
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="prop-field-sm h-[28px] px-2 rounded-[6px] text-[11px] font-body text-foreground cursor-pointer outline-none"
+      style={{ backgroundColor: '#FAFAFA' }}
+    >
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value} className="bg-white">
+          {t(opt.name)}
+        </option>
+      ))}
+    </select>
+  );
+};
 
 /** 背景预设按钮 */
 const BackgroundPresetButton: React.FC<{
@@ -2464,7 +2467,7 @@ const FrameSettings: React.FC<{
       >
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
-            {t('windowStyle')}:
+            {t('label.windowStyle')}:
           </span>
           <div className="flex gap-1">
             <button

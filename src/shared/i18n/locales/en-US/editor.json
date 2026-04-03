@@ -44,6 +44,7 @@
     "unit": "Unit",
     "size": "Size",
     "aspectRatio": "Aspect Ratio",
+    "windowStyle": "Window Style",
     "angle": "Angle",
     "width": "W",
     "height": "H",

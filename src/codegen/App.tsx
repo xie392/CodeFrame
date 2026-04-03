@@ -247,8 +247,8 @@ const App: React.FC = () => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // 获取用户设置
-  const { settings } = useSettingsStore();
+  // 获取用户设置和操作历史
+  const { settings, operationHistory, updateOperationHistory } = useSettingsStore();
 
   // ---- 代码窗口状态 ----
   const [winSize, setWinSize] = useState({
@@ -277,6 +277,100 @@ const App: React.FC = () => {
   useEffect(() => { codeRef.current = code; }, [code]);
   useEffect(() => { showHeaderRef.current = showHeader; }, [showHeader]);
   useEffect(() => { fontSizeRef.current = fontSize; }, [fontSize]);
+
+  // 操作历史恢复状态
+  const historyRestoredRef = useRef(false);
+
+  // 恢复操作历史配置（仅在挂载时执行一次）
+  useEffect(() => {
+    if (historyRestoredRef.current) return;
+    if (!settings.saveOperationHistory || !operationHistory.codegen) {
+      historyRestoredRef.current = true;
+      return;
+    }
+
+    historyRestoredRef.current = true;
+    const saved = operationHistory.codegen;
+    if (saved.selectedTheme) setSelectedTheme(saved.selectedTheme);
+    if (saved.selectedBg) setSelectedBg(saved.selectedBg);
+    if (saved.selectedFont) setSelectedFont(saved.selectedFont);
+    if (saved.fontSize) setFontSize(saved.fontSize);
+    if (saved.showLineNumbers !== undefined) setShowLineNumbers(saved.showLineNumbers);
+    if (saved.padding) setPadding(saved.padding);
+    if (saved.borderRadius) setBorderRadiusState({
+      outer: saved.borderRadius.outer,
+      inner: saved.borderRadius.inner,
+    });
+    if (saved.shadowEnabled !== undefined) setShadowEnabled(saved.shadowEnabled);
+    if (saved.shadowIntensity !== undefined) setShadowIntensity(saved.shadowIntensity);
+    if (saved.showHeader !== undefined) setShowHeader(saved.showHeader);
+    if (saved.fileName) setFileName(saved.fileName);
+    if (saved.watermarkEnabled !== undefined) setWatermarkEnabled(saved.watermarkEnabled);
+    if (saved.watermarkText) setWatermarkText(saved.watermarkText);
+    if (saved.watermarkOpacity !== undefined) setWatermarkOpacity(saved.watermarkOpacity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.saveOperationHistory, operationHistory.codegen]);
+
+  // 保存操作历史（仅在恢复完成后，且配置实际变化时保存）
+  const prevSavedStateRef = useRef<string>('');
+  useEffect(() => {
+    if (!settings.saveOperationHistory || !historyRestoredRef.current) return;
+
+    // 序列化当前状态，避免重复保存相同内容
+    const currentState = JSON.stringify({
+      selectedTheme,
+      selectedBg,
+      selectedFont,
+      fontSize,
+      showLineNumbers,
+      padding,
+      borderRadius: borderRadiusState,
+      shadowEnabled,
+      shadowIntensity,
+      showHeader,
+      fileName,
+      watermarkEnabled,
+      watermarkText,
+      watermarkOpacity,
+    });
+
+    if (currentState === prevSavedStateRef.current) return;
+    prevSavedStateRef.current = currentState;
+
+    updateOperationHistory('codegen', {
+      selectedTheme,
+      selectedBg,
+      selectedFont,
+      fontSize,
+      showLineNumbers,
+      padding,
+      borderRadius: borderRadiusState,
+      shadowEnabled,
+      shadowIntensity,
+      showHeader,
+      fileName,
+      watermarkEnabled,
+      watermarkText,
+      watermarkOpacity,
+    });
+  }, [
+    settings.saveOperationHistory,
+    selectedTheme,
+    selectedBg,
+    selectedFont,
+    fontSize,
+    showLineNumbers,
+    padding,
+    borderRadiusState,
+    shadowEnabled,
+    shadowIntensity,
+    showHeader,
+    fileName,
+    watermarkEnabled,
+    watermarkText,
+    watermarkOpacity,
+    updateOperationHistory,
+  ]);
 
   // ---- 缩放 ----
   const zoomAt = useCallback(

@@ -1604,18 +1604,29 @@ const FontStyleToggle: React.FC<{
 const CollapsibleSection: React.FC<{
   title: string;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   enabled?: boolean;
   onToggle?: (enabled: boolean) => void;
   children: React.ReactNode;
-}> = ({ title, defaultOpen = true, enabled, onToggle, children }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+}> = ({ title, defaultOpen = true, open, onOpenChange, enabled, onToggle, children }) => {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = open !== undefined ? open : internalOpen;
   const hasToggle = enabled !== undefined && onToggle !== undefined;
+
+  const handleToggle = () => {
+    if (onOpenChange) {
+      onOpenChange(!isOpen);
+    } else {
+      setInternalOpen(!isOpen);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-[10px]">
       <div className="flex items-center justify-between">
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleToggle}
           className="flex items-center gap-1 cursor-pointer"
         >
           <ChevronRight
@@ -1761,12 +1772,27 @@ const ImageShadowPresetButton: React.FC<{
 const FrameSettings: React.FC<{
   settings: ImageFrameSettings;
   onUpdate: (updates: Partial<ImageFrameSettings>) => void;
-}> = ({ settings, onUpdate }) => {
+  collapsedSections?: Record<string, boolean>;
+  onCollapsedChange?: (sections: Record<string, boolean>) => void;
+}> = ({ settings, onUpdate, collapsedSections, onCollapsedChange }) => {
   const { t } = useTranslation('editor');
+
+  const handleSectionToggle = (key: string, open: boolean) => {
+    if (onCollapsedChange) {
+      onCollapsedChange({ ...collapsedSections, [key]: !open });
+    }
+  };
+
+  const isSectionOpen = (key: string) => !(collapsedSections?.[key] ?? false);
+
   return (
     <div className="flex flex-col gap-3">
       {/* 背景设置 */}
-      <CollapsibleSection title={t('label.background')} defaultOpen={true}>
+      <CollapsibleSection
+        title={t('label.background')}
+        open={isSectionOpen('background')}
+        onOpenChange={(open) => handleSectionToggle('background', open)}
+      >
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
             type:
@@ -1913,7 +1939,11 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 边距设置 */}
-      <CollapsibleSection title={t('label.padding')}>
+      <CollapsibleSection
+        title={t('label.padding')}
+        open={isSectionOpen('padding')}
+        onOpenChange={(open) => handleSectionToggle('padding', open)}
+      >
         <div className="flex items-center gap-2">
           <button
             onClick={() =>
@@ -1984,7 +2014,11 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 容器圆角设置 */}
-      <CollapsibleSection title={t('label.borderRadius')}>
+      <CollapsibleSection
+        title={t('label.borderRadius')}
+        open={isSectionOpen('borderRadius')}
+        onOpenChange={(open) => handleSectionToggle('borderRadius', open)}
+      >
         {/* 圆角预设 */}
         <div className="mb-3">
           <div className="flex gap-1 flex-wrap">
@@ -2107,7 +2141,11 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 图片圆角设置 */}
-      <CollapsibleSection title={t('label.imageRadius')}>
+      <CollapsibleSection
+        title={t('label.imageRadius')}
+        open={isSectionOpen('imageRadius')}
+        onOpenChange={(open) => handleSectionToggle('imageRadius', open)}
+      >
         {/* 圆角预设 */}
         <div className="mb-3">
           <div className="flex gap-1 flex-wrap">
@@ -2232,6 +2270,8 @@ const FrameSettings: React.FC<{
       {/* 阴影设置 */}
       <CollapsibleSection
         title={t('section.shadow')}
+        open={isSectionOpen('shadow')}
+        onOpenChange={(open) => handleSectionToggle('shadow', open)}
         enabled={settings.shadow.enabled}
         onToggle={(enabled) =>
           onUpdate({ shadow: { ...settings.shadow, enabled } })
@@ -2296,6 +2336,8 @@ const FrameSettings: React.FC<{
       {/* 图片阴影设置 */}
       <CollapsibleSection
         title={t('section.imageShadow')}
+        open={isSectionOpen('imageShadow')}
+        onOpenChange={(open) => handleSectionToggle('imageShadow', open)}
         enabled={settings.imageShadow.enabled}
         onToggle={(enabled) =>
           onUpdate({ imageShadow: { ...settings.imageShadow, enabled } })
@@ -2358,7 +2400,11 @@ const FrameSettings: React.FC<{
       </CollapsibleSection>
 
       {/* 比例设置 */}
-      <CollapsibleSection title={t('label.aspectRatio')}>
+      <CollapsibleSection
+        title={t('label.aspectRatio')}
+        open={isSectionOpen('aspectRatio')}
+        onOpenChange={(open) => handleSectionToggle('aspectRatio', open)}
+      >
         <SelectControl
           value={settings.aspectRatio}
           options={ASPECT_RATIO_PRESETS}
@@ -2409,6 +2455,8 @@ const FrameSettings: React.FC<{
       {/* 窗口控件设置 */}
       <CollapsibleSection
         title={t('section.windowControls')}
+        open={isSectionOpen('windowControl')}
+        onOpenChange={(open) => handleSectionToggle('windowControl', open)}
         enabled={settings.windowControl.enabled}
         onToggle={(enabled) =>
           onUpdate({ windowControl: { ...settings.windowControl, enabled } })
@@ -2454,6 +2502,8 @@ const FrameSettings: React.FC<{
       {/* 水印设置 */}
       <CollapsibleSection
         title={t('section.watermark')}
+        open={isSectionOpen('watermark')}
+        onOpenChange={(open) => handleSectionToggle('watermark', open)}
         enabled={settings.watermark.enabled}
         onToggle={(enabled) =>
           onUpdate({ watermark: { ...settings.watermark, enabled } })
@@ -2629,12 +2679,14 @@ const PropertiesPanel: React.FC<{
   onUpdateMosaic: (updates: Partial<MosaicShape>) => void;
   frameSettings: ImageFrameSettings;
   onUpdateFrameSettings: (updates: Partial<ImageFrameSettings>) => void;
+  collapsedSections?: Record<string, boolean>;
+  onCollapsedChange?: (sections: Record<string, boolean>) => void;
   onExportImage: () => void;
   onCopyToClipboard: () => void;
   isExporting: boolean;
   copied: boolean;
   exportError: string | null;
-}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings, onExportImage, onCopyToClipboard, isExporting, copied, exportError }) => {
+}> = ({ selectedArrow, onUpdateArrow, selectedRect, onUpdateRect, selectedText, onUpdateText, selectedMosaic, onUpdateMosaic, frameSettings, onUpdateFrameSettings, collapsedSections, onCollapsedChange, onExportImage, onCopyToClipboard, isExporting, copied, exportError }) => {
   const { t } = useTranslation('editor');
   // 选中类型：arrow, rect, text, mosaic 或 none
   const selectionType: 'arrow' | 'rect' | 'text' | 'mosaic' | 'none' = selectedArrow
@@ -2824,6 +2876,8 @@ const PropertiesPanel: React.FC<{
         <FrameSettings
           settings={frameSettings}
           onUpdate={onUpdateFrameSettings}
+          collapsedSections={collapsedSections}
+          onCollapsedChange={onCollapsedChange}
         />
       )}
       </div>
@@ -3117,6 +3171,9 @@ const App: React.FC = () => {
   // 图片容器设置
   const [frameSettings, setFrameSettings] = useState<ImageFrameSettings>(DEFAULT_FRAME_SETTINGS);
 
+  // 折叠面板状态
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
   // 画布缩放/平移状态
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -3128,8 +3185,42 @@ const App: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // 获取用户设置
-  const { settings } = useSettingsStore();
+  // 获取用户设置和操作历史
+  const { settings, operationHistory, updateOperationHistory } = useSettingsStore();
+
+  // 操作历史恢复状态
+  const historyRestoredRef = useRef(false);
+
+  // 恢复操作历史配置（仅在挂载时执行一次）
+  // 注意：offset 和 scale 不恢复，因为它们是视图运行时状态，依赖图片尺寸
+  useEffect(() => {
+    if (historyRestoredRef.current) return;
+    if (!settings.saveOperationHistory || !operationHistory.editor) {
+      historyRestoredRef.current = true;
+      return;
+    }
+
+    historyRestoredRef.current = true;
+    const saved = operationHistory.editor;
+    if (saved.activeTool) setActiveTool(saved.activeTool as ToolId);
+    if (saved.collapsedSections) setCollapsedSections(saved.collapsedSections);
+    if (saved.frameSettings) {
+      setFrameSettings((prev) => ({
+        ...prev,
+        ...(saved.frameSettings!.background && { background: saved.frameSettings!.background }),
+        ...(saved.frameSettings!.padding && { padding: saved.frameSettings!.padding }),
+        ...(saved.frameSettings!.borderRadius && { borderRadius: saved.frameSettings!.borderRadius }),
+        ...(saved.frameSettings!.imageRadius && { imageRadius: saved.frameSettings!.imageRadius }),
+        ...(saved.frameSettings!.shadow && { shadow: saved.frameSettings!.shadow }),
+        ...(saved.frameSettings!.imageShadow && { imageShadow: saved.frameSettings!.imageShadow }),
+        ...(saved.frameSettings!.aspectRatio && { aspectRatio: saved.frameSettings!.aspectRatio }),
+        ...(saved.frameSettings!.customAspectRatio && { customAspectRatio: saved.frameSettings!.customAspectRatio }),
+        ...(saved.frameSettings!.windowControl && { windowControl: saved.frameSettings!.windowControl }),
+        ...(saved.frameSettings!.watermark && { watermark: saved.frameSettings!.watermark }),
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.saveOperationHistory, operationHistory.editor]);
 
   // 图片加载后计算居中偏移
   const handleImageSizeChange = useCallback(
@@ -3162,6 +3253,57 @@ const App: React.FC = () => {
     },
     [frameSettings.padding],
   );
+
+  // 保存操作历史（仅在恢复完成后，且配置实际变化时保存）
+  // 注意：不保存 scale 和 offset，因为它们是视图运行时状态
+  const prevSavedStateRef = useRef<string>('');
+  useEffect(() => {
+    if (!settings.saveOperationHistory || !historyRestoredRef.current) return;
+
+    // 序列化当前状态，避免重复保存相同内容
+    const currentState = JSON.stringify({
+      activeTool,
+      collapsedSections,
+      frameSettings: {
+        background: frameSettings.background,
+        padding: frameSettings.padding,
+        borderRadius: frameSettings.borderRadius,
+        imageRadius: frameSettings.imageRadius,
+        shadow: frameSettings.shadow,
+        imageShadow: frameSettings.imageShadow,
+        aspectRatio: frameSettings.aspectRatio,
+        customAspectRatio: frameSettings.customAspectRatio,
+        windowControl: frameSettings.windowControl,
+        watermark: frameSettings.watermark,
+      },
+    });
+
+    if (currentState === prevSavedStateRef.current) return;
+    prevSavedStateRef.current = currentState;
+
+    updateOperationHistory('editor', {
+      activeTool,
+      collapsedSections,
+      frameSettings: {
+        background: frameSettings.background,
+        padding: frameSettings.padding,
+        borderRadius: frameSettings.borderRadius,
+        imageRadius: frameSettings.imageRadius,
+        shadow: frameSettings.shadow,
+        imageShadow: frameSettings.imageShadow,
+        aspectRatio: frameSettings.aspectRatio,
+        customAspectRatio: frameSettings.customAspectRatio,
+        windowControl: frameSettings.windowControl,
+        watermark: frameSettings.watermark,
+      },
+    });
+  }, [
+    settings.saveOperationHistory,
+    activeTool,
+    collapsedSections,
+    frameSettings,
+    updateOperationHistory,
+  ]);
 
   // 图片原始尺寸变化（用于裁剪）
   const handleImageNaturalSizeChange = useCallback((w: number, h: number) => {
@@ -5828,6 +5970,8 @@ const App: React.FC = () => {
         onUpdateFrameSettings={(updates) =>
           setFrameSettings((prev) => ({ ...prev, ...updates }))
         }
+        collapsedSections={collapsedSections}
+        onCollapsedChange={setCollapsedSections}
         onExportImage={handleExportImage}
         onCopyToClipboard={handleCopyToClipboard}
         isExporting={isExporting}

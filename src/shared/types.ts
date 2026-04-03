@@ -102,18 +102,106 @@ export interface UserSettings {
 
 // 操作历史记录（用于恢复用户设置）
 export interface OperationHistory {
-  // 编辑器标注设置
+  // 编辑器标注设置（不包含 scale/offset，它们是视图运行时状态）
   editor?: {
-    lastTool?: string;
-    lastColor?: string;
-    lastStrokeWidth?: number;
+    activeTool?: string;
+    // 折叠面板状态
+    collapsedSections?: {
+      background?: boolean;
+      padding?: boolean;
+      borderRadius?: boolean;
+      imageRadius?: boolean;
+      shadow?: boolean;
+      imageShadow?: boolean;
+      aspectRatio?: boolean;
+      windowControl?: boolean;
+      watermark?: boolean;
+    };
+    frameSettings?: {
+      background?: {
+        type: 'solid' | 'linear' | 'radial';
+        color: string;
+        gradientColors: [string, string];
+        gradientAngle: number;
+      };
+      padding?: {
+        top: number;
+        right: number;
+        bottom: number;
+        left: number;
+        linked: boolean;
+      };
+      borderRadius?: {
+        unit: 'px' | '%';
+        topLeft: number;
+        topRight: number;
+        bottomRight: number;
+        bottomLeft: number;
+        linked: boolean;
+      };
+      imageRadius?: {
+        unit: 'px' | '%';
+        topLeft: number;
+        topRight: number;
+        bottomRight: number;
+        bottomLeft: number;
+        linked: boolean;
+      };
+      shadow?: {
+        enabled: boolean;
+        color: string;
+        blur: number;
+        offsetX: number;
+        offsetY: number;
+      };
+      imageShadow?: {
+        enabled: boolean;
+        color: string;
+        blur: number;
+        offsetX: number;
+        offsetY: number;
+      };
+      aspectRatio?: string;
+      customAspectRatio?: { width: number; height: number };
+      windowControl?: {
+        enabled: boolean;
+        style: 'macos' | 'windows';
+      };
+      watermark?: {
+        enabled: boolean;
+        text: string;
+        position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+        opacity: number;
+        fontSize: number;
+        imageUrl: string | null;
+        imageSize: number;
+      };
+    };
   };
   // 代码生成设置
   codegen?: {
-    lastTheme?: string;
-    lastFontSize?: number;
-    lastBackground?: string;
+    selectedTheme?: string;
+    selectedBg?: string;
+    selectedFont?: string;
+    fontSize?: number;
     showLineNumbers?: boolean;
+    padding?: {
+      top: number;
+      right: number;
+      bottom: number;
+      left: number;
+    };
+    borderRadius?: {
+      outer: number;
+      inner: number;
+    };
+    shadowEnabled?: boolean;
+    shadowIntensity?: number;
+    showHeader?: boolean;
+    fileName?: string;
+    watermarkEnabled?: boolean;
+    watermarkText?: string;
+    watermarkOpacity?: number;
   };
 }
 

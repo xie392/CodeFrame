@@ -98,7 +98,32 @@
 - **当** 用户切换"保存操作历史"开关状态
 - **那么** 设置立即保存到 `chrome.storage.local`
 
----
+#### 场景：Editor 配置恢复
+
+- **当** 用户开启"保存操作历史"并重新进入编辑器页面
+- **那么** 系统自动恢复以下配置：
+  - 上次使用的工具 (`activeTool`)
+  - Frame 设置（背景色、边框、阴影、水印等）
+  - 折叠面板展开状态 (`collapsedSections`)
+
+#### 场景：CodeGen 配置恢复
+
+- **当** 用户开启"保存操作历史"并重新进入代码生成器页面
+- **那么** 系统自动恢复以下配置：
+  - 代码主题 (`selectedTheme`)
+  - 背景样式 (`selectedBg`)
+  - 字体类型 (`selectedFont`)
+  - 字体大小 (`fontSize`)
+  - 行号显示 (`showLineNumbers`)
+  - 内边距 (`padding`)
+  - 圆角设置 (`borderRadius`)
+  - 阴影开关 (`shadowEnabled`)
+  - 阴影强度 (`shadowIntensity`)
+  - 标题栏显示 (`showHeader`)
+  - 文件名 (`fileName`)
+  - 水印开关 (`watermarkEnabled`)
+  - 水印文字 (`watermarkText`)
+  - 水印透明度 (`watermarkOpacity`)
 
 ### 需求：截图设置配置
 

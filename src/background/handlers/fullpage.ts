@@ -2,8 +2,8 @@
 // 完全在 Background Service Worker 中执行
 // 修复：正确处理重叠区域，避免内容重复
 
-import { STORAGE_KEYS, FULLPAGE_CAPTURE } from '@shared/constants';
-import type { CaptureResult } from '@shared/types';
+import { STORAGE_KEYS, FULLPAGE_CAPTURE, DEFAULT_SETTINGS } from '@shared/constants';
+import type { CaptureResult, UserSettings } from '@shared/types';
 
 const RESTRICTED_URL_PREFIXES = [
   'chrome://',
@@ -61,6 +61,45 @@ async function scrollTo(tabId: number, y: number): Promise<void> {
   });
 }
 
+/**
+ * 获取用户截图质量设置
+ */
+async function getQualitySetting(): Promise<'1x' | '2x' | '3x'> {
+  try {
+    const result = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
+    const settings = result[STORAGE_KEYS.SETTINGS] as UserSettings | undefined;
+    return settings?.quality ?? DEFAULT_SETTINGS.quality;
+  } catch {
+    return DEFAULT_SETTINGS.quality;
+  }
+}
+
+/**
+ * 将图片缩放到指定倍数
+ */
+async function scaleImage(dataUrl: string, scale: number): Promise<string> {
+  if (scale === 1) return dataUrl;
+
+  const bitmap = await dataUrlToBitmap(dataUrl);
+  const newWidth = Math.round(bitmap.width * scale);
+  const newHeight = Math.round(bitmap.height * scale);
+
+  const offscreen = new OffscreenCanvas(newWidth, newHeight);
+  const ctx = offscreen.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    throw new Error('无法获取 OffscreenCanvas 2D 上下文');
+  }
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, newWidth, newHeight);
+  bitmap.close();
+
+  const blob = await offscreen.convertToBlob({ type: 'image/png' });
+  return blobToDataUrl(blob);
+}
+
 export async function handleFullPageCapture(): Promise<CaptureResult> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -76,8 +115,15 @@ export async function handleFullPageCapture(): Promise<CaptureResult> {
     const { scrollWidth, scrollHeight, clientHeight, dpr } = await getPageInfo(tab.id);
 
     if (scrollHeight <= clientHeight) {
+      // 页面高度不超过可视区域，直接截图
       const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
-      const result: CaptureResult = { success: true, imageData: dataUrl };
+
+      // 应用截图质量设置
+      const quality = await getQualitySetting();
+      const scale = quality === '1x' ? 1 : quality === '3x' ? 3 : 2;
+      const scaledDataUrl = await scaleImage(dataUrl, scale);
+
+      const result: CaptureResult = { success: true, imageData: scaledDataUrl };
       await chrome.storage.local.set({
         [STORAGE_KEYS.CAPTURE_RESULT]: { ...result, timestamp: Date.now() },
       });
@@ -102,13 +148,18 @@ export async function handleFullPageCapture(): Promise<CaptureResult> {
 
     await scrollTo(tab.id, 0);
 
-    const fullPageDataUrl = await stitchSegments(segmentImages, {
+    let fullPageDataUrl = await stitchSegments(segmentImages, {
       pageWidth: scrollWidth,
       captureHeight,
       clientHeight,
       dpr,
       overlap,
     });
+
+    // 应用截图质量设置
+    const quality = await getQualitySetting();
+    const scale = quality === '1x' ? 1 : quality === '3x' ? 3 : 2;
+    fullPageDataUrl = await scaleImage(fullPageDataUrl, scale);
 
     const result: CaptureResult = { success: true, imageData: fullPageDataUrl };
     await chrome.storage.local.set({

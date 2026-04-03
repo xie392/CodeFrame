@@ -4,20 +4,12 @@
 
 import { STORAGE_KEYS, FULLPAGE_CAPTURE, DEFAULT_SETTINGS } from '@shared/constants';
 import type { CaptureResult, UserSettings } from '@shared/types';
-
-const RESTRICTED_URL_PREFIXES = [
-  'chrome://',
-  'chrome-extension://',
-  'about:',
-  'devtools://',
-  'edge://',
-  'brave://',
-] as const;
-
-function isRestrictedUrl(url?: string): boolean {
-  if (!url) return true;
-  return RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
-}
+import {
+  dataUrlToBitmap,
+  blobToDataUrl,
+  scaleImage,
+  isRestrictedUrl,
+} from './utils/image';
 
 function openEditor(): void {
   chrome.tabs.create({
@@ -72,32 +64,6 @@ async function getQualitySetting(): Promise<'1x' | '2x' | '3x'> {
   } catch {
     return DEFAULT_SETTINGS.quality;
   }
-}
-
-/**
- * 将图片缩放到指定倍数
- */
-async function scaleImage(dataUrl: string, scale: number): Promise<string> {
-  if (scale === 1) return dataUrl;
-
-  const bitmap = await dataUrlToBitmap(dataUrl);
-  const newWidth = Math.round(bitmap.width * scale);
-  const newHeight = Math.round(bitmap.height * scale);
-
-  const offscreen = new OffscreenCanvas(newWidth, newHeight);
-  const ctx = offscreen.getContext('2d');
-  if (!ctx) {
-    bitmap.close();
-    throw new Error('无法获取 OffscreenCanvas 2D 上下文');
-  }
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(bitmap, 0, 0, newWidth, newHeight);
-  bitmap.close();
-
-  const blob = await offscreen.convertToBlob({ type: 'image/png' });
-  return blobToDataUrl(blob);
 }
 
 export async function handleFullPageCapture(): Promise<CaptureResult> {
@@ -206,54 +172,37 @@ async function stitchSegments(
   for (let i = 0; i < segments.length; i++) {
     const bitmap = await dataUrlToBitmap(segments[i]);
 
-    let sourceY = 0;
-    let destY = 0;
-    let drawHeight = bitmap.height;
+    try {
+      let sourceY = 0;
+      let destY = 0;
+      let drawHeight = bitmap.height;
 
-    if (i === 0) {
-      destY = 0;
-      if (segments.length > 1) {
-        drawHeight = viewportPx - overlapPx;
+      if (i === 0) {
+        destY = 0;
+        if (segments.length > 1) {
+          drawHeight = viewportPx - overlapPx;
+        }
+      } else {
+        sourceY = overlapPx;
+        destY = i * (viewportPx - overlapPx);
+        drawHeight = Math.min(viewportPx - overlapPx, bitmap.height - overlapPx);
       }
-    } else {
-      sourceY = overlapPx;
-      destY = i * (viewportPx - overlapPx);
-      drawHeight = Math.min(viewportPx - overlapPx, bitmap.height - overlapPx);
-    }
 
-    const remainingHeight = finalHeight - destY;
-    if (drawHeight > remainingHeight) {
-      drawHeight = remainingHeight;
-    }
+      const remainingHeight = finalHeight - destY;
+      if (drawHeight > remainingHeight) {
+        drawHeight = remainingHeight;
+      }
 
-    ctx.drawImage(
-      bitmap,
-      0, sourceY, bitmap.width, drawHeight,
-      0, destY, finalWidth, drawHeight,
-    );
-    bitmap.close();
+      ctx.drawImage(
+        bitmap,
+        0, sourceY, bitmap.width, drawHeight,
+        0, destY, finalWidth, drawHeight,
+      );
+    } finally {
+      bitmap.close();
+    }
   }
 
   const blob = await offscreen.convertToBlob({ type: 'image/png' });
   return blobToDataUrl(blob);
-}
-
-async function dataUrlToBitmap(dataUrl: string): Promise<ImageBitmap> {
-  const base64 = dataUrl.split(',')[1];
-  if (!base64) throw new Error('无效的 data URL');
-  const binaryStr = atob(base64);
-  const bytes = new Uint8Array(binaryStr.length);
-  for (let i = 0; i < binaryStr.length; i++) {
-    bytes[i] = binaryStr.charCodeAt(i);
-  }
-  return createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }

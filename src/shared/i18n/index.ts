@@ -32,12 +32,23 @@ const resources = {
   },
 };
 
+// 语言类型
+type Language = 'zh-CN' | 'en-US';
+
+// 类型守卫：验证语言值是否有效
+function isValidLanguage(value: unknown): value is Language {
+  return value === 'zh-CN' || value === 'en-US';
+}
+
 // 获取保存的语言设置
 async function getSavedLanguage(): Promise<string> {
   try {
     const result = await chrome.storage.local.get('codeframe_settings');
     const settings = result?.codeframe_settings?.state?.settings;
-    return settings?.language || 'zh-CN';
+    if (settings && isValidLanguage(settings.language)) {
+      return settings.language;
+    }
+    return 'zh-CN';
   } catch {
     return 'zh-CN';
   }

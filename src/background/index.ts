@@ -4,14 +4,16 @@
 import { handleCaptureRequest, handleRegionCapture } from './handlers/capture';
 import { handleFullPageCapture } from './handlers/fullpage';
 import { handleDesktopCapture } from './handlers/desktop-capture';
+import { isRestrictedUrl } from './handlers/utils/image';
+import { logger } from '@shared/utils/logger';
 import type { CaptureRequestPayload, StartDelayedCapturePayload } from '@shared/messages';
 import type { CaptureResult, RegionRect } from '@shared/types';
 
-console.log('[CodeFrame] Service Worker started');
+logger.log('Service Worker started');
 
 // 监听扩展安装
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('[CodeFrame] Extension installed:', details.reason);
+  logger.log('Extension installed:', details.reason);
 
   // 创建右键菜单
   chrome.contextMenus.create({
@@ -25,7 +27,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.contextMenus.onClicked.addListener((info) => {
   if (info.menuItemId === 'codeframe-screenshot') {
     handleCaptureRequest().catch((err) => {
-      console.error('[CodeFrame] Context menu capture failed:', err);
+      logger.error('Context menu capture failed:', err);
     });
   }
 });
@@ -59,21 +61,6 @@ async function startRegionCapture(): Promise<void> {
   });
 }
 
-// 受限页面 URL 前缀
-const RESTRICTED_URL_PREFIXES = [
-  'chrome://',
-  'chrome-extension://',
-  'about:',
-  'devtools://',
-  'edge://',
-  'brave://',
-] as const;
-
-function isRestrictedUrl(url?: string): boolean {
-  if (!url) return true;
-  return RESTRICTED_URL_PREFIXES.some((prefix) => url.startsWith(prefix));
-}
-
 // 向 Content Script 发送 START_DELAYED_CAPTURE 消息
 async function startDelayedCapture(delay: number): Promise<CaptureResult> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -93,7 +80,7 @@ async function startDelayedCapture(delay: number): Promise<CaptureResult> {
 
 // 监听消息
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log('[CodeFrame] Message received:', message.type);
+  logger.log('Message received:', message.type);
 
   switch (message.type) {
     case 'CAPTURE_REQUEST': {
@@ -178,21 +165,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       // 倒计时结束，执行截图（不需要响应）
       handleCaptureRequest()
         .then((result) => {
-          console.log('[CodeFrame] Delayed capture completed:', result.success);
+          logger.log('Delayed capture completed:', result.success);
         })
         .catch((err: unknown) => {
-          console.error('[CodeFrame] Delayed capture failed:', err);
+          logger.error('Delayed capture failed:', err);
         });
       return false;
 
     case 'CANCEL_DELAYED_CAPTURE':
       // 用户取消延时截图
-      console.log('[CodeFrame] Delayed capture cancelled by user');
+      logger.log('Delayed capture cancelled by user');
       sendResponse({ success: true });
       return false;
 
     default:
-      console.log('[CodeFrame] Unknown message type:', message.type);
+      logger.log('Unknown message type:', message.type);
       break;
   }
 
@@ -203,23 +190,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'capture-visible') {
     handleCaptureRequest().catch((err) => {
-      console.error('[CodeFrame] Command capture failed:', err);
+      logger.error('Command capture failed:', err);
     });
   }
   if (command === 'capture-region') {
     startRegionCapture().catch((err) => {
-      console.error('[CodeFrame] Command region capture failed:', err);
+      logger.error('Command region capture failed:', err);
     });
   }
   if (command === 'capture-fullpage') {
     handleFullPageCapture().catch((err: unknown) => {
-      console.error('[CodeFrame] Command fullpage capture failed:', err);
+      logger.error('Command fullpage capture failed:', err);
     });
   }
   if (command === 'capture-desktop') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       handleDesktopCapture(tabs[0]).catch((err: unknown) => {
-        console.error('[CodeFrame] Command desktop capture failed:', err);
+        logger.error('Command desktop capture failed:', err);
       });
     });
   }

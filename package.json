@@ -2,7 +2,7 @@
   "name": "codeframe",
   "version": "1.0.0",
   "type": "module",
-  "description": "CodeFrame - 代码美化截图 Chrome 扩展",
+  "description": "Screenshot capture, annotation & code beautification for developers",
   "author": "xie392",
   "license": "MIT",
   "homepage": "https://github.com/xie392/CodeFrame#readme",

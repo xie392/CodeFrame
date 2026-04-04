@@ -31,15 +31,9 @@
 
 ## Screenshots
 
-<p align="center">
-  <img src="public/screenshots/popup.png" alt="Popup" width="280">
-  <img src="public/screenshots/editor.png" alt="Editor" width="280">
-  <img src="public/screenshots/code.png" alt="Code" width="280">
-</p>
-
-<p align="center">
-  <em>Popup</em> • <em>Image Editor</em> • <em>Code Beautifier</em>
-</p>
+| Popup | Image Editor | Code Beautifier |
+|:-----:|:------------:|:---------------:|
+| ![Popup](public/screenshots/popup.png) | ![Editor](public/screenshots/editor.png) | ![Code](public/screenshots/code.png) |
 
 ---
 

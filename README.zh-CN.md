@@ -31,15 +31,9 @@
 
 ## 预览
 
-<p align="center">
-  <img src="public/screenshots/popup.png" alt="Popup" width="280">
-  <img src="public/screenshots/editor.png" alt="Editor" width="280">
-  <img src="public/screenshots/code.png" alt="Code" width="280">
-</p>
-
-<p align="center">
-  <em>弹窗页面</em> • <em>图片编辑器</em> • <em>代码美化器</em>
-</p>
+| 弹窗页面 | 图片编辑器 | 代码美化器 |
+|:--------:|:----------:|:----------:|
+| ![弹窗页面](public/screenshots/popup.png) | ![图片编辑器](public/screenshots/editor.png) | ![代码美化器](public/screenshots/code.png) |
 
 ---
 

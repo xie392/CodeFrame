@@ -1,7 +1,7 @@
 // useEditorEvents Hook 测试
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useEditorEvents } from '../useEditorEvents';
 import type { ArrowShape, RectShape, TextShape, MosaicShape, CropArea } from '../../types';
 
@@ -92,8 +92,9 @@ describe('useEditorEvents', () => {
     vi.clearAllMocks();
     mockCanvasElement = document.createElement('div');
     mockAnnotationCanvas = document.createElement('canvas');
-    // Mock getContext
-    mockAnnotationCanvas.getContext = vi.fn(() => ({} as CanvasRenderingContext2D));
+    // Mock getContext - 使用 any 类型避免复杂的函数重载类型问题
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mockAnnotationCanvas as any).getContext = vi.fn(() => ({} as CanvasRenderingContext2D));
   });
 
   afterEach(() => {

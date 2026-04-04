@@ -1,6 +1,6 @@
 // useTextEditing Hook 测试
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTextEditing } from '../useTextEditing';
 import type { TextShape } from '../../types';
@@ -8,11 +8,8 @@ import type { TextShape } from '../../types';
 describe('useTextEditing', () => {
   const mockText: TextShape = {
     id: 'text-1',
-    type: 'text',
     x: 100,
     y: 100,
-    width: 200,
-    height: 30,
     text: 'Hello World',
     color: '#EF4444',
     fontSize: 24,
@@ -80,10 +77,14 @@ describe('useTextEditing', () => {
     // Mock focus 和 select 方法
     const mockFocus = vi.fn();
     const mockSelect = vi.fn();
-    result.current.textInputRef.current = {
-      focus: mockFocus,
-      select: mockSelect,
-    } as unknown as HTMLInputElement;
+    // 使用 Object.defineProperty 来 mock ref.current
+    Object.defineProperty(result.current.textInputRef, 'current', {
+      value: {
+        focus: mockFocus,
+        select: mockSelect,
+      } as unknown as HTMLInputElement,
+      writable: true,
+    });
 
     act(() => {
       result.current.startEditing(mockText);

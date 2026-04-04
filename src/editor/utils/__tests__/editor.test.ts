@@ -15,8 +15,6 @@ import {
 } from '../editor';
 
 describe('parseSource', () => {
-  const originalLocation = window.location;
-
   beforeEach(() => {
     // 保存原始 location
     vi.stubGlobal('window', {

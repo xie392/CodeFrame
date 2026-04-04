@@ -47,7 +47,7 @@ describe('useSyncedRef', () => {
 
   it('应该支持 null 和 undefined', () => {
     const { result, rerender } = renderHook(({ value }) => useSyncedRef(value), {
-      initialProps: { value: null },
+      initialProps: { value: null as string | null | undefined },
     });
 
     expect(result.current.current).toBe(null);

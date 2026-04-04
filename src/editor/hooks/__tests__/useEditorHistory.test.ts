@@ -1,11 +1,12 @@
 // useEditorHistory Hook 测试
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
   useEditorHistory,
   createEmptyEditorState,
 } from '../useEditorHistory';
+import type { EditorState } from '../../types';
 
 describe('useEditorHistory', () => {
   describe('createEmptyEditorState', () => {
@@ -55,13 +56,13 @@ describe('useEditorHistory', () => {
         result.current.pushState(state2);
       });
 
-      let previousState: typeof initialState | null = null;
+      let previousState: EditorState | null = null;
       act(() => {
         previousState = result.current.undo();
       });
 
       expect(previousState).not.toBeNull();
-      expect(previousState?.imageData).toBe('data:image/png;base64,test1');
+      expect((previousState as unknown as EditorState).imageData).toBe('data:image/png;base64,test1');
       expect(result.current.canRedo()).toBe(true);
     });
 
@@ -76,13 +77,13 @@ describe('useEditorHistory', () => {
         result.current.undo();
       });
 
-      let nextState: typeof initialState | null = null;
+      let nextState: EditorState | null = null;
       act(() => {
         nextState = result.current.redo();
       });
 
       expect(nextState).not.toBeNull();
-      expect(nextState?.imageData).toBe('data:image/png;base64,test2');
+      expect((nextState as unknown as EditorState).imageData).toBe('data:image/png;base64,test2');
       expect(result.current.canRedo()).toBe(false);
     });
 

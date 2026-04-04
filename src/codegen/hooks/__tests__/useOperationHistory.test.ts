@@ -10,9 +10,29 @@ import { useCodegenStore } from '../../stores/codegen-store';
 vi.mock('@shared/stores/settings-store', () => ({
   useSettingsStore: vi.fn((selector) => {
     const state = {
-      settings: { saveOperationHistory: true },
+      settings: {
+        defaultFormat: 'png' as const,
+        quality: '2x' as const,
+        language: 'zh-CN' as const,
+        saveOperationHistory: true,
+        delayTime: 3 as const,
+        historyRetention: 30 as const,
+        watermarkEnabled: false,
+        watermarkText: '',
+        watermarkOpacity: 0.5,
+        codeTheme: 'one-dark',
+        codeFontSize: 14,
+        codeShowLineNumbers: true,
+        shortcuts: { screenshot: 'Alt+Shift+S', codegen: 'Alt+Shift+C' },
+      },
       operationHistory: { codegen: null },
       updateOperationHistory: vi.fn(),
+      isLoading: false,
+      updateSettings: vi.fn(),
+      updateSettingsBatch: vi.fn(),
+      resetSettings: vi.fn(),
+      clearOperationHistory: vi.fn(),
+      setLoading: vi.fn(),
     };
     return selector(state);
   }),
@@ -53,9 +73,29 @@ describe('useOperationHistory', () => {
   it('应该在 saveOperationHistory 为 false 时不恢复历史', () => {
     vi.mocked(useSettingsStore).mockImplementation((selector) => {
       const state = {
-        settings: { saveOperationHistory: false },
-        operationHistory: { codegen: { theme: { selectedTheme: 'light' } } },
+        settings: {
+          defaultFormat: 'png' as const,
+          quality: '2x' as const,
+          language: 'zh-CN' as const,
+          saveOperationHistory: false,
+          delayTime: 3 as const,
+          historyRetention: 30 as const,
+          watermarkEnabled: false,
+          watermarkText: '',
+          watermarkOpacity: 0.5,
+          codeTheme: 'one-dark',
+          codeFontSize: 14,
+          codeShowLineNumbers: true,
+          shortcuts: { screenshot: 'Alt+Shift+S', codegen: 'Alt+Shift+C' },
+        },
+        operationHistory: { codegen: { selectedTheme: 'light' } },
         updateOperationHistory: vi.fn(),
+        isLoading: false,
+        updateSettings: vi.fn(),
+        updateSettingsBatch: vi.fn(),
+        resetSettings: vi.fn(),
+        clearOperationHistory: vi.fn(),
+        setLoading: vi.fn(),
       };
       return selector(state);
     });
@@ -70,9 +110,29 @@ describe('useOperationHistory', () => {
   it('应该在 operationHistory.codegen 为 null 时不恢复历史', () => {
     vi.mocked(useSettingsStore).mockImplementation((selector) => {
       const state = {
-        settings: { saveOperationHistory: true },
-        operationHistory: { codegen: null },
+        settings: {
+          defaultFormat: 'png' as const,
+          quality: '2x' as const,
+          language: 'zh-CN' as const,
+          saveOperationHistory: true,
+          delayTime: 3 as const,
+          historyRetention: 30 as const,
+          watermarkEnabled: false,
+          watermarkText: '',
+          watermarkOpacity: 0.5,
+          codeTheme: 'one-dark',
+          codeFontSize: 14,
+          codeShowLineNumbers: true,
+          shortcuts: { screenshot: 'Alt+Shift+S', codegen: 'Alt+Shift+C' },
+        },
+        operationHistory: { codegen: undefined },
         updateOperationHistory: vi.fn(),
+        isLoading: false,
+        updateSettings: vi.fn(),
+        updateSettingsBatch: vi.fn(),
+        resetSettings: vi.fn(),
+        clearOperationHistory: vi.fn(),
+        setLoading: vi.fn(),
       };
       return selector(state);
     });

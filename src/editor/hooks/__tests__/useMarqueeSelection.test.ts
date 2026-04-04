@@ -3,16 +3,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useMarqueeSelection } from '../useMarqueeSelection';
+import type { ArrowShape, RectShape, TextShape, MosaicShape } from '../../types';
 
 // Mock shape-helpers
 vi.mock('../../utils/shape-helpers', () => ({
   isArrowInRect: vi.fn((arrow, rect) => {
-    // 简单实现：检查箭头是否在框选范围内
+    // 简单实现：检查箭头中心点是否在框选范围内
     const minX = Math.min(rect.x1, rect.x2);
     const maxX = Math.max(rect.x1, rect.x2);
     const minY = Math.min(rect.y1, rect.y2);
     const maxY = Math.max(rect.y1, rect.y2);
-    return arrow.x >= minX && arrow.x <= maxX && arrow.y >= minY && arrow.y <= maxY;
+    const centerX = (arrow.startX + arrow.endX) / 2;
+    const centerY = (arrow.startY + arrow.endY) / 2;
+    return centerX >= minX && centerX <= maxX && centerY >= minY && centerY <= maxY;
   }),
   isRectInRect: vi.fn((rectItem, rect) => {
     const minX = Math.min(rect.x1, rect.x2);
@@ -46,10 +49,50 @@ describe('useMarqueeSelection', () => {
     renderShapes: vi.fn(),
   };
 
-  const mockArrow = { id: 'arrow-1', x: 50, y: 50 };
-  const mockRect = { id: 'rect-1', x: 100, y: 100 };
-  const mockText = { id: 'text-1', x: 150, y: 150 };
-  const mockMosaic = { id: 'mosaic-1', x: 200, y: 200 };
+  const mockArrow: ArrowShape = {
+    id: 'arrow-1',
+    startX: 50,
+    startY: 50,
+    endX: 100,
+    endY: 100,
+    color: '#EF4444',
+    strokeWidth: 2,
+    headSize: 12,
+    style: 'single',
+  };
+
+  const mockRect: RectShape = {
+    id: 'rect-1',
+    x: 100,
+    y: 100,
+    width: 50,
+    height: 50,
+    color: '#EF4444',
+    strokeWidth: 2,
+    fillOpacity: 0,
+    borderStyle: 'solid',
+  };
+
+  const mockText: TextShape = {
+    id: 'text-1',
+    x: 150,
+    y: 150,
+    text: 'test',
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: 'normal',
+    fontStyle: 'normal',
+  };
+
+  const mockMosaic: MosaicShape = {
+    id: 'mosaic-1',
+    x: 200,
+    y: 200,
+    width: 50,
+    height: 50,
+    blockSize: 10,
+    opacity: 100,
+  };
 
   const mockConfig = {
     arrowsRef: { current: [mockArrow] },

@@ -6,7 +6,7 @@ import { useShapeDragging } from '../useShapeDragging';
 
 // Mock applyDragResize
 vi.mock('../../utils/drag-resize', () => ({
-  applyDragResize: vi.fn((shape, type, dx, dy, orig, minSize, bounds) => {
+  applyDragResize: vi.fn((shape, type, dx, dy, orig) => {
     // 简单模拟：移动时调整位置
     if (type === 'move') {
       return { ...shape, x: orig.x + dx, y: orig.y + dy };

@@ -1,7 +1,7 @@
 // useExport Hook 测试
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useExport } from '../useExport';
 import { useSettingsStore } from '@shared/stores/settings-store';
 

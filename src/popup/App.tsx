@@ -14,10 +14,10 @@ import {
 } from 'lucide-react'
 import { createMessage } from '@shared/messages'
 import type { CaptureRequestPayload } from '@shared/messages'
+import { useSettingsStore } from '@shared/stores/settings-store'
+import { DEFAULT_SETTINGS } from '@shared/constants'
 
 /* eslint-disable no-console */
-
-const DEFAULT_DELAY = 3 // 默认延时秒数
 
 // 受限页面 URL 前缀
 const RESTRICTED_URL_PREFIXES = [
@@ -94,10 +94,10 @@ function handleFullPageCapture(): void {
   }
 }
 
-function handleDelayedCapture(): void {
+function handleDelayedCapture(delay: number): void {
   const message = createMessage<CaptureRequestPayload>('CAPTURE_REQUEST', {
     mode: 'delayed',
-    delay: DEFAULT_DELAY,
+    delay,
   });
   chrome.runtime.sendMessage(message, (response) => {
     if (chrome.runtime.lastError) {
@@ -210,6 +210,10 @@ const FeatureItem: React.FC<FeatureItemProps> = ({
 const App: React.FC = () => {
   const { t } = useTranslation('popup')
   const [isRestricted, setIsRestricted] = useState(false)
+  const { settings, isLoading } = useSettingsStore()
+
+  // 从设置中获取延迟时间，未加载时使用默认值
+  const delayTime = isLoading ? DEFAULT_SETTINGS.delayTime : settings.delayTime
 
   useEffect(() => {
     // 检测当前页面是否为受限页面
@@ -293,8 +297,8 @@ const App: React.FC = () => {
         <FeatureItem
           icon={<Timer size={18} style={{ color: 'var(--color-accent-orange)' }} />}
           label={t('feature.delayed')}
-          suffix={`${DEFAULT_DELAY}s`}
-          onClick={handleDelayedCapture}
+          suffix={`${delayTime}s`}
+          onClick={() => handleDelayedCapture(delayTime)}
           disabled={isRestricted}
         />
         <FeatureItem

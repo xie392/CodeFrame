@@ -4,6 +4,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useExport } from '../useExport';
 import { useSettingsStore } from '@shared/stores/settings-store';
+import type {
+  ArrowShape,
+  RectShape,
+  TextShape,
+  MosaicShape,
+  ImageFrameSettings,
+} from '../../types';
+import type { UserSettings } from '@shared/types';
 
 // Mock snapdom
 vi.mock('@zumer/snapdom', () => ({
@@ -16,12 +24,7 @@ vi.mock('@zumer/snapdom', () => ({
 
 // Mock settings store
 vi.mock('@shared/stores/settings-store', () => ({
-  useSettingsStore: vi.fn(() => ({
-    settings: {
-      defaultFormat: 'png',
-      quality: '2x',
-    },
-  })),
+  useSettingsStore: vi.fn(),
 }));
 
 // Mock clipboard API
@@ -50,7 +53,113 @@ vi.stubGlobal('requestAnimationFrame', (cb: () => void) => {
 });
 
 // Mock toDataURL
-HTMLCanvasElement.prototype.toDataURL = vi.fn().mockReturnValue('data:image/png;base64,mock');
+HTMLCanvasElement.prototype.toDataURL = vi
+  .fn()
+  .mockReturnValue('data:image/png;base64,mock');
+
+/**
+ * 创建完整类型的 ImageFrameSettings mock
+ */
+function createMockFrameSettings(): ImageFrameSettings {
+  return {
+    background: {
+      type: 'solid',
+      color: '#FFFFFF',
+      gradientColors: ['#FFFFFF', '#000000'],
+      gradientAngle: 0,
+    },
+    padding: {
+      top: 40,
+      right: 40,
+      bottom: 40,
+      left: 40,
+      linked: true,
+    },
+    borderRadius: {
+      unit: 'px',
+      topLeft: 0,
+      topRight: 0,
+      bottomRight: 0,
+      bottomLeft: 0,
+      linked: true,
+    },
+    imageRadius: {
+      unit: 'px',
+      topLeft: 0,
+      topRight: 0,
+      bottomRight: 0,
+      bottomLeft: 0,
+      linked: true,
+    },
+    shadow: {
+      enabled: false,
+      color: '#000000',
+      blur: 0,
+      offsetX: 0,
+      offsetY: 0,
+    },
+    imageShadow: {
+      enabled: false,
+      color: '#000000',
+      blur: 0,
+      offsetX: 0,
+      offsetY: 0,
+    },
+    aspectRatio: 'auto',
+    customAspectRatio: { width: 0, height: 0 },
+    windowControl: {
+      enabled: false,
+      style: 'macos',
+    },
+    watermark: {
+      enabled: false,
+      text: '',
+      position: 'bottom-right',
+      opacity: 50,
+      fontSize: 12,
+      imageUrl: null,
+      imageSize: 32,
+    },
+  };
+}
+
+/**
+ * 创建 RefObject mock
+ */
+function createRefMock<T>(initialValue: T): React.MutableRefObject<T> {
+  return { current: initialValue };
+}
+
+/**
+ * 创建部分 UserSettings mock
+ */
+function createMockSettings(
+  overrides?: Partial<UserSettings>
+): Partial<UserSettings> & Pick<UserSettings, 'defaultFormat' | 'quality'> {
+  return {
+    defaultFormat: 'png',
+    quality: '2x',
+    language: 'zh-CN',
+    saveOperationHistory: true,
+    delayTime: 3,
+    shortcuts: {
+      native: {
+        captureVisible: 'Ctrl+Shift+V',
+        captureRegion: 'Ctrl+Shift+R',
+        captureFullpage: 'Ctrl+Shift+F',
+        captureDesktop: 'Ctrl+Shift+D',
+      },
+      custom: {
+        captureVisible: '',
+        captureRegion: '',
+        captureFullpage: '',
+        captureDesktop: '',
+      },
+      enabled: true,
+    },
+    ...overrides,
+  };
+}
 
 describe('useExport', () => {
   const createMockContainer = () => {
@@ -62,28 +171,38 @@ describe('useExport', () => {
     return container;
   };
 
-  const mockExportContainerRef = { current: null as HTMLDivElement | null };
-  const mockImageDisplaySizeRef = { current: { width: 800, height: 600 } };
-  const mockArrowsRef = { current: [] };
-  const mockRectsRef = { current: [] };
-  const mockTextsRef = { current: [] };
-  const mockMosaicsRef = { current: [] };
+  // 使用正确类型的 mock 对象
+  let mockExportContainerRef: React.MutableRefObject<HTMLDivElement | null>;
+  const mockImageDisplaySizeRef = createRefMock<{ width: number; height: number }>({
+    width: 800,
+    height: 600,
+  });
+  const mockArrowsRef = createRefMock<ArrowShape[]>([]);
+  const mockRectsRef = createRefMock<RectShape[]>([]);
+  const mockTextsRef = createRefMock<TextShape[]>([]);
+  const mockMosaicsRef = createRefMock<MosaicShape[]>([]);
 
-  const mockFrameSettings = {
-    padding: {
-      top: 40,
-      right: 40,
-      bottom: 40,
-      left: 40,
-      linked: true,
-    },
-    aspectRatio: 'auto',
-    customAspectRatio: { width: 0, height: 0 },
-  };
+  const mockFrameSettings = createMockFrameSettings();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockExportContainerRef = createRefMock<HTMLDivElement | null>(null);
     mockExportContainerRef.current = createMockContainer();
+    // 设置默认 mock 返回值
+    vi.mocked(useSettingsStore).mockReturnValue({
+      settings: createMockSettings() as UserSettings,
+      operationHistory: {},
+      isLoading: false,
+      updateSettings: vi.fn(),
+      updateSettingsBatch: vi.fn(),
+      resetSettings: vi.fn(),
+      updateShortcut: vi.fn(),
+      toggleShortcutsEnabled: vi.fn(),
+      resetShortcuts: vi.fn(),
+      updateOperationHistory: vi.fn(),
+      clearOperationHistory: vi.fn(),
+      setLoading: vi.fn(),
+    });
   });
 
   afterEach(() => {
@@ -95,12 +214,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -114,12 +233,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -134,12 +253,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -155,12 +274,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -172,18 +291,18 @@ describe('useExport', () => {
   });
 
   it('handleExportImage 在没有容器时不应该执行', async () => {
-    const emptyRef = { current: null };
+    const emptyRef = createRefMock<HTMLDivElement | null>(null);
 
     const { result } = renderHook(() =>
       useExport({
         exportContainerRef: emptyRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -200,12 +319,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: null,
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -218,18 +337,18 @@ describe('useExport', () => {
   });
 
   it('handleCopyToClipboard 在没有容器时不应该执行', async () => {
-    const emptyRef = { current: null };
+    const emptyRef = createRefMock<HTMLDivElement | null>(null);
 
     const { result } = renderHook(() =>
       useExport({
         exportContainerRef: emptyRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -253,12 +372,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -281,12 +400,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -302,12 +421,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -321,22 +440,30 @@ describe('useExport', () => {
 
   it('handleExportImage 应该导出 WebP 格式', async () => {
     vi.mocked(useSettingsStore).mockReturnValue({
-      settings: {
-        defaultFormat: 'webp',
-        quality: '2x',
-      },
-    } as any);
+      settings: createMockSettings({ defaultFormat: 'webp' }) as UserSettings,
+      operationHistory: {},
+      isLoading: false,
+      updateSettings: vi.fn(),
+      updateSettingsBatch: vi.fn(),
+      resetSettings: vi.fn(),
+      updateShortcut: vi.fn(),
+      toggleShortcutsEnabled: vi.fn(),
+      resetShortcuts: vi.fn(),
+      updateOperationHistory: vi.fn(),
+      clearOperationHistory: vi.fn(),
+      setLoading: vi.fn(),
+    });
 
     const { result } = renderHook(() =>
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -350,22 +477,30 @@ describe('useExport', () => {
 
   it('handleExportImage 应该导出 JPG 格式', async () => {
     vi.mocked(useSettingsStore).mockReturnValue({
-      settings: {
-        defaultFormat: 'jpg',
-        quality: '2x',
-      },
-    } as any);
+      settings: createMockSettings({ defaultFormat: 'jpg' }) as UserSettings,
+      operationHistory: {},
+      isLoading: false,
+      updateSettings: vi.fn(),
+      updateSettingsBatch: vi.fn(),
+      resetSettings: vi.fn(),
+      updateShortcut: vi.fn(),
+      toggleShortcutsEnabled: vi.fn(),
+      resetShortcuts: vi.fn(),
+      updateOperationHistory: vi.fn(),
+      clearOperationHistory: vi.fn(),
+      setLoading: vi.fn(),
+    });
 
     const { result } = renderHook(() =>
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -384,7 +519,7 @@ describe('useExport', () => {
   it.skip('handleExportImage 应该处理导出错误', async () => {
     // 使用 mockImplementationOnce 确保错误被正确抛出
     const { snapdom: mockSnapdom } = await import('@zumer/snapdom');
-    vi.mocked(mockSnapdom.toPng).mockImplementationOnce(() => 
+    vi.mocked(mockSnapdom.toPng).mockImplementationOnce(() =>
       Promise.reject(new Error('Export failed'))
     );
 
@@ -394,12 +529,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 
@@ -422,12 +557,12 @@ describe('useExport', () => {
       useExport({
         exportContainerRef: mockExportContainerRef,
         imageData: 'data:image/png;base64,test',
-        frameSettings: mockFrameSettings as any,
+        frameSettings: mockFrameSettings,
         imageDisplaySizeRef: mockImageDisplaySizeRef,
-        arrowsRef: mockArrowsRef as any,
-        rectsRef: mockRectsRef as any,
-        textsRef: mockTextsRef as any,
-        mosaicsRef: mockMosaicsRef as any,
+        arrowsRef: mockArrowsRef,
+        rectsRef: mockRectsRef,
+        textsRef: mockTextsRef,
+        mosaicsRef: mockMosaicsRef,
       })
     );
 

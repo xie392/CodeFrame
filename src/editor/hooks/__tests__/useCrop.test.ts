@@ -4,11 +4,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCrop } from '../useCrop';
 
-// Mock canvas
-HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+// Mock canvas - 使用 vi.fn() 模拟 getContext
+// 这是测试环境必需的 mock，用于模拟 Canvas 2D 上下文
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(HTMLCanvasElement.prototype.getContext as any) = vi.fn(() => ({
   drawImage: vi.fn(),
-})) as any;
-HTMLCanvasElement.prototype.toDataURL = vi.fn().mockReturnValue('data:image/png;base64,cropped');
+}));
+HTMLCanvasElement.prototype.toDataURL = vi
+  .fn()
+  .mockReturnValue('data:image/png;base64,cropped');
 
 describe('useCrop', () => {
   const mockCallbacks = {
@@ -52,7 +56,7 @@ describe('useCrop', () => {
 
   it('应该返回 applyCrop 和 cancelCrop 函数', () => {
     const { result } = renderHook(() => useCrop(mockConfig, mockCallbacks));
-    
+
     expect(typeof result.current.applyCrop).toBe('function');
     expect(typeof result.current.cancelCrop).toBe('function');
   });
@@ -62,13 +66,15 @@ describe('useCrop', () => {
       ...mockConfig,
       cropAreaRef: { current: null },
     };
-    
-    const { result } = renderHook(() => useCrop(configWithoutCrop, mockCallbacks));
-    
+
+    const { result } = renderHook(() =>
+      useCrop(configWithoutCrop, mockCallbacks)
+    );
+
     act(() => {
       result.current.applyCrop();
     });
-    
+
     expect(mockCallbacks.pushHistory).not.toHaveBeenCalled();
   });
 
@@ -77,29 +83,32 @@ describe('useCrop', () => {
       ...mockConfig,
       imageData: null,
     };
-    
-    const { result } = renderHook(() => useCrop(configWithoutImage, mockCallbacks));
-    
+
+    const { result } = renderHook(() =>
+      useCrop(configWithoutImage, mockCallbacks)
+    );
+
     act(() => {
       result.current.applyCrop();
     });
-    
+
     expect(mockCallbacks.pushHistory).not.toHaveBeenCalled();
   });
 
   it('cancelCrop 应该重置裁剪状态', () => {
     const { result } = renderHook(() => useCrop(mockConfig, mockCallbacks));
-    
+
     act(() => {
       result.current.cancelCrop();
     });
-    
+
     expect(mockCallbacks.setCropArea).toHaveBeenCalledWith(null);
     expect(mockCallbacks.setActiveTool).toHaveBeenCalledWith('select');
   });
 
   it('applyCrop 应该处理图片加载成功', async () => {
     // Mock Image 构造函数
+    // 这是测试环境必需的 mock，用于模拟浏览器原生 Image 构造函数
     class MockImage {
       onload: (() => void) | null = null;
       src = '';
@@ -109,6 +118,7 @@ describe('useCrop', () => {
         }, 0);
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     window.Image = MockImage as any;
 
     const { result } = renderHook(() => useCrop(mockConfig, mockCallbacks));
@@ -119,7 +129,7 @@ describe('useCrop', () => {
 
     // 等待 setTimeout 完成
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
     expect(mockCallbacks.pushHistory).toHaveBeenCalled();
@@ -135,13 +145,15 @@ describe('useCrop', () => {
       ...mockConfig,
       imageNaturalSizeRef: { current: null },
     };
-    
-    const { result } = renderHook(() => useCrop(configWithoutNaturalSize, mockCallbacks));
-    
+
+    const { result } = renderHook(() =>
+      useCrop(configWithoutNaturalSize, mockCallbacks)
+    );
+
     act(() => {
       result.current.applyCrop();
     });
-    
+
     expect(mockCallbacks.pushHistory).not.toHaveBeenCalled();
   });
 
@@ -150,13 +162,15 @@ describe('useCrop', () => {
       ...mockConfig,
       imageDisplaySizeRef: { current: null },
     };
-    
-    const { result } = renderHook(() => useCrop(configWithoutDisplaySize, mockCallbacks));
-    
+
+    const { result } = renderHook(() =>
+      useCrop(configWithoutDisplaySize, mockCallbacks)
+    );
+
     act(() => {
       result.current.applyCrop();
     });
-    
+
     expect(mockCallbacks.pushHistory).not.toHaveBeenCalled();
   });
 });

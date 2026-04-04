@@ -92,9 +92,11 @@ describe('useEditorEvents', () => {
     vi.clearAllMocks();
     mockCanvasElement = document.createElement('div');
     mockAnnotationCanvas = document.createElement('canvas');
-    // Mock getContext - 使用 any 类型避免复杂的函数重载类型问题
+    // Mock getContext - 这是测试环境必需的 mock，用于模拟 Canvas 2D 上下文
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mockAnnotationCanvas as any).getContext = vi.fn(() => ({} as CanvasRenderingContext2D));
+    (mockAnnotationCanvas.getContext as any) = vi.fn(
+      () => ({}) as CanvasRenderingContext2D
+    );
   });
 
   afterEach(() => {

@@ -6,8 +6,6 @@
     "general": "通用设置",
     "history": "操作历史",
     "screenshot": "截图设置",
-    "watermark": "水印设置",
-    "codeBeautify": "代码美化",
     "shortcuts": "快捷键",
     "about": "关于"
   },
@@ -18,21 +16,13 @@
     "saveOperationHistory": "保存操作历史",
     "clearHistory": "清除历史记录",
     "delayTime": "延迟截图时间",
-    "historyRetention": "历史保留天数",
-    "watermarkEnabled": "默认添加水印",
-    "watermarkText": "水印文字",
-    "watermarkOpacity": "水印透明度",
-    "codeTheme": "代码主题",
-    "fontSize": "字体大小",
-    "showLineNumbers": "显示行号",
     "screenshot": "截图",
     "codeEditor": "代码编辑器"
   },
   "hint": {
     "saveOperationHistory": "开启后将记录您在编辑器、代码生成器的设置，下次使用时自动恢复",
     "confirmClearHistory": "确定要清除所有操作历史记录吗？清除后将恢复默认配置。",
-    "shortcutsConfig": "快捷键可在 Chrome 扩展管理页面中自定义配置",
-    "watermarkPlaceholder": "输入水印文字"
+    "shortcutsConfig": "快捷键可在 Chrome 扩展管理页面中自定义配置"
   },
   "action": {
     "clear": "清除"
@@ -50,12 +40,6 @@
     "3s": "3秒",
     "5s": "5秒",
     "10s": "10秒"
-  },
-  "retention": {
-    "7days": "7天",
-    "30days": "30天",
-    "90days": "90天",
-    "forever": "永久保存"
   },
   "about": {
     "version": "版本",

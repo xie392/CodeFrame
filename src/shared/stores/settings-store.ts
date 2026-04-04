@@ -33,13 +33,6 @@ const defaultSettings: UserSettings = {
   language: DEFAULT_SETTINGS.language as UserSettings['language'],
   saveOperationHistory: DEFAULT_SETTINGS.saveOperationHistory,
   delayTime: DEFAULT_SETTINGS.delayTime as UserSettings['delayTime'],
-  historyRetention: DEFAULT_SETTINGS.historyRetention as UserSettings['historyRetention'],
-  watermarkEnabled: DEFAULT_SETTINGS.watermarkEnabled,
-  watermarkText: DEFAULT_SETTINGS.watermarkText,
-  watermarkOpacity: DEFAULT_SETTINGS.watermarkOpacity,
-  codeTheme: DEFAULT_SETTINGS.codeTheme,
-  codeFontSize: DEFAULT_SETTINGS.codeFontSize,
-  codeShowLineNumbers: DEFAULT_SETTINGS.codeShowLineNumbers,
   shortcuts: {
     screenshot: 'Alt+Shift+S',
     codegen: 'Alt+Shift+C',

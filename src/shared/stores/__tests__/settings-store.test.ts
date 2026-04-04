@@ -15,13 +15,6 @@ describe('SettingsStore', () => {
           language: 'zh-CN',
           saveOperationHistory: true,
           delayTime: 3,
-          historyRetention: 30,
-          watermarkEnabled: false,
-          watermarkText: '',
-          watermarkOpacity: 50,
-          codeTheme: 'github-dark',
-          codeFontSize: 14,
-          codeShowLineNumbers: true,
           shortcuts: {
             screenshot: 'Alt+Shift+S',
             codegen: 'Alt+Shift+C',
@@ -48,19 +41,6 @@ describe('SettingsStore', () => {
       });
 
       expect(useSettingsStore.getState().settings.language).toBe('en-US');
-    });
-
-    it('应该能够更新水印设置', () => {
-      act(() => {
-        useSettingsStore.getState().updateSettings('watermarkEnabled', true);
-        useSettingsStore.getState().updateSettings('watermarkText', 'My Brand');
-        useSettingsStore.getState().updateSettings('watermarkOpacity', 30);
-      });
-
-      const state = useSettingsStore.getState();
-      expect(state.settings.watermarkEnabled).toBe(true);
-      expect(state.settings.watermarkText).toBe('My Brand');
-      expect(state.settings.watermarkOpacity).toBe(30);
     });
 
     it('应该能够批量更新设置', () => {

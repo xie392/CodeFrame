@@ -6,8 +6,6 @@
     "general": "General",
     "history": "History",
     "screenshot": "Screenshot",
-    "watermark": "Watermark",
-    "codeBeautify": "Code Beautify",
     "shortcuts": "Shortcuts",
     "about": "About"
   },
@@ -18,21 +16,13 @@
     "saveOperationHistory": "Save Operation History",
     "clearHistory": "Clear History",
     "delayTime": "Delay Screenshot Time",
-    "historyRetention": "History Retention",
-    "watermarkEnabled": "Add Watermark by Default",
-    "watermarkText": "Watermark Text",
-    "watermarkOpacity": "Watermark Opacity",
-    "codeTheme": "Code Theme",
-    "fontSize": "Font Size",
-    "showLineNumbers": "Show Line Numbers",
     "screenshot": "Screenshot",
     "codeEditor": "Code Editor"
   },
   "hint": {
     "saveOperationHistory": "When enabled, your settings in editor and code generator will be saved and restored next time",
     "confirmClearHistory": "Are you sure you want to clear all operation history? This will reset to default settings.",
-    "shortcutsConfig": "Shortcuts can be customized in Chrome extension management page",
-    "watermarkPlaceholder": "Enter watermark text"
+    "shortcutsConfig": "Shortcuts can be customized in Chrome extension management page"
   },
   "action": {
     "clear": "Clear"
@@ -50,12 +40,6 @@
     "3s": "3s",
     "5s": "5s",
     "10s": "10s"
-  },
-  "retention": {
-    "7days": "7 days",
-    "30days": "30 days",
-    "90days": "90 days",
-    "forever": "Forever"
   },
   "about": {
     "version": "Version",

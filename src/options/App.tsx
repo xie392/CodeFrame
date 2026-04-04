@@ -4,16 +4,12 @@ import { SettingsSection } from './components/SettingsSection';
 import { SettingItem } from './components/SettingItem';
 import { SettingSelect } from './components/SettingSelect';
 import { SettingSwitch } from './components/SettingSwitch';
-import { SettingInput } from './components/SettingInput';
-import { SettingSlider } from './components/SettingSlider';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { useSettingsStore } from '@shared/stores/settings-store';
 import {
   EXPORT_FORMAT_LABELS,
   QUALITY_LABELS,
   LANGUAGE_LABELS,
-  HISTORY_RETENTION_LABELS,
-  CODE_THEME_OPTIONS,
   EXTENSION_VERSION,
   EXTENSION_AUTHOR,
   REPOSITORY_URL,
@@ -24,11 +20,6 @@ import {
   Languages,
   History,
   Clock,
-  Database,
-  Droplet,
-  Type,
-  Code2,
-  Hash,
   Camera,
   Terminal,
   Trash2,
@@ -172,72 +163,11 @@ const OptionsPage: React.FC = () => {
                 onChange={(value) => updateSettings('delayTime', Number(value) as typeof settings.delayTime)}
               />
             </SettingItem>
-            <SettingItem icon={Database} label={t('label.historyRetention')}>
-              <SettingSelect
-                value={String(settings.historyRetention)}
-                options={Object.entries(HISTORY_RETENTION_LABELS).map(([value, label]) => ({
-                  value,
-                  label,
-                }))}
-                onChange={(value) => updateSettings('historyRetention', Number(value) as typeof settings.historyRetention)}
-              />
-            </SettingItem>
           </SettingsSection>
 
-          {/* [水印设置] */}
-          <SettingsSection title={t('section.watermark')}>
-            <SettingItem icon={Droplet} label={t('label.watermarkEnabled')}>
-              <SettingSwitch
-                checked={settings.watermarkEnabled}
-                onChange={(checked) => updateSettings('watermarkEnabled', checked)}
-              />
-            </SettingItem>
-            <SettingItem icon={Type} label={t('label.watermarkText')}>
-              <SettingInput
-                value={settings.watermarkText}
-                onChange={(value) => updateSettings('watermarkText', value)}
-                placeholder={t('hint.watermarkPlaceholder')}
-              />
-            </SettingItem>
-            <SettingItem icon={Droplet} label={t('label.watermarkOpacity')}>
-              <SettingSlider
-                value={settings.watermarkOpacity}
-                onChange={(value) => updateSettings('watermarkOpacity', value)}
-                min={0}
-                max={100}
-                unit="%"
-              />
-            </SettingItem>
-          </SettingsSection>
 
-          {/* [代码美化] */}
-          <SettingsSection title={t('section.codeBeautify')}>
-            <SettingItem icon={Code2} label={t('label.codeTheme')}>
-              <SettingSelect
-                value={settings.codeTheme}
-                options={CODE_THEME_OPTIONS.map((opt) => ({
-                  value: opt.value,
-                  label: opt.label,
-                }))}
-                onChange={(value) => updateSettings('codeTheme', value)}
-              />
-            </SettingItem>
-            <SettingItem icon={Type} label={t('label.fontSize')}>
-              <SettingSlider
-                value={settings.codeFontSize}
-                onChange={(value) => updateSettings('codeFontSize', value)}
-                min={12}
-                max={24}
-                unit="px"
-              />
-            </SettingItem>
-            <SettingItem icon={Hash} label={t('label.showLineNumbers')}>
-              <SettingSwitch
-                checked={settings.codeShowLineNumbers}
-                onChange={(checked) => updateSettings('codeShowLineNumbers', checked)}
-              />
-            </SettingItem>
-          </SettingsSection>
+
+
 
           {/* [快捷键] */}
           <SettingsSection title={t('section.shortcuts')}>

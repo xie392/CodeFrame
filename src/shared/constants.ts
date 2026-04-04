@@ -64,32 +64,6 @@ export const LANGUAGE_LABELS: Record<string, string> = {
   'en-US': 'English',
 };
 
-// 历史保留天数选项
-export const HISTORY_RETENTION_OPTIONS = {
-  DAYS_7: 7,
-  DAYS_30: 30,
-  DAYS_90: 90,
-  FOREVER: -1,
-} as const;
-
-// 历史保留天数中文标签
-export const HISTORY_RETENTION_LABELS: Record<string, string> = {
-  '7': '7天',
-  '30': '30天',
-  '90': '90天',
-  '-1': '永久保存',
-};
-
-// 代码主题选项
-export const CODE_THEME_OPTIONS = [
-  { value: 'github-dark', label: 'GitHub 暗色' },
-  { value: 'one-dark', label: 'One Dark' },
-  { value: 'nord', label: 'Nord' },
-  { value: 'dracula', label: 'Dracula' },
-  { value: 'monokai', label: 'Monokai' },
-  { value: 'solarized-dark', label: 'Solarized Dark' },
-] as const;
-
 // 默认设置
 export const DEFAULT_SETTINGS = {
   // 通用设置
@@ -102,17 +76,6 @@ export const DEFAULT_SETTINGS = {
   
   // 截图设置
   delayTime: 3,
-  historyRetention: 30,
-  
-  // 水印设置
-  watermarkEnabled: false,
-  watermarkText: '',
-  watermarkOpacity: 50,
-  
-  // 代码美化设置
-  codeTheme: 'github-dark',
-  codeFontSize: 14,
-  codeShowLineNumbers: true,
 } as const;
 
 // 存储键名

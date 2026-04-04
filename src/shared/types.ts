@@ -84,17 +84,6 @@ export interface UserSettings {
   
   // 截图设置
   delayTime: 3 | 5 | 10;
-  historyRetention: 7 | 30 | 90 | -1;
-  
-  // 水印设置
-  watermarkEnabled: boolean;
-  watermarkText: string;
-  watermarkOpacity: number;
-  
-  // 代码美化设置
-  codeTheme: string;
-  codeFontSize: number;
-  codeShowLineNumbers: boolean;
   
   // 快捷键配置
   shortcuts: ShortcutConfig;

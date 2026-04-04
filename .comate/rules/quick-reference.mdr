@@ -1,0 +1,114 @@
+---
+description: 通用规则
+globs: 
+    alwaysApply: true
+---
+
+# CodeFrame 快速参考卡
+
+> 核心规则速查，详细规范见 `project.mdr`
+
+---
+
+## 架构模式（强制）
+
+```
+模块结构:
+├── components/    # UI 组件（PascalCase 目录）
+├── hooks/         # 自定义 Hooks（单一职责）
+├── store/         # Zustand 状态管理
+├── utils/         # 工具函数
+├── types.ts       # 类型定义
+└── constants.ts   # 常量定义
+```
+
+---
+
+## 命名规范（强制）
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 变量/函数 | camelCase | `getUserById` |
+| 常量 | UPPER_SNAKE_CASE | `MAX_COUNT` |
+| 组件/类型 | PascalCase | `Button` |
+| 文件名 | kebab-case | `user-card.tsx` |
+| Hook | use前缀 | `useZoomPan` |
+| Store | -store后缀 | `editor-store.ts` |
+
+---
+
+## 代码约束（强制）
+
+- 单行长度 ≤ 80 字符
+- 圈复杂度 ≤ 5
+- 函数长度 ≤ 50 行
+- 禁止 `any` 类型
+- 纯函数优先
+- 早返回，避免嵌套
+
+---
+
+## 状态管理（强制）
+
+```typescript
+// Zustand 集中式 Store
+export const useStore = create<Store & Actions>((set, get) => ({
+  // 状态分组
+  theme: initialState,
+  
+  // 操作方法
+  setTheme: (theme) => set({ theme }),
+}));
+```
+
+---
+
+## OpenSpec 流程（强制）
+
+```
+新功能 → 创建提案 → 验证 → 批准 → 实施 → 归档
+
+命令:
+openspec-cn list              # 活动变更
+openspec-cn list --specs      # 现有功能
+openspec-cn validate <id>     # 验证
+```
+
+---
+
+## 变更ID命名
+
+```yaml
+add-: 新增功能
+update-: 更新功能
+remove-: 移除功能
+refactor-: 重构
+
+示例: add-dark-theme-support
+```
+
+---
+
+## 测试要求
+
+- 覆盖率 ≥ 60%
+- 位置: `模块/__tests__/*.test.ts`
+- 工具: Vitest
+
+---
+
+## 检查清单
+
+### 任务开始
+- [ ] 读 `openspec/project.md`
+- [ ] 读 `openspec/AGENTS.md`
+- [ ] `openspec-cn list`
+
+### 提交前
+- [ ] `pnpm lint`
+- [ ] `pnpm test`
+- [ ] `pnpm build`
+
+---
+
+*详细规范见 `.comate/rules/project.md`*

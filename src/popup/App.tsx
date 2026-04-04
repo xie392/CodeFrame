@@ -237,17 +237,11 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="flex items-center justify-between h-[47px] px-4 shrink-0">
         <div className="flex items-center gap-[10px]">
-          <div
-            className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center"
-            style={{ backgroundColor: 'var(--color-accent-orange)' }}
-          >
-            <span
-              className="text-[13px] font-bold leading-none"
-              style={{ color: 'var(--color-logo-text)' }}
-            >
-              CF
-            </span>
-          </div>
+          <img
+            src="/icons/icon48.png"
+            alt="CodeFrame"
+            className="w-[28px] h-[28px] rounded-[8px]"
+          />
           <span className="text-[16px] font-semibold leading-none text-foreground font-heading">
             {t('header.title')}
           </span>

@@ -165,14 +165,11 @@ const OptionsPage: React.FC = () => {
           }}
         >
           {/* Logo */}
-          <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center"
-            style={{ background: '#FF6B35' }}
-          >
-            <span className="text-[16px] font-bold font-heading text-[#0D0D0D]">
-              CF
-            </span>
-          </div>
+          <img
+            src="/icons/icon48.png"
+            alt="CodeFrame"
+            className="w-9 h-9 rounded-[10px]"
+          />
           {/* 标题 */}
           <span className="text-[20px] font-semibold font-heading text-[#1A1A1A]">
             {t('header.title')}

@@ -3,8 +3,23 @@
   "version": "1.0.0",
   "type": "module",
   "description": "CodeFrame - 代码美化截图 Chrome 扩展",
-  "author": "CodeFrame Team",
+  "author": "xie392",
   "license": "MIT",
+  "homepage": "https://github.com/xie392/CodeFrame#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xie392/CodeFrame.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xie392/CodeFrame/issues"
+  },
+  "keywords": [
+    "chrome-extension",
+    "code-screenshot",
+    "code-beautify",
+    "syntax-highlighting",
+    "developer-tools"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

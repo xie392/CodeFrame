@@ -1,0 +1,76 @@
+name: Bug Report
+description: 报告一个 Bug 问题
+title: '[Bug] '
+labels: ['bug']
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请清晰简洁地描述遇到的问题
+      placeholder: 描述发生了什么问题...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请提供复现该问题的步骤
+      placeholder: |
+        1. 打开 '...'
+        2. 点击 '...'
+        3. 滚动到 '...'
+        4. 看到错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 请描述您期望发生的行为
+      placeholder: 本来应该...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 请描述实际发生的行为
+      placeholder: 实际上...
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: 浏览器版本
+      description: 请提供浏览器类型和版本
+      placeholder: 'Chrome 120.0.6099.109'
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      description: 请提供操作系统信息
+      placeholder: 'macOS 14.2 / Windows 11 / Ubuntu 22.04'
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图
+      description: 如果适用，请添加截图帮助解释问题
+      placeholder: 拖拽图片到此处...
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 其他信息
+      description: 添加任何其他关于问题的信息
+      placeholder: 其他相关信息...

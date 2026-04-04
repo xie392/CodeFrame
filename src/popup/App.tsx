@@ -15,6 +15,7 @@ import {
 import { createMessage } from '@shared/messages'
 import type { CaptureRequestPayload } from '@shared/messages'
 import { useSettingsStore } from '@shared/stores/settings-store'
+import { useShortcutListener } from '@shared/hooks/useShortcutListener'
 import { DEFAULT_SETTINGS } from '@shared/constants'
 
 /* eslint-disable no-console */
@@ -222,6 +223,14 @@ const App: React.FC = () => {
       setIsRestricted(isRestrictedUrl(url))
     })
   }, [])
+
+  // 页面快捷键监听
+  useShortcutListener({
+    captureVisible: handleVisibleCapture,
+    captureRegion: handleRegionCapture,
+    captureFullpage: handleFullPageCapture,
+    captureDesktop: handleDesktopCapture,
+  })
 
   return (
     <div className="popup-container w-[363px] flex flex-col overflow-hidden">

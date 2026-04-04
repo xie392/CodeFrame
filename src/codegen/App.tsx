@@ -10,6 +10,7 @@ import { LeftPanel, CanvasArea } from './components';
 import { MAIN_CONTAINER_STYLE } from './constants';
 import { calcAutoHeight } from './utils/layout';
 import { DEFAULT_CODE } from './constants';
+import { useShortcutListener } from '@shared/hooks/useShortcutListener';
 
 const App: React.FC = () => {
   // Refs
@@ -21,6 +22,22 @@ const App: React.FC = () => {
 
   // 操作历史
   useOperationHistory();
+
+  // 页面快捷键监听（截图快捷键）
+  useShortcutListener({
+    captureVisible: () => {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'visible' } });
+    },
+    captureRegion: () => {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'region' } });
+    },
+    captureFullpage: () => {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'fullpage' } });
+    },
+    captureDesktop: () => {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'desktop' } });
+    },
+  });
 
   // 窗口状态
   const {

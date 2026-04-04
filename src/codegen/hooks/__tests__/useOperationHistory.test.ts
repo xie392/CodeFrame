@@ -5,28 +5,43 @@ import { renderHook } from '@testing-library/react';
 import { useOperationHistory } from '../useOperationHistory';
 import { useSettingsStore } from '@shared/stores/settings-store';
 import { useCodegenStore } from '../../stores/codegen-store';
+import { NATIVE_SHORTCUTS_DEFAULT, CUSTOM_SHORTCUTS_DEFAULT } from '@shared/constants';
+
+// 创建默认快捷键配置
+const defaultShortcuts = {
+  native: { ...NATIVE_SHORTCUTS_DEFAULT },
+  custom: { ...CUSTOM_SHORTCUTS_DEFAULT },
+  enabled: true,
+};
+
+// 创建默认 store state
+const createDefaultState = (overrides = {}) => ({
+  settings: {
+    defaultFormat: 'png' as const,
+    quality: '2x' as const,
+    language: 'zh-CN' as const,
+    saveOperationHistory: true,
+    delayTime: 3 as const,
+    shortcuts: defaultShortcuts,
+  },
+  operationHistory: {},
+  updateOperationHistory: vi.fn(),
+  isLoading: false,
+  updateSettings: vi.fn(),
+  updateSettingsBatch: vi.fn(),
+  resetSettings: vi.fn(),
+  clearOperationHistory: vi.fn(),
+  setLoading: vi.fn(),
+  updateShortcut: vi.fn(),
+  toggleShortcutsEnabled: vi.fn(),
+  resetShortcuts: vi.fn(),
+  ...overrides,
+});
 
 // Mock stores
 vi.mock('@shared/stores/settings-store', () => ({
   useSettingsStore: vi.fn((selector) => {
-    const state = {
-      settings: {
-        defaultFormat: 'png' as const,
-        quality: '2x' as const,
-        language: 'zh-CN' as const,
-        saveOperationHistory: true,
-        delayTime: 3 as const,
-        shortcuts: { screenshot: 'Alt+Shift+S', codegen: 'Alt+Shift+C' },
-      },
-      operationHistory: { codegen: null },
-      updateOperationHistory: vi.fn(),
-      isLoading: false,
-      updateSettings: vi.fn(),
-      updateSettingsBatch: vi.fn(),
-      resetSettings: vi.fn(),
-      clearOperationHistory: vi.fn(),
-      setLoading: vi.fn(),
-    };
+    const state = createDefaultState();
     return selector(state);
   }),
 }));
@@ -65,24 +80,17 @@ describe('useOperationHistory', () => {
 
   it('应该在 saveOperationHistory 为 false 时不恢复历史', () => {
     vi.mocked(useSettingsStore).mockImplementation((selector) => {
-      const state = {
+      const state = createDefaultState({
         settings: {
           defaultFormat: 'png' as const,
           quality: '2x' as const,
           language: 'zh-CN' as const,
           saveOperationHistory: false,
           delayTime: 3 as const,
-          shortcuts: { screenshot: 'Alt+Shift+S', codegen: 'Alt+Shift+C' },
+          shortcuts: defaultShortcuts,
         },
         operationHistory: { codegen: { selectedTheme: 'light' } },
-        updateOperationHistory: vi.fn(),
-        isLoading: false,
-        updateSettings: vi.fn(),
-        updateSettingsBatch: vi.fn(),
-        resetSettings: vi.fn(),
-        clearOperationHistory: vi.fn(),
-        setLoading: vi.fn(),
-      };
+      });
       return selector(state);
     });
 
@@ -95,24 +103,9 @@ describe('useOperationHistory', () => {
 
   it('应该在 operationHistory.codegen 为 null 时不恢复历史', () => {
     vi.mocked(useSettingsStore).mockImplementation((selector) => {
-      const state = {
-        settings: {
-          defaultFormat: 'png' as const,
-          quality: '2x' as const,
-          language: 'zh-CN' as const,
-          saveOperationHistory: true,
-          delayTime: 3 as const,
-          shortcuts: { screenshot: 'Alt+Shift+S', codegen: 'Alt+Shift+C' },
-        },
-        operationHistory: { codegen: undefined },
-        updateOperationHistory: vi.fn(),
-        isLoading: false,
-        updateSettings: vi.fn(),
-        updateSettingsBatch: vi.fn(),
-        resetSettings: vi.fn(),
-        clearOperationHistory: vi.fn(),
-        setLoading: vi.fn(),
-      };
+      const state = createDefaultState({
+        operationHistory: {}, // 空对象表示没有 codegen 历史
+      });
       return selector(state);
     });
 

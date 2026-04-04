@@ -17,15 +17,27 @@
     "clearHistory": "清除历史记录",
     "delayTime": "延迟截图时间",
     "screenshot": "截图",
-    "codeEditor": "代码编辑器"
+    "codeEditor": "代码编辑器",
+    "enablePageShortcuts": "启用页面快捷键",
+    "captureVisible": "可视区域截图",
+    "captureRegion": "区域选择截图",
+    "captureFullpage": "整页截图",
+    "captureDesktop": "桌面截图",
+    "nativeShortcuts": "全局快捷键",
+    "pageShortcuts": "页面快捷键"
   },
   "hint": {
     "saveOperationHistory": "开启后将记录您在编辑器、代码生成器的设置，下次使用时自动恢复",
     "confirmClearHistory": "确定要清除所有操作历史记录吗？清除后将恢复默认配置。",
-    "shortcutsConfig": "快捷键可在 Chrome 扩展管理页面中自定义配置"
+    "nativeShortcutsConfig": "全局快捷键可在任意页面使用，需在 Chrome 扩展管理页面修改",
+    "pageShortcutsConfig": "页面快捷键仅在 Popup、编辑器、代码生成器页面生效",
+    "noShortcut": "未设置"
   },
   "action": {
-    "clear": "清除"
+    "clear": "清除",
+    "goToConfig": "前往配置",
+    "resetAll": "恢复默认",
+    "recording": "按下快捷键..."
   },
   "quality": {
     "standard": "标准",
@@ -45,5 +57,10 @@
     "version": "版本",
     "author": "作者",
     "repository": "仓库"
+  },
+  "conflict": {
+    "system": "该快捷键与系统快捷键冲突",
+    "custom": "该快捷键已被「{{command}}」使用",
+    "suggestion": "建议: {{suggestions}}"
   }
 }

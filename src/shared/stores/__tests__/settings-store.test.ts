@@ -3,6 +3,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import { useSettingsStore } from '../settings-store';
+import { NATIVE_SHORTCUTS_DEFAULT, CUSTOM_SHORTCUTS_DEFAULT } from '@shared/constants';
+
+// 创建默认快捷键配置
+const defaultShortcuts = {
+  native: { ...NATIVE_SHORTCUTS_DEFAULT },
+  custom: { ...CUSTOM_SHORTCUTS_DEFAULT },
+  enabled: true,
+};
 
 describe('SettingsStore', () => {
   beforeEach(() => {
@@ -15,10 +23,7 @@ describe('SettingsStore', () => {
           language: 'zh-CN',
           saveOperationHistory: true,
           delayTime: 3,
-          shortcuts: {
-            screenshot: 'Alt+Shift+S',
-            codegen: 'Alt+Shift+C',
-          },
+          shortcuts: defaultShortcuts,
         },
         operationHistory: {},
         isLoading: false,

@@ -1,7 +1,16 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { STORAGE_KEYS, DEFAULT_SETTINGS } from '@shared/constants';
-import type { UserSettings, OperationHistory } from '@shared/types';
+import {
+  STORAGE_KEYS,
+  DEFAULT_SETTINGS,
+  NATIVE_SHORTCUTS_DEFAULT,
+  CUSTOM_SHORTCUTS_DEFAULT,
+} from '@shared/constants';
+import type {
+  UserSettings,
+  OperationHistory,
+  ShortcutCommand,
+} from '@shared/types';
 
 interface SettingsState {
   settings: UserSettings;
@@ -15,6 +24,11 @@ interface SettingsState {
   ) => void;
   updateSettingsBatch: (updates: Partial<UserSettings>) => void;
   resetSettings: () => void;
+  
+  // 快捷键操作
+  updateShortcut: (command: ShortcutCommand, shortcut: string) => void;
+  toggleShortcutsEnabled: (enabled: boolean) => void;
+  resetShortcuts: () => void;
   
   // 操作历史
   updateOperationHistory: <K extends keyof OperationHistory>(
@@ -34,8 +48,9 @@ const defaultSettings: UserSettings = {
   saveOperationHistory: DEFAULT_SETTINGS.saveOperationHistory,
   delayTime: DEFAULT_SETTINGS.delayTime as UserSettings['delayTime'],
   shortcuts: {
-    screenshot: 'Alt+Shift+S',
-    codegen: 'Alt+Shift+C',
+    native: { ...NATIVE_SHORTCUTS_DEFAULT },
+    custom: { ...CUSTOM_SHORTCUTS_DEFAULT },
+    enabled: true,
   },
 };
 
@@ -102,6 +117,35 @@ const createStorageAdapter = () => {
 
 const storageAdapter = createStorageAdapter();
 
+/**
+ * 检测并迁移旧版快捷键配置
+ * 旧格式: { screenshot: string, codegen: string }
+ * 新格式: { native: {...}, custom: {...}, enabled: boolean }
+ */
+function migrateShortcutConfig(
+  shortcuts: unknown
+): UserSettings['shortcuts'] {
+  // 如果已经是新格式，直接返回
+  if (
+    shortcuts &&
+    typeof shortcuts === 'object' &&
+    'native' in shortcuts &&
+    'custom' in shortcuts &&
+    'enabled' in shortcuts
+  ) {
+    return shortcuts as UserSettings['shortcuts'];
+  }
+
+  // 如果是旧格式，迁移到新格式
+  // eslint-disable-next-line no-console
+  console.log('[CodeFrame] 迁移快捷键配置到新格式');
+  return {
+    native: { ...NATIVE_SHORTCUTS_DEFAULT },
+    custom: { ...CUSTOM_SHORTCUTS_DEFAULT },
+    enabled: true,
+  };
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -122,6 +166,42 @@ export const useSettingsStore = create<SettingsState>()(
       resetSettings: () =>
         set({ settings: defaultSettings }),
       
+      updateShortcut: (command, shortcut) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            shortcuts: {
+              ...state.settings.shortcuts,
+              custom: {
+                ...state.settings.shortcuts.custom,
+                [command]: shortcut,
+              },
+            },
+          },
+        })),
+      
+      toggleShortcutsEnabled: (enabled) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            shortcuts: {
+              ...state.settings.shortcuts,
+              enabled,
+            },
+          },
+        })),
+      
+      resetShortcuts: () =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            shortcuts: {
+              ...state.settings.shortcuts,
+              custom: { ...CUSTOM_SHORTCUTS_DEFAULT },
+            },
+          },
+        })),
+      
       updateOperationHistory: (key, value) =>
         set((state) => ({
           operationHistory: { ...state.operationHistory, [key]: value },
@@ -141,6 +221,10 @@ export const useSettingsStore = create<SettingsState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
+          // 迁移快捷键配置
+          state.settings.shortcuts = migrateShortcutConfig(
+            state.settings.shortcuts
+          );
           state.setLoading(false);
         }
       },

@@ -194,10 +194,21 @@ export interface OperationHistory {
   };
 }
 
+// 快捷键命令类型
+export type ShortcutCommand =
+  | 'captureVisible'
+  | 'captureRegion'
+  | 'captureFullpage'
+  | 'captureDesktop';
+
 // 快捷键配置
 export interface ShortcutConfig {
-  screenshot: string;
-  codegen: string;
+  // 原生命令快捷键（只读，展示用）
+  native: Record<ShortcutCommand, string>;
+  // 自定义快捷键（可配置）
+  custom: Record<ShortcutCommand, string>;
+  // 是否启用自定义快捷键
+  enabled: boolean;
 }
 
 // 标注类型

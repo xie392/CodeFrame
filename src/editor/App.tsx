@@ -5,6 +5,7 @@
 
 import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSettingsStore } from '@shared/stores/settings-store';
+import { useShortcutListener } from '@shared/hooks/useShortcutListener';
 
 // 导入类型
 import type { EditorState, ArrowShape, RectShape, TextShape, MosaicShape, ToolId } from './types';
@@ -270,6 +271,28 @@ export const App: React.FC = () => {
       pushHistory,
     }
   );
+
+  // ---------------------------------------------------------------------------
+  // 页面快捷键监听（截图快捷键）
+  // ---------------------------------------------------------------------------
+  useShortcutListener({
+    captureVisible: () => {
+      // 触发可视区域截图
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'visible' } });
+    },
+    captureRegion: () => {
+      // 触发区域截图
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'region' } });
+    },
+    captureFullpage: () => {
+      // 触发整页截图
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'fullpage' } });
+    },
+    captureDesktop: () => {
+      // 触发桌面截图
+      chrome.runtime.sendMessage({ type: 'CAPTURE_REQUEST', payload: { mode: 'desktop' } });
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // 事件处理 Hook

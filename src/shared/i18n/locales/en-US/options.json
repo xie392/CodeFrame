@@ -17,15 +17,27 @@
     "clearHistory": "Clear History",
     "delayTime": "Delay Screenshot Time",
     "screenshot": "Screenshot",
-    "codeEditor": "Code Editor"
+    "codeEditor": "Code Editor",
+    "enablePageShortcuts": "Enable Page Shortcuts",
+    "captureVisible": "Capture Visible",
+    "captureRegion": "Capture Region",
+    "captureFullpage": "Capture Full Page",
+    "captureDesktop": "Capture Desktop",
+    "nativeShortcuts": "Global Shortcuts",
+    "pageShortcuts": "Page Shortcuts"
   },
   "hint": {
     "saveOperationHistory": "When enabled, your settings in editor and code generator will be saved and restored next time",
     "confirmClearHistory": "Are you sure you want to clear all operation history? This will reset to default settings.",
-    "shortcutsConfig": "Shortcuts can be customized in Chrome extension management page"
+    "nativeShortcutsConfig": "Global shortcuts work on any page, configure in Chrome extension management page",
+    "pageShortcutsConfig": "Page shortcuts only work in Popup, Editor and Code Generator pages",
+    "noShortcut": "Not set"
   },
   "action": {
-    "clear": "Clear"
+    "clear": "Clear",
+    "goToConfig": "Configure",
+    "resetAll": "Reset All",
+    "recording": "Press shortcut..."
   },
   "quality": {
     "standard": "Standard",
@@ -45,5 +57,10 @@
     "version": "Version",
     "author": "Author",
     "repository": "Repository"
+  },
+  "conflict": {
+    "system": "This shortcut conflicts with system shortcut",
+    "custom": "This shortcut is already used by \"{{command}}\"",
+    "suggestion": "Suggestion: {{suggestions}}"
   }
 }

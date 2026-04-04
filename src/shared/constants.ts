@@ -128,3 +128,101 @@ export const SHORTCUTS = {
   SCREENSHOT: { key: 's', modifiers: ['Alt', 'Shift'] },
   CODEGEN: { key: 'c', modifiers: ['Alt', 'Shift'] },
 } as const;
+
+// 原生快捷键默认值（Chrome 扩展命令）
+export const NATIVE_SHORTCUTS_DEFAULT = {
+  captureVisible: 'Alt+Shift+S',
+  captureRegion: 'Alt+Shift+R',
+  captureFullpage: 'Alt+Shift+F',
+  captureDesktop: 'Alt+Shift+D',
+} as const;
+
+// 自定义快捷键默认值
+export const CUSTOM_SHORTCUTS_DEFAULT = {
+  captureVisible: 'Alt+S',
+  captureRegion: 'Alt+R',
+  captureFullpage: 'Alt+F',
+  captureDesktop: 'Alt+D',
+} as const;
+
+// 快捷键命令标签
+export const SHORTCUT_COMMAND_LABELS: Record<string, string> = {
+  captureVisible: '可视区域截图',
+  captureRegion: '区域选择截图',
+  captureFullpage: '整页截图',
+  captureDesktop: '桌面截图',
+};
+
+// 系统保留快捷键（不可设置）
+export const SYSTEM_RESERVED_SHORTCUTS = [
+  // 标签页管理
+  'Ctrl+T',
+  'Ctrl+W',
+  'Ctrl+Shift+T',
+  'Ctrl+Tab',
+  'Ctrl+Shift+Tab',
+  'Ctrl+1',
+  'Ctrl+2',
+  'Ctrl+3',
+  'Ctrl+4',
+  'Ctrl+5',
+  'Ctrl+6',
+  'Ctrl+7',
+  'Ctrl+8',
+  'Ctrl+9',
+  // 页面导航
+  'Ctrl+L',
+  'Ctrl+D',
+  'Ctrl+H',
+  'Ctrl+J',
+  'Ctrl+K',
+  'F6',
+  'Alt+Left',
+  'Alt+Right',
+  'Alt+Home',
+  // 刷新和停止
+  'F5',
+  'Ctrl+R',
+  'Ctrl+Shift+R',
+  'Escape',
+  // 开发工具
+  'F12',
+  'Ctrl+Shift+I',
+  'Ctrl+Shift+J',
+  'Ctrl+Shift+C',
+  'Ctrl+U',
+  // 缩放
+  'Ctrl+Plus',
+  'Ctrl+Minus',
+  'Ctrl+0',
+  // 全屏
+  'F11',
+  // 查找
+  'Ctrl+F',
+  'Ctrl+G',
+  'Ctrl+Shift+G',
+  // 打印
+  'Ctrl+P',
+  // 保存
+  'Ctrl+S',
+  // 剪贴板
+  'Ctrl+C',
+  'Ctrl+X',
+  'Ctrl+V',
+  'Ctrl+A',
+  'Ctrl+Z',
+  'Ctrl+Y',
+  'Ctrl+Shift+Z',
+  // 其他
+  'Ctrl+Shift+Delete',
+  'Ctrl+Shift+M',
+  'Alt+F4',
+] as const;
+
+// macOS 特殊键映射
+export const MAC_KEY_MAPPING: Record<string, string> = {
+  Ctrl: '⌘',
+  Alt: '⌥',
+  Shift: '⇧',
+  Meta: '⌘',
+};

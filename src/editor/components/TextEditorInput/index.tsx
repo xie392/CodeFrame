@@ -16,7 +16,7 @@ export interface TextEditorInputProps {
   value: string;
   scale: number;
   offset: { x: number; y: number };
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;

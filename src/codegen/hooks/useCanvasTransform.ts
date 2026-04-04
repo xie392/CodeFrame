@@ -5,16 +5,16 @@
 
 import { useCallback } from 'react';
 import { useCodegenStore } from '../stores/codegen-store';
-import { useCurrent } from './useCurrent';
+import { useCurrentRef } from './useCurrent';
 import { MIN_SCALE, MAX_SCALE, ZOOM_FACTOR_OUT, ZOOM_FACTOR_IN } from '../constants';
 
 export function useCanvasTransform() {
   const { canvas, setCanvas } = useCodegenStore();
   const { scale, offset } = canvas;
 
-  // 使用 useCurrent 保持事件处理器中获取最新值
-  const scaleRef = useCurrent(scale);
-  const offsetRef = useCurrent(offset);
+  // 使用 useCurrentRef 保持事件处理器中获取最新值
+  const scaleRef = useCurrentRef(scale);
+  const offsetRef = useCurrentRef(offset);
 
   /**
    * 在指定锚点进行缩放

@@ -20,8 +20,8 @@ interface CodeWindowProps {
   onEnterEdit: () => void;
   onExitEdit: () => void;
   bindResize: () => Record<string, unknown>;
-  exportRef?: React.RefObject<HTMLDivElement>;
-  codeWindowRef?: React.RefObject<HTMLDivElement>;
+  exportRef?: React.RefObject<HTMLDivElement | null>;
+  codeWindowRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const CodeWindow: React.FC<CodeWindowProps> = ({

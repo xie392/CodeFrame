@@ -20,6 +20,17 @@ const resources = {
 // 语言类型
 type Language = 'zh-CN' | 'en-US';
 
+// 存储结构类型
+interface StoredSettings {
+  codeframe_settings?: {
+    state?: {
+      settings?: {
+        language?: string;
+      };
+    };
+  };
+}
+
 // 类型守卫：验证语言值是否有效
 function isValidLanguage(value: unknown): value is Language {
   return value === 'zh-CN' || value === 'en-US';
@@ -28,7 +39,7 @@ function isValidLanguage(value: unknown): value is Language {
 // 获取保存的语言设置
 async function getSavedLanguage(): Promise<string> {
   try {
-    const result = await chrome.storage.local.get('codeframe_settings');
+    const result = await chrome.storage.local.get('codeframe_settings') as StoredSettings;
     const settings = result?.codeframe_settings?.state?.settings;
     if (settings && isValidLanguage(settings.language)) {
       return settings.language;

@@ -21,7 +21,7 @@ export interface FrameContainerProps {
   frameSettings: ImageFrameSettings;
   onImageSizeChange: (w: number, h: number) => void;
   onNaturalSizeChange: (w: number, h: number) => void;
-  exportContainerRef: React.RefObject<HTMLDivElement>;
+  exportContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**

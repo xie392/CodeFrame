@@ -12,7 +12,7 @@ import type { ExportFormat } from '@shared/types';
 import { COPIED_FEEDBACK_DURATION_MS } from '../constants';
 
 interface UseExportOptions {
-  exportRef: React.RefObject<HTMLDivElement>;
+  exportRef: React.RefObject<HTMLDivElement | null>;
   isEditingRef: React.MutableRefObject<boolean>;
   exitEditRef: React.MutableRefObject<() => void>;
 }

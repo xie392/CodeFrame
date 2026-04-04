@@ -19,7 +19,7 @@ import { isValidCaptureResult, isValidImageData } from '../utils/validation';
 interface EditorInitConfig {
   source: string | null;
   imageData: string | null;
-  initialized: React.MutableRefObject<boolean>;
+  initializedRef: React.MutableRefObject<boolean>;
 }
 
 /**
@@ -51,12 +51,12 @@ export function useEditorInit(
   config: EditorInitConfig,
   callbacks: EditorInitCallbacks
 ): void {
-  const { source, imageData, initialized } = config;
+  const { source, imageData, initializedRef } = config;
 
   // 初始化
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
     const src = parseSource();
     callbacks.setSource(src);
@@ -83,7 +83,7 @@ export function useEditorInit(
         }
       });
     }
-  }, [initialized, callbacks]);
+  }, [initializedRef, callbacks]);
 
   // 粘贴监听
   useEffect(() => {

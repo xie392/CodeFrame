@@ -30,7 +30,7 @@ vi.mock('@shared/stores/settings-store', () => ({
 }));
 
 describe('useExport', () => {
-  let mockExportRef: React.RefObject<HTMLDivElement>;
+  let mockExportRef: React.RefObject<HTMLDivElement | null>;
   let mockIsEditingRef: React.MutableRefObject<boolean>;
   let mockExitEditRef: React.MutableRefObject<() => void>;
 

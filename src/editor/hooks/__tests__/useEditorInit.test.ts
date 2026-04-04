@@ -32,12 +32,12 @@ describe('useEditorInit', () => {
   const mockConfig = {
     source: null,
     imageData: null,
-    initialized: { current: false },
+    initializedRef: { current: false },
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockConfig.initialized.current = false;
+    mockConfig.initializedRef.current = false;
   });
 
   it('应该在初始化时调用 setSource', () => {
@@ -182,7 +182,7 @@ describe('useEditorInit', () => {
   it('应该防止重复初始化', () => {
     const config = {
       ...mockConfig,
-      initialized: { current: true }, // 已初始化
+      initializedRef: { current: true }, // 已初始化
     };
 
     renderHook(() => useEditorInit(config, mockCallbacks));

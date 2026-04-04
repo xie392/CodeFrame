@@ -1,26 +1,26 @@
-// useCurrent Hook 测试
+// useCurrentRef Hook 测试
 
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useCurrent } from '../useCurrent';
+import { useCurrentRef } from '../useCurrent';
 
-describe('useCurrent', () => {
+describe('useCurrentRef', () => {
   it('应该返回包含当前值的 ref', () => {
-    const { result } = renderHook(() => useCurrent('test-value'));
+    const { result } = renderHook(() => useCurrentRef('test-value'));
 
     expect(result.current).toBeDefined();
     expect(result.current.current).toBe('test-value');
   });
 
   it('应该返回包含数字值的 ref', () => {
-    const { result } = renderHook(() => useCurrent(42));
+    const { result } = renderHook(() => useCurrentRef(42));
 
     expect(result.current.current).toBe(42);
   });
 
   it('应该返回包含对象值的 ref', () => {
     const obj = { x: 100, y: 200 };
-    const { result } = renderHook(() => useCurrent(obj));
+    const { result } = renderHook(() => useCurrentRef(obj));
 
     expect(result.current.current).toBe(obj);
     expect(result.current.current.x).toBe(100);
@@ -28,7 +28,7 @@ describe('useCurrent', () => {
   });
 
   it('应该在值变化时更新 ref.current', () => {
-    const { result, rerender } = renderHook(({ value }) => useCurrent(value), {
+    const { result, rerender } = renderHook(({ value }) => useCurrentRef(value), {
       initialProps: { value: 'initial' },
     });
 
@@ -40,7 +40,7 @@ describe('useCurrent', () => {
   });
 
   it('应该返回稳定的 ref 对象', () => {
-    const { result, rerender } = renderHook(({ value }) => useCurrent(value), {
+    const { result, rerender } = renderHook(({ value }) => useCurrentRef(value), {
       initialProps: { value: 'initial' },
     });
 
@@ -52,13 +52,13 @@ describe('useCurrent', () => {
   });
 
   it('应该处理 null 值', () => {
-    const { result } = renderHook(() => useCurrent(null));
+    const { result } = renderHook(() => useCurrentRef(null));
 
     expect(result.current.current).toBeNull();
   });
 
   it('应该处理 undefined 值', () => {
-    const { result } = renderHook(() => useCurrent(undefined));
+    const { result } = renderHook(() => useCurrentRef(undefined));
 
     expect(result.current.current).toBeUndefined();
   });

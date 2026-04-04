@@ -6,7 +6,7 @@
 import { useCallback, useEffect } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { useCodegenStore } from '../stores/codegen-store';
-import { useCurrent } from './useCurrent';
+import { useCurrentRef } from './useCurrent';
 import { calcAutoHeight } from '../utils/layout';
 import { MIN_WIN_W, MAX_WIN_W, MAX_WIN_H, DRAG_THRESHOLD_PX } from '../constants';
 
@@ -22,11 +22,11 @@ export function useWindowState() {
     setManualResized,
   } = useCodegenStore();
 
-  const codeRef = useCurrent(editor.code);
-  const showHeaderRef = useCurrent(windowState.showHeader);
-  const fontSizeRef = useCurrent(editor.fontSize);
-  const isEditingRef = useCurrent(isEditing);
-  const manualResizedRef = useCurrent(manualResized);
+  const codeRef = useCurrentRef(editor.code);
+  const showHeaderRef = useCurrentRef(windowState.showHeader);
+  const fontSizeRef = useCurrentRef(editor.fontSize);
+  const isEditingRef = useCurrentRef(isEditing);
+  const manualResizedRef = useCurrentRef(manualResized);
 
   /**
    * 计算自适应高度
@@ -48,7 +48,7 @@ export function useWindowState() {
     }
   }, [setIsEditing, setWinSize, winSize.width, manualResizedRef, getAutoHeight]);
 
-  const exitEditRef = useCurrent(exitEdit);
+  const exitEditRef = useCurrentRef(exitEdit);
 
   /**
    * 进入编辑模式

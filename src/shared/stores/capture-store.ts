@@ -87,7 +87,7 @@ export const useCaptureStore = create<CaptureState>()(
 // 启动时清理过期数据
 if (typeof window !== 'undefined') {
   chrome.storage.local.get(STORAGE_KEYS.CAPTURE_RESULT).then((result) => {
-    const stored = result[STORAGE_KEYS.CAPTURE_RESULT];
+    const stored = result[STORAGE_KEYS.CAPTURE_RESULT] as StoredCaptureData | undefined;
     if (stored?.timestamp && isDataExpired(stored.timestamp)) {
       chrome.storage.local.remove(STORAGE_KEYS.CAPTURE_RESULT);
     }

@@ -11,8 +11,8 @@ import { ZoomControls } from './ZoomControls';
 import { ZOOM_FACTOR_OUT, ZOOM_FACTOR_IN } from '../constants';
 
 interface CanvasAreaProps {
-  onExportRef: React.RefObject<HTMLDivElement>;
-  onCodeWindowRef: React.RefObject<HTMLDivElement>;
+  onExportRef: React.RefObject<HTMLDivElement | null>;
+  onCodeWindowRef: React.RefObject<HTMLDivElement | null>;
   isEditing: boolean;
   isEditingRef: React.MutableRefObject<boolean>;
   onExitEdit: () => void;

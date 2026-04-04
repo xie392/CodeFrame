@@ -66,8 +66,8 @@ interface MarqueeState {
  * 配置接口
  */
 interface EditorEventsConfig {
-  canvasRef: React.RefObject<HTMLDivElement>;
-  annotationCanvasRef: React.RefObject<HTMLCanvasElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
+  annotationCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   activeTool: string;
   imageData: string | null;
   editingTextId: string | null;

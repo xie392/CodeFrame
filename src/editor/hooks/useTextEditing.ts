@@ -33,7 +33,7 @@ interface TextEditingCallbacks {
  * 文字编辑 Hook 返回值
  */
 interface UseTextEditingReturn {
-  textInputRef: React.RefObject<HTMLInputElement>;
+  textInputRef: React.RefObject<HTMLInputElement | null>;
   startEditing: (text: TextShape) => void;
   stopEditing: (save: boolean) => void;
   handleTextChange: (value: string) => void;

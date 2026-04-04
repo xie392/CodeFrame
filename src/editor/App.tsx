@@ -80,7 +80,7 @@ export const App: React.FC = () => {
   const exportContainerRef = useRef<HTMLDivElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const initialized = useRef(false);
+  const initializedRef = useRef(false);
 
   // 用户设置
   const { settings, operationHistory, updateOperationHistory } = useSettingsStore();
@@ -324,7 +324,7 @@ export const App: React.FC = () => {
   // 初始化 Hook
   // ---------------------------------------------------------------------------
   useEditorInit(
-    { source, imageData, initialized },
+    { source, imageData, initializedRef },
     {
       setSource, setImageData, setError,
       resetHistory: (state) => historyActions.resetToState(state as EditorState),

@@ -118,7 +118,7 @@ export async function handleDesktopCapture(
         reject(new Error('选择超时，请重试'));
       }, 30000);
 
-      const sources: string[] = ['screen', 'window', 'tab'];
+      const sources: ('screen' | 'window' | 'tab')[] = ['screen', 'window', 'tab'];
       const callback = (id: string) => {
         clearTimeout(timeout);
         resolve(id ?? '');

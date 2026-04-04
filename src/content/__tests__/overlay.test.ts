@@ -276,3 +276,33 @@ describe('选区尺寸验证', () => {
     expect(isValid).toBe(false);
   });
 });
+
+describe('startRegionCapture', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('应该创建选区覆盖层', async () => {
+    const { startRegionCapture, destroyOverlay } = await import('../overlay');
+
+    startRegionCapture();
+
+    // 验证创建了 overlay 元素
+    const overlayHost = document.querySelector('#codeframe-overlay-host');
+    expect(overlayHost).toBeDefined();
+
+    // 清理
+    destroyOverlay();
+  });
+
+  it('destroyOverlay 应该移除覆盖层', async () => {
+    const { startRegionCapture, destroyOverlay } = await import('../overlay');
+
+    startRegionCapture();
+    expect(document.querySelector('#codeframe-overlay-host')).toBeDefined();
+
+    destroyOverlay();
+    expect(document.querySelector('#codeframe-overlay-host')).toBeNull();
+  });
+});

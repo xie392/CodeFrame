@@ -116,22 +116,24 @@
 
 ### 4.4 测试覆盖率验证
 
-- [x] 4.4.1 运行 `pnpm test` - 484 tests passed
+- [x] 4.4.1 运行 `pnpm test` - 562 tests passed
 - [x] 4.4.2 核心模块覆盖率达到目标：
   - editor/services: 99.27%
   - editor/store: 100%
   - editor/utils: 98.7%
-  - editor/hooks: 70.36%
+  - editor/hooks: 86.26%
   - shared/components/ui: 98.57%
   - shared/stores: 85.65%
-- [x] 4.4.3 整体覆盖率从 17.27% 提升到 51.67%（新增测试文件 17 个）
+  - codegen/hooks: 79.15%
+  - content: 79.85%
+- [x] 4.4.3 整体覆盖率从 51.67% 提升到 60.24%（新增测试文件 22 个）
 
 ### 4.5 新增测试文件
 
 | 文件 | 测试用例数 | 说明 |
 |------|-----------|------|
 | `src/editor/hooks/__tests__/useZoomPan.test.ts` | 15 | 缩放平移测试 |
-| `src/editor/hooks/__tests__/useExport.test.ts` | 9 | 导出功能测试 |
+| `src/editor/hooks/__tests__/useExport.test.ts` | 15 | 导出功能测试 |
 | `src/editor/hooks/__tests__/useKeyboardShortcuts.test.ts` | 16 | 键盘快捷键测试 |
 | `src/editor/hooks/__tests__/useEditorInit.test.ts` | 7 | 编辑器初始化测试 |
 | `src/editor/hooks/__tests__/useEditorHistory.test.ts` | 11 | 历史记录测试 |
@@ -139,11 +141,19 @@
 | `src/editor/hooks/__tests__/useMarqueeSelection.test.ts` | 11 | 框选功能测试 |
 | `src/editor/hooks/__tests__/useShapeDrawing.test.ts` | 18 | 图形绘制测试 |
 | `src/editor/hooks/__tests__/useShapeDragging.test.ts` | 17 | 图形拖拽测试 |
-| `src/editor/hooks/__tests__/useEditorEvents.test.ts` | 3 | 编辑器事件基础测试 |
+| `src/editor/hooks/__tests__/useEditorEvents.test.ts` | 25 | 编辑器事件测试 |
+| `src/editor/hooks/__tests__/useCrop.test.ts` | 8 | 裁剪功能测试 |
 | `src/shared/components/ui/__tests__/color-picker.test.tsx` | 7 | 颜色选择器测试 |
 | `src/shared/components/ui/__tests__/popover.test.tsx` | 4 | 弹出框测试 |
 | `src/shared/components/ui/__tests__/tabs.test.tsx` | 4 | 标签页测试 |
 | `src/shared/components/ui/__tests__/tooltip.test.tsx` | 3 | 工具提示测试 |
+| `src/codegen/hooks/__tests__/useCurrent.test.ts` | 7 | useCurrent Hook 测试 |
+| `src/codegen/hooks/__tests__/useCanvasTransform.test.ts` | 9 | 画布变换测试 |
+| `src/codegen/hooks/__tests__/useOperationHistory.test.ts` | 4 | 操作历史测试 |
+| `src/codegen/hooks/__tests__/useWindowState.test.ts` | 7 | 窗口状态测试 |
+| `src/codegen/hooks/__tests__/useExport.test.ts` | 7 | 导出功能测试 |
+| `src/content/__tests__/countdown.test.ts` | 5 | 倒计时测试 |
+| `src/content/__tests__/overlay.test.ts` | 24 | 选区覆盖层测试 |
 
 ---
 
@@ -195,8 +205,8 @@
 
 - **类型检查**：✅ 通过
 - **构建**：✅ 成功
-- **测试**：✅ 484 tests passed
-- **覆盖率**：✅ 51.67%（从 17.27% 提升）
+- **测试**：✅ 562 tests passed
+- **覆盖率**：✅ 60.24%（从 51.67% 提升）
 - **Lint**：✅ 0 errors, 19 warnings
 - **安全审计**：⚠️ Critical 已修复，剩余传递依赖漏洞待上游更新
 

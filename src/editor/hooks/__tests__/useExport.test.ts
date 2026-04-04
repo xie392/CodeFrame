@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useExport } from '../useExport';
+import { useSettingsStore } from '@shared/stores/settings-store';
 
 // Mock snapdom
 vi.mock('@zumer/snapdom', () => ({
@@ -294,5 +295,145 @@ describe('useExport', () => {
     });
 
     expect(mockClipboardWrite).toHaveBeenCalled();
+  });
+
+  it('handleExportImage 应该导出 PNG 格式', async () => {
+    const { result } = renderHook(() =>
+      useExport({
+        exportContainerRef: mockExportContainerRef,
+        imageData: 'data:image/png;base64,test',
+        frameSettings: mockFrameSettings as any,
+        imageDisplaySizeRef: mockImageDisplaySizeRef,
+        arrowsRef: mockArrowsRef as any,
+        rectsRef: mockRectsRef as any,
+        textsRef: mockTextsRef as any,
+        mosaicsRef: mockMosaicsRef as any,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleExportImage();
+    });
+
+    const { snapdom } = await import('@zumer/snapdom');
+    expect(snapdom.toPng).toHaveBeenCalled();
+  });
+
+  it('handleExportImage 应该导出 WebP 格式', async () => {
+    vi.mocked(useSettingsStore).mockReturnValue({
+      settings: {
+        defaultFormat: 'webp',
+        quality: '2x',
+      },
+    } as any);
+
+    const { result } = renderHook(() =>
+      useExport({
+        exportContainerRef: mockExportContainerRef,
+        imageData: 'data:image/png;base64,test',
+        frameSettings: mockFrameSettings as any,
+        imageDisplaySizeRef: mockImageDisplaySizeRef,
+        arrowsRef: mockArrowsRef as any,
+        rectsRef: mockRectsRef as any,
+        textsRef: mockTextsRef as any,
+        mosaicsRef: mockMosaicsRef as any,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleExportImage();
+    });
+
+    const { snapdom } = await import('@zumer/snapdom');
+    expect(snapdom.toWebp).toHaveBeenCalled();
+  });
+
+  it('handleExportImage 应该导出 JPG 格式', async () => {
+    vi.mocked(useSettingsStore).mockReturnValue({
+      settings: {
+        defaultFormat: 'jpg',
+        quality: '2x',
+      },
+    } as any);
+
+    const { result } = renderHook(() =>
+      useExport({
+        exportContainerRef: mockExportContainerRef,
+        imageData: 'data:image/png;base64,test',
+        frameSettings: mockFrameSettings as any,
+        imageDisplaySizeRef: mockImageDisplaySizeRef,
+        arrowsRef: mockArrowsRef as any,
+        rectsRef: mockRectsRef as any,
+        textsRef: mockTextsRef as any,
+        mosaicsRef: mockMosaicsRef as any,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleExportImage();
+    });
+
+    const { snapdom } = await import('@zumer/snapdom');
+    expect(snapdom.toBlob).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'jpeg' })
+    );
+  });
+
+  it('handleExportImage 应该处理导出错误', async () => {
+    const { snapdom } = await import('@zumer/snapdom');
+    vi.mocked(snapdom.toPng).mockRejectedValueOnce(new Error('Export failed'));
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { result } = renderHook(() =>
+      useExport({
+        exportContainerRef: mockExportContainerRef,
+        imageData: 'data:image/png;base64,test',
+        frameSettings: mockFrameSettings as any,
+        imageDisplaySizeRef: mockImageDisplaySizeRef,
+        arrowsRef: mockArrowsRef as any,
+        rectsRef: mockRectsRef as any,
+        textsRef: mockTextsRef as any,
+        mosaicsRef: mockMosaicsRef as any,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleExportImage();
+    });
+
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(result.current.exportError).toBe('导出失败，请重试');
+
+    consoleSpy.mockRestore();
+  });
+
+  it('handleCopyToClipboard 应该处理复制错误', async () => {
+    mockClipboardWrite.mockRejectedValueOnce(new Error('Copy failed'));
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { result } = renderHook(() =>
+      useExport({
+        exportContainerRef: mockExportContainerRef,
+        imageData: 'data:image/png;base64,test',
+        frameSettings: mockFrameSettings as any,
+        imageDisplaySizeRef: mockImageDisplaySizeRef,
+        arrowsRef: mockArrowsRef as any,
+        rectsRef: mockRectsRef as any,
+        textsRef: mockTextsRef as any,
+        mosaicsRef: mockMosaicsRef as any,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleCopyToClipboard();
+    });
+
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(result.current.exportError).toBe('复制失败，请重试');
+
+    consoleSpy.mockRestore();
   });
 });

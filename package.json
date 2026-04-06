@@ -61,7 +61,7 @@
     "react-i18next": "^17.0.2",
     "shiki": "^4.0.2",
     "tailwind-merge": "^3.5.0",
-    "zustand": "^4.5.0"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",

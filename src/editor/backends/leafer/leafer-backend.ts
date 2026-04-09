@@ -1,7 +1,7 @@
 /**
  * LeaferJS 渲染后端实现
  * 实现 IRendererBackend 接口
- * Phase 1：图形 CRUD + 选中/拖拽 + 绘制交互
+ * Phase 2：马赛克自定义 Filter + CRUD + 绘制交互
  */
 
 import type {
@@ -13,7 +13,11 @@ import type {
   ICoordTransformer,
   ShapeDataMap,
 } from '../types';
-import type { CropArea, ToolId } from '../../types';
+import type {
+  CropArea,
+  ToolId,
+  MosaicShape,
+} from '../../types';
 import {
   createLeaferApp,
   destroyLeaferApp,
@@ -30,10 +34,15 @@ import {
   RectAdapter,
   ArrowAdapter,
   TextAdapter,
+  MosaicAdapter,
 } from './adapters';
 import type { IShapeAdapter } from '../types';
 
-import { Rect, Text } from 'leafer-ui';
+import {
+  Rect,
+  Text,
+  Image as LeaferImage,
+} from 'leafer-ui';
 import { Arrow } from '@leafer-in/arrow';
 import {
   PointerEvent,
@@ -41,11 +50,15 @@ import {
 } from 'leafer-ui';
 import { EditorEvent } from '@leafer-in/editor';
 
+// 注册马赛克自定义滤镜（副作用导入）
+import './custom/mosaic-filter';
+
 import {
   DRAW_MIN_DISTANCE,
   DEFAULT_ARROW_STYLE,
   DEFAULT_RECT_STYLE,
   DEFAULT_TEXT_STYLE,
+  DEFAULT_MOSAIC_STYLE,
 } from '../../constants';
 import { hexToRgba } from './utils/color';
 
@@ -66,7 +79,7 @@ const adapters: Record<
   text: new TextAdapter() as IShapeAdapter<
     ShapeDataMap[ShapeType]
   >,
-  mosaic: null as unknown as IShapeAdapter<
+  mosaic: new MosaicAdapter() as IShapeAdapter<
     ShapeDataMap[ShapeType]
   >,
 };
@@ -82,6 +95,7 @@ const ALLOWED_PROPS = new Set([
   'fontWeight', 'italic', 'text',
   'startArrow', 'endArrow', 'opacity',
   'hitStroke', 'cornerRadius',
+  'url', 'filter',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -146,6 +160,37 @@ export class LeaferBackend
   // 全局事件清理函数
   private globalCleanupFns: (() => void)[] = [];
 
+  // 马赛克：原始图片数据
+  private imageDataUrl: string | null = null;
+  private imageCanvas: HTMLCanvasElement | null =
+    null;
+
+  // 马赛克：ID → MosaicShape 缓存
+  // （用于移动/缩放后重新生成 data URL）
+  private mosaicDataMap = new Map<
+    string,
+    MosaicShape
+  >();
+
+  // 同步守卫：阻止 Store→Backend 同步期间
+  // Backend→Store 回调造成循环。
+  // 使用计数器 + 微任务延迟释放，
+  // 确保 async Leafer 事件也守卫住
+  private _syncDepth = 0;
+
+  startSync(): void {
+    this._syncDepth++;
+  }
+
+  endSync(): void {
+    this._syncDepth--;
+  }
+
+  /** 当前是否处于同步中 */
+  private isSyncing(): boolean {
+    return this._syncDepth > 0;
+  }
+
   // ---- 生命周期 ----
 
   init(config: BackendConfig): void {
@@ -178,6 +223,7 @@ export class LeaferBackend
     this.elementCleanupMap.clear();
     this.elementMap.clear();
     this.typeMap.clear();
+    this.mosaicDataMap.clear();
     this.drawing = { ...INITIAL_DRAWING };
 
     if (this.appResult) {
@@ -185,28 +231,58 @@ export class LeaferBackend
       this.appResult = null;
     }
     this.coordTransformer = null;
+    this.imageCanvas = null;
+    this.imageDataUrl = null;
   }
 
   resize(width: number, height: number): void {
     if (this.appResult) {
-      resizeLeaferApp(
-        this.appResult.app,
-        width,
-        height
-      );
+      // 守卫：防止 resize 触发 Leafer
+      // 事件导致回调循环
+      this.startSync();
+      try {
+        resizeLeaferApp(
+          this.appResult.app,
+          width,
+          height
+        );
+      } finally {
+        // 微任务延迟释放，
+        // 覆盖 Leafer 异步事件窗口
+        queueMicrotask(() => this.endSync());
+      }
     }
   }
 
   setImageDisplaySize(
     size: { width: number; height: number }
   ): void {
-    this.imageSize = { ...size };
-    if (this.appResult) {
-      updateBoxSize(
-        this.appResult.annotationBox,
-        size.width,
-        size.height
-      );
+    // 守卫：防止 updateBoxSize 触发
+    // Leafer 事件导致回调循环
+    this.startSync();
+    try {
+      this.imageSize = { ...size };
+      if (this.appResult) {
+        updateBoxSize(
+          this.appResult.annotationBox,
+          size.width,
+          size.height
+        );
+      }
+      // 图片显示尺寸变化时标记
+      // imageCanvas 需要重建
+      if (
+        this.imageDataUrl &&
+        this.imageCanvas &&
+        (this.imageCanvas.width !== size.width ||
+          this.imageCanvas.height !== size.height)
+      ) {
+        this.imageCanvas = null;
+      }
+    } finally {
+      // 微任务延迟释放，
+      // 覆盖 Leafer 异步事件窗口
+      queueMicrotask(() => this.endSync());
     }
   }
 
@@ -218,14 +294,21 @@ export class LeaferBackend
       this.appResult.app.tree?.zoomLayer;
     if (!zoomLayer) return;
 
-    this.viewportBridge.syncViewportToBackend(
-      state,
-      zoomLayer as unknown as {
-        x: number;
-        y: number;
-        scale: number;
-      }
-    );
+    // 扩大守卫范围，
+    // 覆盖异步 Leafer 事件回调窗口
+    this.viewportBridge.startSync();
+    try {
+      this.viewportBridge.syncViewportToBackend(
+        state,
+        zoomLayer as unknown as {
+          x: number;
+          y: number;
+          scale: number;
+        }
+      );
+    } finally {
+      this.viewportBridge.endSync();
+    }
   }
 
   getViewport(): ViewportState {
@@ -270,6 +353,18 @@ export class LeaferBackend
       case 'text':
         element = new Text(params);
         break;
+      case 'mosaic':
+        element = new LeaferImage(params);
+        // 设置马赛克区域的图片 data URL
+        this.setMosaicImageUrl(
+          element,
+          data as MosaicShape,
+        );
+        this.mosaicDataMap.set(
+          id,
+          data as MosaicShape,
+        );
+        break;
       default:
         return;
     }
@@ -301,10 +396,6 @@ export class LeaferBackend
     const adapter = adapters[type];
     if (!adapter) return;
 
-    const params = adapter.toUpdateParams(
-      updates as Partial<ShapeDataMap[ShapeType]>
-    );
-
     // Arrow 坐标更新需重建 points
     if (
       type === 'arrow' &&
@@ -317,15 +408,26 @@ export class LeaferBackend
       return;
     }
 
+    // 马赛克：位置/尺寸变化需重新生成 data URL
+    if (type === 'mosaic') {
+      this.updateMosaicElement(
+        element,
+        id,
+        updates,
+      );
+      return;
+    }
+
+    const params = adapter.toUpdateParams(
+      updates as Partial<ShapeDataMap[ShapeType]>
+    );
     this.applyElementProps(element, params);
   }
 
   removeShape(
-    type: ShapeType,
+    _type: ShapeType,
     id: string
   ): void {
-    void type;
-
     // 清理元素事件监听
     const cleanup =
       this.elementCleanupMap.get(id);
@@ -340,6 +442,7 @@ export class LeaferBackend
     (element as { remove: () => void }).remove();
     this.elementMap.delete(id);
     this.typeMap.delete(id);
+    this.mosaicDataMap.delete(id);
   }
 
   // ---- 选中状态 ----
@@ -408,13 +511,21 @@ export class LeaferBackend
   setCallbacks(callbacks: BackendCallbacks): void {
     this.callbacks = callbacks;
 
+    // 统一 syncing 守卫：
+    // syncing 期间跳过所有
+    // Backend→Store 回调，
+    // 防止 Store→Backend→Store 循环
     this.selectionBridge.onSelectionChange(
-      (ids) =>
-        callbacks.onSelectionChange(ids)
+      (ids) => {
+        if (this.isSyncing()) return;
+        callbacks.onSelectionChange(ids);
+      }
     );
     this.viewportBridge.onViewportChangeCallback(
-      (state) =>
-        callbacks.onViewportChange(state)
+      (state) => {
+        if (this.isSyncing()) return;
+        callbacks.onViewportChange(state);
+      }
     );
   }
 
@@ -483,6 +594,202 @@ export class LeaferBackend
       app as unknown as Record<string, unknown>
     ).editor;
     return editor ?? null;
+  }
+
+  // ---- 马赛克图片管理 ----
+
+  /** 设置原始图片数据（供 useBackendSync 调用）*/
+  setImageData(url: string): void {
+    if (this.imageDataUrl === url) return;
+    this.imageDataUrl = url;
+    this.loadImageCanvas();
+  }
+
+  /** 加载原始图片到离屏 canvas */
+  private loadImageCanvas(): void {
+    if (!this.imageDataUrl) return;
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas =
+        document.createElement('canvas');
+      canvas.width = this.imageSize.width;
+      canvas.height = this.imageSize.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          this.imageSize.width,
+          this.imageSize.height,
+        );
+        this.imageCanvas = canvas;
+        this.updateAllMosaicUrls();
+      }
+    };
+    img.src = this.imageDataUrl;
+  }
+
+  /** 为所有已有马赛克更新 data URL */
+  private updateAllMosaicUrls(): void {
+    if (!this.imageCanvas) return;
+    for (const [id, shape] of this.mosaicDataMap) {
+      const element = this.elementMap.get(id);
+      if (!element) continue;
+      const url =
+        this.generateMosaicRegionUrl(shape);
+      if (url) {
+        (element as { url: string }).url = url;
+      }
+    }
+  }
+
+  /** 从原始图片生成马赛克区域的 data URL */
+  private generateMosaicRegionUrl(
+    shape: MosaicShape,
+  ): string | null {
+    if (!this.imageCanvas) return null;
+
+    const w = Math.max(
+      1,
+      Math.round(shape.width),
+    );
+    const h = Math.max(
+      1,
+      Math.round(shape.height),
+    );
+    const sx = Math.max(
+      0,
+      Math.round(shape.x),
+    );
+    const sy = Math.max(
+      0,
+      Math.round(shape.y),
+    );
+    const sw = Math.min(
+      w,
+      this.imageCanvas.width - sx,
+    );
+    const sh = Math.min(
+      h,
+      this.imageCanvas.height - sy,
+    );
+
+    if (sw <= 0 || sh <= 0) return null;
+
+    const offscreen =
+      document.createElement('canvas');
+    offscreen.width = sw;
+    offscreen.height = sh;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(
+      this.imageCanvas,
+      sx,
+      sy,
+      sw,
+      sh,
+      0,
+      0,
+      sw,
+      sh,
+    );
+
+    return offscreen.toDataURL();
+  }
+
+  /** 设置马赛克 Image 元素的 data URL */
+  private setMosaicImageUrl(
+    element: unknown,
+    shape: MosaicShape,
+  ): void {
+    const url =
+      this.generateMosaicRegionUrl(shape);
+    if (url) {
+      (element as { url: string }).url = url;
+    }
+  }
+
+  /** 更新马赛克元素属性 */
+  private updateMosaicElement(
+    element: unknown,
+    id: string,
+    updates: Record<string, unknown>,
+  ): void {
+    const el = element as Record<
+      string,
+      unknown
+    >;
+
+    // 先比较是否实际变化，再更新缓存
+    const cached = this.mosaicDataMap.get(id);
+    let needsUrlUpdate = false;
+
+    if (cached) {
+      needsUrlUpdate =
+        ('x' in updates &&
+          updates.x !== cached.x) ||
+        ('y' in updates &&
+          updates.y !== cached.y) ||
+        ('width' in updates &&
+          updates.width !== cached.width) ||
+        ('height' in updates &&
+          updates.height !== cached.height);
+      Object.assign(cached, updates);
+    }
+
+    // 位置/尺寸变化 → 重新生成 data URL
+    if (needsUrlUpdate && cached) {
+      const url =
+        this.generateMosaicRegionUrl(cached);
+      if (url) {
+        el.url = url;
+      }
+    }
+
+    // 仅在值实际变化时设置属性
+    if (
+      'x' in updates &&
+      el.x !== updates.x
+    ) {
+      el.x = updates.x;
+    }
+    if (
+      'y' in updates &&
+      el.y !== updates.y
+    ) {
+      el.y = updates.y;
+    }
+    if (
+      'width' in updates &&
+      el.width !== updates.width
+    ) {
+      el.width = updates.width;
+    }
+    if (
+      'height' in updates &&
+      el.height !== updates.height
+    ) {
+      el.height = updates.height;
+    }
+
+    // blockSize 变化 → 更新 filter
+    if ('blockSize' in updates) {
+      el.filter = {
+        type: 'mosaic',
+        blockSize: updates.blockSize,
+      };
+    }
+
+    // opacity 变化 → 映射 0-100 → 0-1
+    if ('opacity' in updates) {
+      const newOpacity =
+        (updates.opacity as number) / 100;
+      if (el.opacity !== newOpacity) {
+        el.opacity = newOpacity;
+      }
+    }
   }
 
   /** 安全应用属性到 Leafer 元素（白名单过滤）*/
@@ -569,6 +876,9 @@ export class LeaferBackend
     };
 
     const handler = () => {
+      // 同步期间跳过，防止
+      // Store→Backend→Store 循环
+      if (this.isSyncing()) return;
       if (!this.callbacks) return;
       const adapter = adapters[type];
       if (!adapter) return;
@@ -627,7 +937,9 @@ export class LeaferBackend
     const handler = () => {
       if (this.selectionBridge.isSyncing())
         return;
-
+      console.count(
+        '[LOOP_DEBUG] SELECT-event'
+      );
       const selectedIds =
         SelectionBridge.emptySelection();
       const list = ed.list ?? [];
@@ -715,6 +1027,9 @@ export class LeaferBackend
 
     const handler = () => {
       if (this.viewportBridge.isSyncing()) return;
+      console.count(
+        '[LOOP_DEBUG] viewport-event'
+      );
       this.viewportBridge
         .handleLeaferViewportChange(
           this.getViewport()
@@ -741,7 +1056,8 @@ export class LeaferBackend
     if (
       tool !== 'arrow' &&
       tool !== 'rect' &&
-      tool !== 'text'
+      tool !== 'text' &&
+      tool !== 'mosaic'
     )
       return;
 
@@ -839,6 +1155,18 @@ export class LeaferBackend
         hitStroke: 'all',
         opacity: 0.6,
       });
+    } else if (tool === 'mosaic') {
+      // 马赛克绘制预览用半透明 Rect
+      element = new Rect({
+        x: coord.x,
+        y: coord.y,
+        width: 0,
+        height: 0,
+        fill: 'rgba(128,128,128,0.4)',
+        stroke: 'rgba(128,128,128,0.8)',
+        strokeWidth: 1,
+        opacity: 0.6,
+      });
     } else {
       return;
     }
@@ -864,7 +1192,7 @@ export class LeaferBackend
     } | null;
     if (!el) return;
 
-    if (tool === 'rect') {
+    if (tool === 'rect' || tool === 'mosaic') {
       el.x = Math.min(start.x, current.x);
       el.y = Math.min(start.y, current.y);
       el.width = Math.abs(
@@ -934,7 +1262,7 @@ export class LeaferBackend
       points: number[];
     }
   ): boolean {
-    if (type === 'rect') {
+    if (type === 'rect' || type === 'mosaic') {
       return (
         temp.width >= DRAW_MIN_DISTANCE &&
         temp.height >= DRAW_MIN_DISTANCE
@@ -1011,6 +1339,18 @@ export class LeaferBackend
           DEFAULT_ARROW_STYLE.strokeWidth,
         headSize: DEFAULT_ARROW_STYLE.headSize,
         style: DEFAULT_ARROW_STYLE.style,
+      };
+    }
+
+    if (type === 'mosaic') {
+      return {
+        x: temp.x,
+        y: temp.y,
+        width: temp.width,
+        height: temp.height,
+        blockSize:
+          DEFAULT_MOSAIC_STYLE.blockSize,
+        opacity: DEFAULT_MOSAIC_STYLE.opacity,
       };
     }
 

@@ -5,3 +5,4 @@
 export { RectAdapter } from './rect-adapter';
 export { ArrowAdapter } from './arrow-adapter';
 export { TextAdapter } from './text-adapter';
+export { MosaicAdapter } from './mosaic-adapter';

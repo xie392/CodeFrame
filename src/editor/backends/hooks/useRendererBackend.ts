@@ -1,6 +1,12 @@
 /**
  * 渲染后端实例管理 Hook
  * 根据 Feature Flag 创建 LeaferBackend 实例
+ *
+ * 关键设计：imageDisplaySize 不作为
+ * backend 创建 effect 的依赖，
+ * 避免 size 变化时销毁重建 backend
+ * （用 setImageDisplaySize 热更新），
+ * 从根源消除 Store↔Backend 循环触发
  */
 
 import {
@@ -62,17 +68,42 @@ export function useRendererBackend({
       getSnapshot
     );
 
-  // 初始化 / 销毁
+  // 用 ref 跟踪 imageDisplaySize，
+  // 初始化时从中读取尺寸，
+  // 但不作为 effect 依赖避免 backend 重建
+  const imageDisplaySizeRef = useRef(
+    imageDisplaySize
+  );
+
   useEffect(() => {
-    if (!isLeafer) return;
+    imageDisplaySizeRef.current =
+      imageDisplaySize;
+  });
+
+  // sizeReady 仅在 imageDisplaySize
+  // 非null时为 true，
+  // 不随尺寸值变化而改变，
+  // 避免 backend 重建
+  const sizeReady = imageDisplaySize !== null;
+
+  // 初始化 / 销毁 backend
+  // 仅依赖 isLeafer、containerRef
+  // 和 sizeReady，
+  // 不依赖 imageDisplaySize 值变化
+  useEffect(() => {
+    if (!isLeafer || !sizeReady) return;
 
     const container = containerRef.current;
-    if (!container || !imageDisplaySize) return;
+    if (!container) return;
+
+    const currentSize =
+      imageDisplaySizeRef.current;
+    if (!currentSize) return;
 
     const instance = new LeaferBackend();
     instance.init({
       container,
-      imageDisplaySize,
+      imageDisplaySize: currentSize,
     });
     store.current.backend = instance;
 
@@ -91,14 +122,20 @@ export function useRendererBackend({
         (l) => l()
       );
     };
-  }, [isLeafer, containerRef, imageDisplaySize]);
+  }, [isLeafer, containerRef, sizeReady]);
 
-  // 更新图片尺寸
+  // 更新图片尺寸（不重建 backend）
+  // 用稳定 key 防止相同尺寸不同引用
+  // 导致无效 effect 重触发
+  const imageSizeKey = imageDisplaySize
+    ? `${imageDisplaySize.width},${imageDisplaySize.height}`
+    : null;
+
   useEffect(() => {
     if (!isLeafer || !backend || !imageDisplaySize)
       return;
     backend.setImageDisplaySize(imageDisplaySize);
-  }, [isLeafer, backend, imageDisplaySize]);
+  }, [isLeafer, backend, imageSizeKey]);
 
   return { backend, isLeafer };
 }

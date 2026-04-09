@@ -12,6 +12,15 @@ import { FrameContainer } from '../FrameContainer';
 import { ZoomControls } from '../ZoomControls';
 
 export function LeaferCanvas(): React.ReactElement | null {
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+  if (renderCount.current > 5) {
+    console.error(
+      '[LOOP_DEBUG] LeaferCanvas render #' +
+        renderCount.current
+    );
+  }
+
   const leaferContainerRef =
     useRef<HTMLDivElement>(null);
 

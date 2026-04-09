@@ -15,6 +15,15 @@ export class ViewportBridge {
     return this.syncing;
   }
 
+  /** 扩大守卫范围（供 LeaferBackend 调用）*/
+  startSync(): void {
+    this.syncing = true;
+  }
+
+  endSync(): void {
+    this.syncing = false;
+  }
+
   /** Store → Leafer 视口同步 */
   syncViewportToBackend(
     state: ViewportState,

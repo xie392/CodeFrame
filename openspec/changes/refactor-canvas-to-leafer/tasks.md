@@ -34,8 +34,9 @@
 
 - [ ] 3.1 创建 `src/editor/backends/leafer/custom/mosaic-filter.ts`，通过 `Filter.register('mosaic', ...)` 注册自定义马赛克滤镜 — apply() 中获取 currentCanvas.view（HTMLCanvasElement），使用 getImageData 做像素块平均色计算
 - [ ] 3.2 创建 `src/editor/backends/leafer/adapters/mosaic-adapter.ts`，实现 `IShapeAdapter<MosaicShape>` — 创建应用了 MosaicFilter 的 Leafer Image 元素，处理 blockSize 和 opacity（0-100，默认 100）映射，设置 `dragBounds: 'parent'`
-- [ ] 3.3 实现 LeaferBackend 中马赛克的 CRUD 和绘制交互
-- [ ] 3.4 验证 Phase 2：马赛克绘制效果与 Canvas 2D 路径视觉一致，opacity 初始值为 100，右侧面板 blockSize/opacity 控件正常工作
+- [x] 3.3 实现 LeaferBackend 中马赛克的 CRUD 和绘制交互
+- [x] 3.4 修复上传图片后 React 无限循环 — 根因：useRendererBackend 将 imageDisplaySize 作为 useEffect 依赖，size 变化时 backend 被销毁重建触发 sync 循环；修复：用 sizeReady 布尔值替代 imageDisplaySize 作为依赖，size 变化仅走 setImageDisplaySize 热更新；同时 useBackendSync 所有 sync effect 改为直接依赖 backend 参数（修复 backend 重建后状态丢失），回调添加值比对防止异步 Leafer 事件触发无意义 store 更新
+- [ ] 3.5 验证 Phase 2：马赛克绘制效果与 Canvas 2D 路径视觉一致，opacity 初始值为 100，右侧面板 blockSize/opacity 控件正常工作
 
 ## 4. Phase 3: 裁剪框（自定义 Overlay）
 

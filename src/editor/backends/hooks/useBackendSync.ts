@@ -3,9 +3,17 @@
  * Phase 0：Store → Backend 单向同步
  * Phase 1：增加 Backend → Store 回调 +
  *   改进 Store → Backend 形状同步
+ * Phase 2：增加马赛克 onShapeCreated 和
+ *   imageData 同步
+ *
+ * 关键设计：所有 sync effect 依赖
+ * backend 参数（而非 backendRef），
+ * 确保 backend 重建后状态完整同步。
+ * 回调添加值比对防止异步 Leafer 事件
+ * 触发无意义 store 更新。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useEditorStore } from '../../store/editor-store';
 import type {
   IRendererBackend,
@@ -15,6 +23,7 @@ import {
   generateArrowId,
   generateRectId,
   generateTextId,
+  generateMosaicId,
 } from '../../utils/editor';
 
 const SHAPE_TYPES: ShapeType[] = [
@@ -47,19 +56,49 @@ function getShapeCollections() {
   };
 }
 
+/** syncing 守卫接口 */
+interface Syncable {
+  startSync?: () => void;
+  endSync?: () => void;
+}
+
+/** 在 syncing 守卫内执行操作。
+ * endSync 通过微任务延迟释放，
+ * 覆盖 Leafer 异步事件回调窗口，
+ * 防止 Store→Backend→(async event)→Store 循环
+ */
+function withSync<T>(
+  syncable: Syncable,
+  fn: () => T
+): T {
+  syncable.startSync?.();
+  try {
+    return fn();
+  } finally {
+    queueMicrotask(() => syncable.endSync?.());
+  }
+}
+
+/** 浮点容差比较 */
+const EPS = 1e-6;
+
+/** 比较两个数组内容是否相同（无序） */
+function arraysEqual<T>(
+  a: T[],
+  b: T[]
+): boolean {
+  if (a.length !== b.length) return false;
+  const setA = new Set(a);
+  return b.every((v) => setA.has(v));
+}
+
 export function useBackendSync(
   backend: IRendererBackend | null
 ): void {
-  const backendRef = useRef(backend);
-
-  // 在 useEffect 中同步 ref
-  useEffect(() => {
-    backendRef.current = backend;
-  }, [backend]);
-
   // 注册 Backend → Store 回调
   useEffect(() => {
     if (!backend) return;
+    console.count('[LOOP_DEBUG] callbacks-effect');
 
     backend.setCallbacks({
       onShapeChange: (
@@ -67,6 +106,9 @@ export function useBackendSync(
         id,
         updates
       ) => {
+        console.count(
+          '[LOOP_DEBUG] onShapeChange'
+        );
         const store =
           useEditorStore.getState();
         switch (type) {
@@ -105,9 +147,35 @@ export function useBackendSync(
         }
       },
       onSelectionChange: (ids) => {
+        console.count(
+          '[LOOP_DEBUG] onSelectionChange'
+        );
         const store =
           useEditorStore.getState();
-        store.setSelectedArrowIds(ids.arrow);
+        // 值比对：相同选中不更新 store，
+        // 防止异步 Leafer 事件触发循环
+        if (
+          arraysEqual(
+            ids.arrow,
+            store.selectedArrowIds
+          ) &&
+          arraysEqual(
+            ids.rect,
+            store.selectedRectIds
+          ) &&
+          arraysEqual(
+            ids.text,
+            store.selectedTextIds
+          ) &&
+          arraysEqual(
+            ids.mosaic,
+            store.selectedMosaicIds
+          )
+        )
+          return;
+        store.setSelectedArrowIds(
+          ids.arrow
+        );
         store.setSelectedRectIds(ids.rect);
         store.setSelectedTextIds(ids.text);
         store.setSelectedMosaicIds(
@@ -115,8 +183,24 @@ export function useBackendSync(
         );
       },
       onViewportChange: (state) => {
+        console.count(
+          '[LOOP_DEBUG] onViewportChange'
+        );
         const store =
           useEditorStore.getState();
+        // 浮点容差比较：相同视口
+        // 不更新 store
+        if (
+          Math.abs(store.scale - state.scale) <
+            EPS &&
+          Math.abs(
+            store.offset.x - state.offset.x
+          ) < EPS &&
+          Math.abs(
+            store.offset.y - state.offset.y
+          ) < EPS
+        )
+          return;
         store.setScale(state.scale);
         store.setOffset(state.offset);
       },
@@ -155,7 +239,12 @@ export function useBackendSync(
             store.setActiveTool('select');
             break;
           case 'mosaic':
-            // Phase 2
+            store.addMosaic({
+              id: generateMosaicId(),
+              ...(data as Partial<
+                import('../../types').MosaicShape
+              >),
+            } as import('../../types').MosaicShape);
             break;
         }
       },
@@ -172,6 +261,11 @@ export function useBackendSync(
   }, [backend]);
 
   // ---- Store → Backend 同步 ----
+  // 所有同步 effect 依赖 backend 参数，
+  // 确保 backend 变化时完整重同步；
+  // 统一使用 syncing 守卫，
+  // 防止 Backend→Store 回调
+  // 造成 Store→Backend→Store 循环
 
   // 同步图形数据：用 hash 检测变化
   const shapesHash = useEditorStore(
@@ -205,23 +299,28 @@ export function useBackendSync(
   );
 
   useEffect(() => {
-    if (!backendRef.current) return;
-    const b = backendRef.current;
+    if (!backend) return;
+    console.count('[LOOP_DEBUG] shapes-effect');
+    const syncable = backend as Syncable;
     const collections = getShapeCollections();
     const currentIds = new Set<string>();
 
-    for (const type of SHAPE_TYPES) {
-      const { items } = collections[type];
-      for (const item of items) {
-        currentIds.add(item.id);
-        b.addShape(type, item.id, item);
+    withSync(syncable, () => {
+      for (const type of SHAPE_TYPES) {
+        const { items } = collections[type];
+        for (const item of items) {
+          currentIds.add(item.id);
+          backend.addShape(
+            type,
+            item.id,
+            item
+          );
+        }
       }
-    }
+    });
 
-    // 移除 Store 中不存在的元素
-    // （需通过 Backend 暴露的方法实现）
     void currentIds;
-  }, [shapesHash]);
+  }, [backend, shapesHash]);
 
   // 同步选中状态 → Backend
   const selectionKey = useEditorStore(
@@ -235,17 +334,23 @@ export function useBackendSync(
   );
 
   useEffect(() => {
-    if (!backendRef.current) return;
+    if (!backend) return;
+    console.count('[LOOP_DEBUG] selection-effect');
+    const syncable = backend as Syncable;
     const collections = getShapeCollections();
     const ids = {} as Record<
       ShapeType,
       string[]
     >;
     for (const type of SHAPE_TYPES) {
-      ids[type] = collections[type].selectedIds;
+      ids[type] =
+        collections[type].selectedIds;
     }
-    backendRef.current.setSelection(ids);
-  }, [selectionKey]);
+
+    withSync(syncable, () => {
+      backend.setSelection(ids);
+    });
+  }, [backend, selectionKey]);
 
   // 同步视口状态 → Backend
   const viewportKey = useEditorStore(
@@ -254,14 +359,19 @@ export function useBackendSync(
   );
 
   useEffect(() => {
-    if (!backendRef.current) return;
+    if (!backend) return;
+    console.count('[LOOP_DEBUG] viewport-effect');
+    const syncable = backend as Syncable;
     const { scale, offset } =
       useEditorStore.getState();
-    backendRef.current.setViewport({
-      scale,
-      offset,
+
+    withSync(syncable, () => {
+      backend.setViewport({
+        scale,
+        offset,
+      });
     });
-  }, [viewportKey]);
+  }, [backend, viewportKey]);
 
   // 同步工具状态 → Backend
   const activeTool = useEditorStore(
@@ -269,10 +379,29 @@ export function useBackendSync(
   );
 
   useEffect(() => {
-    if (!backendRef.current) return;
-    const b = backendRef.current as {
+    if (!backend) return;
+    console.count('[LOOP_DEBUG] tool-effect');
+    const b = backend as {
       setToolMode?: (tool: string) => void;
     };
     b.setToolMode?.(activeTool);
-  }, [activeTool]);
+  }, [backend, activeTool]);
+
+  // 同步图片数据 → Backend（马赛克需要）
+  const imageData = useEditorStore(
+    (s) => s.imageData
+  );
+
+  useEffect(() => {
+    if (!backend || !imageData) return;
+    console.count('[LOOP_DEBUG] imageData-effect');
+    const syncable = backend as Syncable;
+    const b = backend as {
+      setImageData?: (url: string) => void;
+    };
+
+    withSync(syncable, () => {
+      b.setImageData?.(imageData);
+    });
+  }, [backend, imageData]);
 }

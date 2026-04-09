@@ -52,6 +52,7 @@ import { EditorEvent } from '@leafer-in/editor';
 
 // 注册马赛克自定义滤镜（副作用导入）
 import './custom/mosaic-filter';
+import { CropOverlay } from './custom/crop-overlay';
 
 import {
   DRAW_MIN_DISTANCE,
@@ -59,8 +60,11 @@ import {
   DEFAULT_RECT_STYLE,
   DEFAULT_TEXT_STYLE,
   DEFAULT_MOSAIC_STYLE,
+  MIN_CROP_SIZE,
 } from '../../constants';
 import { hexToRgba } from './utils/color';
+import type { RectDragType } from '../../utils/shape-helpers';
+import { applyDragResize } from '../../utils/drag-resize';
 
 // ---------------------------------------------------------------------------
 // 适配器注册表
@@ -178,6 +182,23 @@ export class LeaferBackend
   // 确保 async Leafer 事件也守卫住
   private _syncDepth = 0;
 
+  // 裁剪框覆盖层
+  private cropOverlay: CropOverlay | null =
+    null;
+
+  // 裁剪交互状态
+  private cropDrawing = {
+    isDrawing: false,
+    startX: 0,
+    startY: 0,
+  };
+  private cropDragging: {
+    type: RectDragType;
+    startX: number;
+    startY: number;
+    orig: CropArea;
+  } | null = null;
+
   startSync(): void {
     this._syncDepth++;
   }
@@ -226,6 +247,18 @@ export class LeaferBackend
     this.mosaicDataMap.clear();
     this.drawing = { ...INITIAL_DRAWING };
 
+    // 清理裁剪覆盖层
+    if (this.cropOverlay) {
+      this.cropOverlay.destroy();
+      this.cropOverlay = null;
+    }
+    this.cropDrawing = {
+      isDrawing: false,
+      startX: 0,
+      startY: 0,
+    };
+    this.cropDragging = null;
+
     if (this.appResult) {
       destroyLeaferApp(this.appResult.app);
       this.appResult = null;
@@ -268,6 +301,10 @@ export class LeaferBackend
           size.width,
           size.height
         );
+      }
+      // 同步裁剪覆盖层尺寸
+      if (this.cropOverlay) {
+        this.cropOverlay.setImageSize(size);
       }
       // 图片显示尺寸变化时标记
       // imageCanvas 需要重建
@@ -500,10 +537,27 @@ export class LeaferBackend
     }
   }
 
-  // ---- 裁剪框（Phase 3 实现）----
+  // ---- 裁剪框 ----
 
-  setCropArea(_area: CropArea | null): void {
-    // Phase 3
+  setCropArea(area: CropArea | null): void {
+    if (!this.appResult) return;
+
+    // 延迟创建覆盖层
+    if (!this.cropOverlay) {
+      this.cropOverlay = new CropOverlay(
+        this.appResult.annotationBox,
+        this.imageSize,
+      );
+    }
+
+    // syncing 守卫：Store→Backend 同步期间
+    // 不触发 Backend→Store 回调
+    if (this.isSyncing()) {
+      this.cropOverlay.setCropArea(area);
+      return;
+    }
+
+    this.cropOverlay.setCropArea(area);
   }
 
   // ---- 回调注册 ----
@@ -594,6 +648,11 @@ export class LeaferBackend
       app as unknown as Record<string, unknown>
     ).editor;
     return editor ?? null;
+  }
+
+  /** 获取 App 结果（供导出 Hook 使用）*/
+  getAppResult(): LeaferAppResult | null {
+    return this.appResult;
   }
 
   // ---- 马赛克图片管理 ----
@@ -1053,6 +1112,13 @@ export class LeaferBackend
     e: unknown
   ): void {
     const tool = this.toolBridge.getTool();
+
+    // 裁剪工具单独处理
+    if (tool === 'crop') {
+      this.handleCropPointerDown(e);
+      return;
+    }
+
     if (
       tool !== 'arrow' &&
       tool !== 'rect' &&
@@ -1086,6 +1152,12 @@ export class LeaferBackend
   private handleDrawPointerMove(
     e: unknown
   ): void {
+    // 裁剪拖拽/绘制
+    if (this.toolBridge.getTool() === 'crop') {
+      this.handleCropPointerMove(e);
+      return;
+    }
+
     if (!this.drawing.isDrawing) return;
 
     const evt = e as { x: number; y: number };
@@ -1103,6 +1175,12 @@ export class LeaferBackend
   }
 
   private handleDrawPointerUp(): void {
+    // 裁剪结束
+    if (this.toolBridge.getTool() === 'crop') {
+      this.handleCropPointerUp();
+      return;
+    }
+
     if (!this.drawing.isDrawing) return;
     this.finalizeDrawing();
   }
@@ -1355,5 +1433,171 @@ export class LeaferBackend
     }
 
     return {};
+  }
+
+  // ---- 裁剪交互 ----
+
+  private handleCropPointerDown(
+    e: unknown,
+  ): void {
+    const evt = e as { x: number; y: number };
+    const coord =
+      this.coordTransformer?.screenToImage(
+        evt.x,
+        evt.y,
+      ) ?? { x: 0, y: 0 };
+
+    // 钳制到图片范围
+    const clamped = this.clampCoord(coord);
+
+    const currentCrop =
+      this.cropOverlay?.getCropArea() ?? null;
+
+    if (currentCrop) {
+      // 已有裁剪框 → 检测拖拽类型
+      const dragType =
+        this.cropOverlay!.getDragTypeAtPoint(
+          clamped.x,
+          clamped.y,
+        );
+      if (dragType !== 'none') {
+        this.cropDragging = {
+          type: dragType,
+          startX: clamped.x,
+          startY: clamped.y,
+          orig: { ...currentCrop },
+        };
+        return;
+      }
+    }
+
+    // 无裁剪框或点击在框外 → 开始新的绘制
+    this.cropDrawing = {
+      isDrawing: true,
+      startX: clamped.x,
+      startY: clamped.y,
+    };
+
+    // 清除旧裁剪框
+    this.setCropArea(null);
+    this.notifyCropChange(null);
+  }
+
+  private handleCropPointerMove(
+    e: unknown,
+  ): void {
+    const evt = e as { x: number; y: number };
+    const coord =
+      this.coordTransformer?.screenToImage(
+        evt.x,
+        evt.y,
+      ) ?? { x: 0, y: 0 };
+
+    const clamped = this.clampCoord(coord);
+
+    if (this.cropDragging) {
+      // 拖拽调整裁剪框
+      const dx =
+        clamped.x - this.cropDragging.startX;
+      const dy =
+        clamped.y - this.cropDragging.startY;
+      const bounds = {
+        minX: 0,
+        minY: 0,
+        maxX: this.imageSize.width,
+        maxY: this.imageSize.height,
+      };
+      const newCrop = applyDragResize(
+        {
+          x: this.cropDragging.orig.x,
+          y: this.cropDragging.orig.y,
+          width: this.cropDragging.orig.width,
+          height: this.cropDragging.orig.height,
+        },
+        this.cropDragging.type,
+        dx,
+        dy,
+        this.cropDragging.orig,
+        MIN_CROP_SIZE,
+        bounds,
+      );
+      this.setCropArea(newCrop);
+      this.notifyCropChange(newCrop);
+      return;
+    }
+
+    if (this.cropDrawing.isDrawing) {
+      // 绘制中 → 实时更新裁剪区域
+      const { startX, startY } =
+        this.cropDrawing;
+      const area: CropArea = {
+        x: Math.min(startX, clamped.x),
+        y: Math.min(startY, clamped.y),
+        width: Math.abs(clamped.x - startX),
+        height: Math.abs(clamped.y - startY),
+      };
+      this.setCropArea(area);
+      this.notifyCropChange(area);
+    }
+  }
+
+  private handleCropPointerUp(): void {
+    if (this.cropDragging) {
+      // 拖拽结束 → 通知回调
+      const area =
+        this.cropOverlay?.getCropArea() ?? null;
+      if (area) {
+        this.notifyCropChange(area);
+      }
+      this.cropDragging = null;
+      return;
+    }
+
+    if (this.cropDrawing.isDrawing) {
+      const area =
+        this.cropOverlay?.getCropArea();
+      // 尺寸太小的裁剪框无效
+      if (
+        area &&
+        area.width >= MIN_CROP_SIZE &&
+        area.height >= MIN_CROP_SIZE
+      ) {
+        this.notifyCropChange(area);
+      } else {
+        this.setCropArea(null);
+        this.notifyCropChange(null);
+      }
+      this.cropDrawing = {
+        isDrawing: false,
+        startX: 0,
+        startY: 0,
+      };
+    }
+  }
+
+  /** 通知裁剪区域变化 */
+  private notifyCropChange(
+    area: CropArea | null,
+  ): void {
+    if (!this.callbacks || this.isSyncing())
+      return;
+    this.callbacks.onCropAreaChange(area);
+  }
+
+  /** 坐标钳制到图片范围 */
+  private clampCoord(coord: {
+    x: number;
+    y: number;
+  }): { x: number; y: number } {
+    return {
+      x: Math.max(
+        0,
+        Math.min(this.imageSize.width, coord.x),
+      ),
+      y: Math.max(
+        0,
+        Math.min(this.imageSize.height, coord.y),
+      ),
+    };
   }
 }

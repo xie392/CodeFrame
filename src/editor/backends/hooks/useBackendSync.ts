@@ -248,6 +248,29 @@ export function useBackendSync(
             break;
         }
       },
+      onCropAreaChange: (area) => {
+        const store =
+          useEditorStore.getState();
+        // 值比对：相同裁剪区域不更新
+        const current = store.cropArea;
+        if (area && current) {
+          if (
+            Math.abs(area.x - current.x) <
+              EPS &&
+            Math.abs(area.y - current.y) <
+              EPS &&
+            Math.abs(
+              area.width - current.width
+            ) < EPS &&
+            Math.abs(
+              area.height - current.height
+            ) < EPS
+          )
+            return;
+        }
+        if (!area && !current) return;
+        store.setCropArea(area);
+      },
     });
 
     return () => {
@@ -256,6 +279,7 @@ export function useBackendSync(
         onSelectionChange: () => {},
         onViewportChange: () => {},
         onShapeCreated: () => {},
+        onCropAreaChange: () => {},
       });
     };
   }, [backend]);
@@ -404,4 +428,23 @@ export function useBackendSync(
       b.setImageData?.(imageData);
     });
   }, [backend, imageData]);
+
+  // 同步裁剪区域 → Backend
+  const cropAreaKey = useEditorStore(
+    (s) =>
+      s.cropArea
+        ? `${s.cropArea.x},${s.cropArea.y},${s.cropArea.width},${s.cropArea.height}`
+        : 'null',
+  );
+
+  useEffect(() => {
+    if (!backend) return;
+    const syncable = backend as Syncable;
+    const { cropArea } =
+      useEditorStore.getState();
+
+    withSync(syncable, () => {
+      backend.setCropArea(cropArea);
+    });
+  }, [backend, cropAreaKey]);
 }

@@ -25,10 +25,14 @@ export function createLeaferApp(
   });
 
   // 创建标注容器 Box — 与图片同尺寸
+  // hitFill: 'all' 确保空白区域也可命中，
+  // 否则 Leafer 不会在空白区域
+  // 派发 Pointer 事件
   const annotationBox = new Box({
     width: imageWidth,
     height: imageHeight,
     overflow: 'hide',
+    hitFill: 'all',
   });
 
   // 将 Box 添加到 tree 层

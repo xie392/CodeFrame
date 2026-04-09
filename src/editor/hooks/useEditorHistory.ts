@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import type { EditorState, HistoryState, HistoryActions } from '../types';
 
 // 历史记录最大条数
@@ -117,7 +117,7 @@ export function useEditorHistory(): HistoryActions {
     };
   }, []);
 
-  return {
+  return useMemo(() => ({
     pushState,
     undo,
     redo,
@@ -125,5 +125,9 @@ export function useEditorHistory(): HistoryActions {
     canRedo,
     clearHistory,
     resetToState,
-  };
+  }), [
+    pushState, undo, redo,
+    canUndo, canRedo,
+    clearHistory, resetToState,
+  ]);
 }

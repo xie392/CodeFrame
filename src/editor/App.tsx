@@ -422,7 +422,15 @@ export const App: React.FC = () => {
           </div>
         ) : imageData ? (
           isLeafer ? (
-            <LeaferCanvas />
+            <LeaferCanvas
+              onHistoryActions={
+                handleHistoryActions
+              }
+              onExportHandlers={
+                handleExportHandlers
+              }
+              onUndoRedo={handleUndoRedo}
+            />
           ) : (
             <Canvas2DCanvas
               onHistoryActions={

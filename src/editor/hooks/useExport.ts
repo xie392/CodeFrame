@@ -3,7 +3,7 @@
  * 处理图片导出和复制到剪贴板
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { snapdom } from '@zumer/snapdom';
 import { EXPORT_FORMATS } from '@shared/constants';
 import { useSettingsStore } from '@shared/stores/settings-store';
@@ -281,7 +281,7 @@ export function useExport({
     }
   }, [prepareExport, waitForRender, cleanupExport]);
 
-  return {
+  return useMemo(() => ({
     isExporting,
     copied,
     exportError,
@@ -289,5 +289,9 @@ export function useExport({
     setCopied,
     handleExportImage,
     handleCopyToClipboard,
-  };
+  }), [
+    isExporting, copied, exportError,
+    setIsExporting, setCopied,
+    handleExportImage, handleCopyToClipboard,
+  ]);
 }

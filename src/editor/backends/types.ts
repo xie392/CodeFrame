@@ -132,6 +132,11 @@ export interface BackendCallbacks {
     type: ShapeType,
     data: Record<string, unknown>
   ) => void;
+
+  /** 裁剪区域变化（绘制/拖拽/调整） */
+  onCropAreaChange: (
+    area: CropArea | null
+  ) => void;
 }
 
 // ---------------------------------------------------------------------------

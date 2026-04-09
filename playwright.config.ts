@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:4173',
     viewport: { width: 1280, height: 720 },
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
@@ -20,8 +20,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    port: 5173,
+    command: 'pnpm preview',
+    port: 4173,
     reuseExistingServer: true,
     timeout: 30000,
   },

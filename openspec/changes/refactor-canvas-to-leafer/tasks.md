@@ -18,17 +18,17 @@
 
 ## 2. Phase 1: 基础图形（Rect + Arrow + Text + Editor 选择/拖拽）
 
-- [ ] 2.1 创建 `src/editor/backends/leafer/adapters/rect-adapter.ts`，实现 `IShapeAdapter<RectShape>` — toCreateParams/toUpdateParams/toStoreUpdates，处理 color↔stroke、fillOpacity↔fill、borderStyle↔dash 映射，设置 `dragBounds: 'parent'` 限制拖拽不超出图片边界
-- [ ] 2.2 创建 `src/editor/backends/leafer/adapters/arrow-adapter.ts`，实现 `IShapeAdapter<ArrowShape>` — 使用 @leafer-in/arrow 的 Arrow 元素，处理 points/startX/startY/endX/endY 和 style(single/double) 映射，设置 `dragBounds: 'parent'`
-- [ ] 2.3 创建 `src/editor/backends/leafer/adapters/text-adapter.ts`，实现 `IShapeAdapter<TextShape>` — 处理 fontWeight(fontVariant)/fontStyle(italic) 映射，设置 `dragBounds: 'parent'`
-- [ ] 2.4 实现 `LeaferBackend.addShape/updateShape/removeShape` — 根据 ShapeType 选择对应 adapter，调用 toCreateParams/toUpdateParams，创建/更新/删除 Leafer 元素
-- [ ] 2.5 实现 `LeaferBackend.setSelection/clearSelection` — 通过 IEditorBridge 同步 Store 选中到 Leafer Editor
-- [ ] 2.6 实现 `LeaferBackend.onSelectionChange` — 监听 Leafer Editor 的 SELECT 事件，通过 IEditorBridge 回写 Store
-- [ ] 2.7 实现 `LeaferBackend.onShapeChange` — 监听 Leafer 元素的 DragEnd/ResizeEnd 事件，通过 adapter.toStoreUpdates 回写 Store
-- [ ] 2.8 实现 `LeaferBackend.onShapeCreated` — 监听绘制结束事件，创建 Store 数据并添加到 Store
-- [ ] 2.9 完善 `useBackendSync` — 实现 Backend → Store 回调（onSelectionChange/onShapeChange/onShapeCreated）
-- [ ] 2.10 实现绘制交互 — 监听 Leafer Canvas 的 PointerDown/Move/Up 事件，根据 activeTool 创建临时图形（绘制预览）和最终图形；绘制过程中通过 coordTransform 钳制坐标到 `[0, imageWidth] × [0, imageHeight]`，确保图形不超出图片边界
-- [ ] 2.11 验证 Phase 1：在 Leafer 路径下可绘制矩形/箭头/文字，可选中/拖拽/缩放，属性面板实时更新，默认样式使用 DEFAULT_*_STYLE 常量（修复现有 Bug）；验证边界约束 — 图形拖拽不超出图片区域，绘制时坐标钳制生效，Box overflow:'hide' 裁剪视觉溢出
+- [x] 2.1 创建 `src/editor/backends/leafer/adapters/rect-adapter.ts`，实现 `IShapeAdapter<RectShape>` — toCreateParams/toUpdateParams/toStoreUpdates，处理 color↔stroke、fillOpacity↔fill、borderStyle↔dash 映射，设置 `dragBounds: 'parent'` 限制拖拽不超出图片边界
+- [x] 2.2 创建 `src/editor/backends/leafer/adapters/arrow-adapter.ts`，实现 `IShapeAdapter<ArrowShape>` — 使用 @leafer-in/arrow 的 Arrow 元素，处理 points/startX/startY/endX/endY 和 style(single/double) 映射，设置 `dragBounds: 'parent'`
+- [x] 2.3 创建 `src/editor/backends/leafer/adapters/text-adapter.ts`，实现 `IShapeAdapter<TextShape>` — 处理 fontWeight(fontVariant)/fontStyle(italic) 映射，设置 `dragBounds: 'parent'`
+- [x] 2.4 实现 `LeaferBackend.addShape/updateShape/removeShape` — 根据 ShapeType 选择对应 adapter，调用 toCreateParams/toUpdateParams，创建/更新/删除 Leafer 元素
+- [x] 2.5 实现 `LeaferBackend.setSelection/clearSelection` — 通过 IEditorBridge 同步 Store 选中到 Leafer Editor，使用 startSync/endSync 扩大 syncing 守卫范围
+- [x] 2.6 实现 `LeaferBackend.onSelectionChange` — 监听 Leafer Editor 的 SELECT 事件，通过 IEditorBridge 回写 Store
+- [x] 2.7 实现 `LeaferBackend.onShapeChange` — 监听 Leafer 元素的 DragEnd 事件，通过 adapter.toStoreUpdates 回写 Store
+- [x] 2.8 实现 `LeaferBackend.onShapeCreated` — 监听绘制结束事件，创建 Store 数据并添加到 Store
+- [x] 2.9 完善 `useBackendSync` — 实现 Backend → Store 回调（onSelectionChange/onShapeChange/onShapeCreated），改进 Store → Backend 形状同步（hash 检测 + 增量更新）
+- [x] 2.10 实现绘制交互 — 监听 Leafer Canvas 的 PointerDown/Move/Up 事件，根据 activeTool 创建临时图形（绘制预览）和最终图形；绘制过程中通过 coordTransform 钳制坐标到 `[0, imageWidth] × [0, imageHeight]`，确保图形不超出图片边界
+- [x] 2.11 验证 Phase 1：pnpm build ✅、pnpm test (591 passed) ✅、pnpm test:e2e (19 passed) ✅；安全修复 — 元素事件清理、属性白名单、syncing 守卫范围、类型守卫
 
 ## 3. Phase 2: 马赛克（自定义 Filter）
 

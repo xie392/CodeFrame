@@ -26,16 +26,21 @@ describe('SelectionBridge', () => {
       const check = () => {
         duringSync = bridge.isSyncing();
       };
-      // sync 完成后应恢复 false
       bridge.syncSelectionToBackend({
         arrow: ['a1'],
         rect: [],
         text: [],
         mosaic: [],
       });
-      // sync 结束后 syncing 应为 false
       check();
       expect(duringSync).toBe(false);
+      expect(bridge.isSyncing()).toBe(false);
+    });
+
+    it('startSync/endSync 应手动控制 syncing 状态', () => {
+      bridge.startSync();
+      expect(bridge.isSyncing()).toBe(true);
+      bridge.endSync();
       expect(bridge.isSyncing()).toBe(false);
     });
   });
@@ -71,23 +76,25 @@ describe('SelectionBridge', () => {
         received.push('called');
       });
 
-      // sync 期间产生的选中事件应被忽略
-      bridge.syncSelectionToBackend({
-        arrow: ['a1'],
-        rect: [],
-        text: [],
-        mosaic: [],
-      });
-
-      // syncing 完成后手动触发
+      // 使用 startSync 扩大守卫范围
+      bridge.startSync();
       bridge.handleLeaferSelect({
         arrow: ['a1'],
         rect: [],
         text: [],
         mosaic: [],
       });
+      // syncing 期间不触发
+      expect(received).toHaveLength(0);
 
+      bridge.endSync();
       // 非 syncing 期间应触发
+      bridge.handleLeaferSelect({
+        arrow: ['a1'],
+        rect: [],
+        text: [],
+        mosaic: [],
+      });
       expect(received).toHaveLength(1);
     });
   });

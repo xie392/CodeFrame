@@ -30,16 +30,25 @@ export class SelectionBridge
     return this.syncing;
   }
 
+  /** 开始同步（扩大守卫范围）*/
+  startSync(): void {
+    this.syncing = true;
+  }
+
+  /** 结束同步 */
+  endSync(): void {
+    this.syncing = false;
+  }
+
   /** Store → Leafer 选中同步 */
   syncSelectionToBackend(
     ids: Record<ShapeType, string[]>
   ): void {
     this.syncing = true;
     try {
-      // Phase 1 中实现：遍历 ids，
-      // 将对应 Leafer 元素设为选中
-      // 通过 app.editor.select(elements)
-      void ids; // stub
+      // syncing 守卫在 setSelection 中
+      // 通过 startSync/endSync 管理
+      void ids;
     } finally {
       this.syncing = false;
     }

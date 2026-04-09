@@ -1,7 +1,7 @@
 /**
  * LeaferJS 渲染后端实现
  * 实现 IRendererBackend 接口
- * Phase 0：生命周期 + 视口方法完整，图形 CRUD 暂用 stub
+ * Phase 1：图形 CRUD + 选中/拖拽 + 绘制交互
  */
 
 import type {
@@ -11,8 +11,9 @@ import type {
   ViewportState,
   ShapeType,
   ICoordTransformer,
+  ShapeDataMap,
 } from '../types';
-import type { CropArea } from '../../types';
+import type { CropArea, ToolId } from '../../types';
 import {
   createLeaferApp,
   destroyLeaferApp,
@@ -23,21 +24,127 @@ import type { LeaferAppResult } from './leafer-app';
 import { CoordTransformer } from './utils/coord-transform';
 import { SelectionBridge } from './bridges/selection-bridge';
 import { ViewportBridge } from './bridges/viewport-bridge';
+import { ToolBridge } from './bridges/tool-bridge';
+import type { ToolBridgeBackend } from './bridges/tool-bridge';
+import {
+  RectAdapter,
+  ArrowAdapter,
+  TextAdapter,
+} from './adapters';
+import type { IShapeAdapter } from '../types';
+
+import { Rect, Text } from 'leafer-ui';
+import { Arrow } from '@leafer-in/arrow';
+import {
+  PointerEvent,
+  DragEvent,
+} from 'leafer-ui';
+import { EditorEvent } from '@leafer-in/editor';
+
+import {
+  DRAW_MIN_DISTANCE,
+  DEFAULT_ARROW_STYLE,
+  DEFAULT_RECT_STYLE,
+  DEFAULT_TEXT_STYLE,
+} from '../../constants';
+import { hexToRgba } from './utils/color';
+
+// ---------------------------------------------------------------------------
+// 适配器注册表
+// ---------------------------------------------------------------------------
+
+const adapters: Record<
+  ShapeType,
+  IShapeAdapter<ShapeDataMap[ShapeType]>
+> = {
+  arrow: new ArrowAdapter() as IShapeAdapter<
+    ShapeDataMap[ShapeType]
+  >,
+  rect: new RectAdapter() as IShapeAdapter<
+    ShapeDataMap[ShapeType]
+  >,
+  text: new TextAdapter() as IShapeAdapter<
+    ShapeDataMap[ShapeType]
+  >,
+  mosaic: null as unknown as IShapeAdapter<
+    ShapeDataMap[ShapeType]
+  >,
+};
+
+// ---------------------------------------------------------------------------
+// 允许设置到 Leafer 元素的属性白名单
+// ---------------------------------------------------------------------------
+
+const ALLOWED_PROPS = new Set([
+  'x', 'y', 'width', 'height',
+  'stroke', 'strokeWidth', 'fill',
+  'dashPattern', 'points', 'fontSize',
+  'fontWeight', 'italic', 'text',
+  'startArrow', 'endArrow', 'opacity',
+  'hitStroke', 'cornerRadius',
+]);
+
+// ---------------------------------------------------------------------------
+// 绘制状态
+// ---------------------------------------------------------------------------
+
+interface DrawingState {
+  isDrawing: boolean;
+  shapeType: ShapeType | null;
+  startCoord: { x: number; y: number };
+  tempElement: unknown | null;
+}
+
+const INITIAL_DRAWING: DrawingState = {
+  isDrawing: false,
+  shapeType: null,
+  startCoord: { x: 0, y: 0 },
+  tempElement: null,
+};
+
+// ---------------------------------------------------------------------------
+// LeaferBackend
+// ---------------------------------------------------------------------------
 
 export class LeaferBackend
-  implements IRendererBackend
+  implements IRendererBackend, ToolBridgeBackend
 {
   private appResult: LeaferAppResult | null =
     null;
   private selectionBridge =
     new SelectionBridge();
   private viewportBridge = new ViewportBridge();
+  private toolBridge = new ToolBridge();
   private coordTransformer: CoordTransformer | null =
     null;
   private imageSize = {
     width: 0,
     height: 0,
   };
+
+  // ID → Leafer 元素映射
+  private elementMap = new Map<string, unknown>();
+
+  // ID → 图形类型映射
+  private typeMap = new Map<string, ShapeType>();
+
+  // ID → 元素事件清理函数
+  private elementCleanupMap = new Map<
+    string,
+    () => void
+  >();
+
+  // 回调
+  private callbacks: BackendCallbacks | null =
+    null;
+
+  // 绘制状态
+  private drawing: DrawingState = {
+    ...INITIAL_DRAWING,
+  };
+
+  // 全局事件清理函数
+  private globalCleanupFns: (() => void)[] = [];
 
   // ---- 生命周期 ----
 
@@ -52,17 +159,27 @@ export class LeaferBackend
       imageDisplaySize.height
     );
 
-    // 初始化坐标转换器
     this.coordTransformer = new CoordTransformer(
       () => this.imageSize,
       () => this.getZoomState()
     );
 
-    // 注册 Leafer 事件 → Backend 回调
     this.setupEventListeners();
   }
 
   destroy(): void {
+    // 清理全局事件
+    this.cleanupGlobalEvents();
+    // 清理元素级事件
+    for (const [, cleanup] of this
+      .elementCleanupMap) {
+      cleanup();
+    }
+    this.elementCleanupMap.clear();
+    this.elementMap.clear();
+    this.typeMap.clear();
+    this.drawing = { ...INITIAL_DRAWING };
+
     if (this.appResult) {
       destroyLeaferApp(this.appResult.app);
       this.appResult = null;
@@ -119,30 +236,110 @@ export class LeaferBackend
     };
   }
 
-  // ---- 图形 CRUD（stub，Phase 1 实现）----
+  // ---- 图形 CRUD ----
 
   addShape(
-    _type: ShapeType,
-    _id: string,
-    _data: unknown
+    type: ShapeType,
+    id: string,
+    data: unknown
   ): void {
-    // Phase 1：根据 type 选 adapter，
-    // 调用 toCreateParams，创建 Leafer 元素
+    if (this.elementMap.has(id)) {
+      this.updateShape(
+        type,
+        id,
+        data as Record<string, unknown>
+      );
+      return;
+    }
+
+    const adapter = adapters[type];
+    if (!adapter) return;
+
+    const params = adapter.toCreateParams(
+      data as ShapeDataMap[ShapeType]
+    );
+
+    let element: unknown;
+    switch (type) {
+      case 'rect':
+        element = new Rect(params);
+        break;
+      case 'arrow':
+        element = new Arrow(params);
+        break;
+      case 'text':
+        element = new Text(params);
+        break;
+      default:
+        return;
+    }
+
+    // 存储 shapeType 到元素 data
+    const el = element as {
+      data?: Record<string, unknown>;
+    };
+    el.data = { shapeType: type };
+
+    this.elementMap.set(id, element);
+    this.typeMap.set(id, type);
+
+    this.appResult?.annotationBox.add(
+      element as { remove: () => void }
+    );
+
+    this.listenElementDragEnd(element, type, id);
   }
 
   updateShape(
-    _type: ShapeType,
-    _id: string,
-    _updates: Record<string, unknown>
+    type: ShapeType,
+    id: string,
+    updates: Record<string, unknown>
   ): void {
-    // Phase 1
+    const element = this.elementMap.get(id);
+    if (!element) return;
+
+    const adapter = adapters[type];
+    if (!adapter) return;
+
+    const params = adapter.toUpdateParams(
+      updates as Partial<ShapeDataMap[ShapeType]>
+    );
+
+    // Arrow 坐标更新需重建 points
+    if (
+      type === 'arrow' &&
+      this.arrowNeedsCoordRebuild(updates)
+    ) {
+      this.rebuildArrowCoords(
+        element,
+        updates
+      );
+      return;
+    }
+
+    this.applyElementProps(element, params);
   }
 
   removeShape(
-    _type: ShapeType,
-    _id: string
+    type: ShapeType,
+    id: string
   ): void {
-    // Phase 1
+    void type;
+
+    // 清理元素事件监听
+    const cleanup =
+      this.elementCleanupMap.get(id);
+    if (cleanup) {
+      cleanup();
+      this.elementCleanupMap.delete(id);
+    }
+
+    const element = this.elementMap.get(id);
+    if (!element) return;
+
+    (element as { remove: () => void }).remove();
+    this.elementMap.delete(id);
+    this.typeMap.delete(id);
   }
 
   // ---- 选中状态 ----
@@ -150,15 +347,54 @@ export class LeaferBackend
   setSelection(
     ids: Record<ShapeType, string[]>
   ): void {
-    this.selectionBridge.syncSelectionToBackend(
-      ids
-    );
+    // syncing 守卫覆盖整个同步流程
+    this.selectionBridge.startSync();
+    try {
+      if (!this.appResult) return;
+      const editor = this.getEditor();
+      if (!editor) return;
+
+      const elements: unknown[] = [];
+      for (const type of [
+        'arrow',
+        'rect',
+        'text',
+        'mosaic',
+      ] as ShapeType[]) {
+        for (const id of ids[type]) {
+          const el = this.elementMap.get(id);
+          if (el) elements.push(el);
+        }
+      }
+
+      if (elements.length > 0) {
+        (
+          editor as {
+            select: (v: unknown) => void;
+          }
+        ).select(elements);
+      } else {
+        (
+          editor as { cancel: () => void }
+        ).cancel();
+      }
+    } finally {
+      this.selectionBridge.endSync();
+    }
   }
 
   clearSelection(): void {
-    this.selectionBridge.syncSelectionToBackend(
-      SelectionBridge.emptySelection()
-    );
+    this.selectionBridge.startSync();
+    try {
+      const editor = this.getEditor();
+      if (editor) {
+        (
+          editor as { cancel: () => void }
+        ).cancel();
+      }
+    } finally {
+      this.selectionBridge.endSync();
+    }
   }
 
   // ---- 裁剪框（Phase 3 实现）----
@@ -170,9 +406,8 @@ export class LeaferBackend
   // ---- 回调注册 ----
 
   setCallbacks(callbacks: BackendCallbacks): void {
-    void callbacks;
+    this.callbacks = callbacks;
 
-    // 桥接回调
     this.selectionBridge.onSelectionChange(
       (ids) =>
         callbacks.onSelectionChange(ids)
@@ -194,7 +429,31 @@ export class LeaferBackend
     return this.coordTransformer;
   }
 
-  // ---- 内部方法 ----
+  // ---- 工具桥接 ----
+
+  getToolBridge(): ToolBridge {
+    return this.toolBridge;
+  }
+
+  /** 切换工具模式（供 useBackendSync 调用）*/
+  setToolMode(tool: string): void {
+    const validTools: ToolId[] = [
+      'select',
+      'move',
+      'arrow',
+      'rect',
+      'text',
+      'mosaic',
+      'crop',
+    ];
+    if (!validTools.includes(tool as ToolId))
+      return;
+    this.toolBridge.setTool(tool as ToolId);
+  }
+
+  // ================================================================
+  // 内部方法
+  // ================================================================
 
   private getZoomState(): {
     scale: number;
@@ -216,10 +475,545 @@ export class LeaferBackend
     };
   }
 
+  /** 获取 Leafer Editor 实例 */
+  getEditor(): unknown | null {
+    const app = this.appResult?.app;
+    if (!app) return null;
+    const editor = (
+      app as unknown as Record<string, unknown>
+    ).editor;
+    return editor ?? null;
+  }
+
+  /** 安全应用属性到 Leafer 元素（白名单过滤）*/
+  private applyElementProps(
+    element: unknown,
+    props: Record<string, unknown>
+  ): void {
+    const el = element as Record<string, unknown>;
+    for (const [key, value] of Object.entries(
+      props
+    )) {
+      if (
+        value !== undefined &&
+        ALLOWED_PROPS.has(key)
+      ) {
+        el[key] = value;
+      }
+    }
+  }
+
+  /** 判断 Arrow 是否需要坐标重建 */
+  private arrowNeedsCoordRebuild(
+    updates: Record<string, unknown>
+  ): boolean {
+    return (
+      'startX' in updates ||
+      'startY' in updates ||
+      'endX' in updates ||
+      'endY' in updates
+    );
+  }
+
+  /** 重建 Arrow 坐标 */
+  private rebuildArrowCoords(
+    element: unknown,
+    updates: Record<string, unknown>
+  ): void {
+    const el = element as {
+      x: number;
+      y: number;
+      points: number[];
+    };
+    const ox = el.x ?? 0;
+    const oy = el.y ?? 0;
+    const pts = el.points ?? [0, 0, 0, 0];
+
+    const startX =
+      'startX' in updates
+        ? (updates.startX as number)
+        : (pts[0] ?? 0) + ox;
+    const startY =
+      'startY' in updates
+        ? (updates.startY as number)
+        : (pts[1] ?? 0) + oy;
+    const endX =
+      'endX' in updates
+        ? (updates.endX as number)
+        : (pts[2] ?? 0) + ox;
+    const endY =
+      'endY' in updates
+        ? (updates.endY as number)
+        : (pts[3] ?? 0) + oy;
+
+    el.points = [startX, startY, endX, endY];
+    el.x = 0;
+    el.y = 0;
+  }
+
+  /** 监听元素拖拽结束事件（带清理）*/
+  private listenElementDragEnd(
+    element: unknown,
+    type: ShapeType,
+    id: string
+  ): void {
+    const el = element as {
+      on: (
+        event: unknown,
+        handler: (e: unknown) => void
+      ) => void;
+      off: (
+        event: unknown,
+        handler: (e: unknown) => void
+      ) => void;
+    };
+
+    const handler = () => {
+      if (!this.callbacks) return;
+      const adapter = adapters[type];
+      if (!adapter) return;
+      const storeUpdates =
+        adapter.toStoreUpdates(element);
+      this.callbacks.onShapeChange(
+        type,
+        id,
+        storeUpdates as Record<string, unknown>
+      );
+    };
+
+    el.on(DragEvent.END, handler);
+
+    // 注册清理函数
+    this.elementCleanupMap.set(id, () => {
+      el.off(DragEvent.END, handler);
+    });
+  }
+
+  // ---- 全局事件监听 ----
+
   private setupEventListeners(): void {
-    // Phase 1 中注册 Leafer 事件监听
-    // - Editor select 事件 → selectionBridge
-    // - Viewport zoom/pan 事件 → viewportBridge
-    // - 元素 DragEnd/ResizeEnd → onShapeChange
+    if (!this.appResult) return;
+
+    this.setupEditorSelectListener();
+    this.setupDrawingListeners();
+    this.setupViewportListeners();
+    this.setupToolBridge();
+  }
+
+  private cleanupGlobalEvents(): void {
+    for (const fn of this.globalCleanupFns) {
+      fn();
+    }
+    this.globalCleanupFns = [];
+  }
+
+  /** Editor 选中事件 → Store */
+  private setupEditorSelectListener(): void {
+    const editor = this.getEditor();
+    if (!editor) return;
+
+    const ed = editor as {
+      on: (
+        event: unknown,
+        handler: (e: unknown) => void
+      ) => void;
+      off: (
+        event: unknown,
+        handler: (e: unknown) => void
+      ) => void;
+      list: unknown[];
+    };
+
+    const handler = () => {
+      if (this.selectionBridge.isSyncing())
+        return;
+
+      const selectedIds =
+        SelectionBridge.emptySelection();
+      const list = ed.list ?? [];
+
+      for (const item of list) {
+        const el = item as {
+          id?: string;
+          data?: { shapeType?: ShapeType };
+        };
+        const type =
+          el.data?.shapeType ??
+          this.typeMap.get(el.id ?? '') ??
+          null;
+        if (type && el.id) {
+          selectedIds[type].push(el.id);
+        }
+      }
+
+      this.selectionBridge.handleLeaferSelect(
+        selectedIds
+      );
+    };
+
+    ed.on(EditorEvent.SELECT, handler);
+    this.globalCleanupFns.push(() => {
+      ed.off(EditorEvent.SELECT, handler);
+    });
+  }
+
+  /** 绘制交互 Pointer 事件 */
+  private setupDrawingListeners(): void {
+    const app = this.appResult?.app;
+    if (!app) return;
+
+    const a = app as {
+      on: (
+        event: unknown,
+        handler: (e: unknown) => void
+      ) => void;
+      off: (
+        event: unknown,
+        handler: (e: unknown) => void
+      ) => void;
+    };
+
+    const onDown = (e: unknown) => {
+      this.handleDrawPointerDown(e);
+    };
+    const onMove = (e: unknown) => {
+      this.handleDrawPointerMove(e);
+    };
+    const onUp = () => {
+      this.handleDrawPointerUp();
+    };
+
+    a.on(PointerEvent.DOWN, onDown);
+    a.on(PointerEvent.MOVE, onMove);
+    a.on(PointerEvent.UP, onUp);
+
+    this.globalCleanupFns.push(() => {
+      a.off(PointerEvent.DOWN, onDown);
+      a.off(PointerEvent.MOVE, onMove);
+      a.off(PointerEvent.UP, onUp);
+    });
+  }
+
+  /** 视口变化事件 → Store */
+  private setupViewportListeners(): void {
+    const app = this.appResult?.app;
+    if (!app) return;
+
+    const zoomLayer = app.tree?.zoomLayer;
+    if (!zoomLayer) return;
+
+    const zl = zoomLayer as {
+      on: (
+        event: unknown,
+        handler: () => void
+      ) => void;
+      off: (
+        event: unknown,
+        handler: () => void
+      ) => void;
+    };
+
+    const handler = () => {
+      if (this.viewportBridge.isSyncing()) return;
+      this.viewportBridge
+        .handleLeaferViewportChange(
+          this.getViewport()
+        );
+    };
+
+    zl.on(DragEvent.END, handler);
+    this.globalCleanupFns.push(() => {
+      zl.off(DragEvent.END, handler);
+    });
+  }
+
+  /** 工具桥接配置 */
+  private setupToolBridge(): void {
+    this.toolBridge.setBackend(this);
+  }
+
+  // ---- 绘制交互 ----
+
+  private handleDrawPointerDown(
+    e: unknown
+  ): void {
+    const tool = this.toolBridge.getTool();
+    if (
+      tool !== 'arrow' &&
+      tool !== 'rect' &&
+      tool !== 'text'
+    )
+      return;
+
+    const evt = e as { x: number; y: number };
+    const coord =
+      this.coordTransformer?.screenToImage(
+        evt.x,
+        evt.y
+      ) ?? { x: 0, y: 0 };
+
+    if (tool === 'text') {
+      this.createTextAtCoord(coord);
+      return;
+    }
+
+    this.drawing = {
+      isDrawing: true,
+      shapeType: tool,
+      startCoord: coord,
+      tempElement: null,
+    };
+
+    this.createTempElement(tool, coord);
+  }
+
+  private handleDrawPointerMove(
+    e: unknown
+  ): void {
+    if (!this.drawing.isDrawing) return;
+
+    const evt = e as { x: number; y: number };
+    const coord =
+      this.coordTransformer?.screenToImage(
+        evt.x,
+        evt.y
+      ) ?? { x: 0, y: 0 };
+
+    this.updateTempElement(
+      this.drawing.shapeType!,
+      this.drawing.startCoord,
+      coord
+    );
+  }
+
+  private handleDrawPointerUp(): void {
+    if (!this.drawing.isDrawing) return;
+    this.finalizeDrawing();
+  }
+
+  /** 创建临时绘制图形 */
+  private createTempElement(
+    tool: ShapeType,
+    coord: { x: number; y: number }
+  ): void {
+    if (!this.appResult) return;
+
+    let element: unknown;
+
+    if (tool === 'rect') {
+      element = new Rect({
+        x: coord.x,
+        y: coord.y,
+        width: 0,
+        height: 0,
+        stroke: DEFAULT_RECT_STYLE.color,
+        strokeWidth:
+          DEFAULT_RECT_STYLE.strokeWidth,
+        dashPattern:
+          DEFAULT_RECT_STYLE.borderStyle ===
+          'dashed'
+            ? [8, 4]
+            : undefined,
+        fill:
+          DEFAULT_RECT_STYLE.fillOpacity > 0
+            ? hexToRgba(
+                DEFAULT_RECT_STYLE.color,
+                DEFAULT_RECT_STYLE.fillOpacity /
+                  100
+              )
+            : undefined,
+        opacity: 0.6,
+      });
+    } else if (tool === 'arrow') {
+      element = new Arrow({
+        points: [
+          coord.x,
+          coord.y,
+          coord.x,
+          coord.y,
+        ],
+        stroke: DEFAULT_ARROW_STYLE.color,
+        strokeWidth:
+          DEFAULT_ARROW_STYLE.strokeWidth,
+        endArrow: 'mark',
+        hitStroke: 'all',
+        opacity: 0.6,
+      });
+    } else {
+      return;
+    }
+
+    this.drawing.tempElement = element;
+    this.appResult.annotationBox.add(
+      element as { remove: () => void }
+    );
+  }
+
+  /** 更新临时绘制图形 */
+  private updateTempElement(
+    tool: ShapeType,
+    start: { x: number; y: number },
+    current: { x: number; y: number }
+  ): void {
+    const el = this.drawing.tempElement as {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      points: number[];
+    } | null;
+    if (!el) return;
+
+    if (tool === 'rect') {
+      el.x = Math.min(start.x, current.x);
+      el.y = Math.min(start.y, current.y);
+      el.width = Math.abs(
+        current.x - start.x
+      );
+      el.height = Math.abs(
+        current.y - start.y
+      );
+    } else if (tool === 'arrow') {
+      el.points = [
+        start.x,
+        start.y,
+        current.x,
+        current.y,
+      ];
+    }
+  }
+
+  /** 完成绘制，创建 Store 数据 */
+  private finalizeDrawing(): void {
+    const { shapeType, startCoord, tempElement } =
+      this.drawing;
+
+    // 先读取坐标再移除（防竞态）
+    const temp = tempElement as {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      points: number[];
+    } | null;
+
+    // 移除临时元素
+    if (tempElement) {
+      (
+        tempElement as { remove: () => void }
+      ).remove();
+    }
+
+    if (!shapeType || !this.callbacks || !temp) {
+      this.drawing = { ...INITIAL_DRAWING };
+      return;
+    }
+
+    // 验证最小距离
+    if (!this.isDrawingSizeValid(shapeType, temp)) {
+      this.drawing = { ...INITIAL_DRAWING };
+      return;
+    }
+
+    const data = this.buildShapeData(
+      shapeType,
+      startCoord,
+      temp
+    );
+
+    this.callbacks.onShapeCreated(shapeType, data);
+    this.drawing = { ...INITIAL_DRAWING };
+  }
+
+  /** 验证绘制尺寸是否满足最小距离 */
+  private isDrawingSizeValid(
+    type: ShapeType,
+    temp: {
+      width: number;
+      height: number;
+      points: number[];
+    }
+  ): boolean {
+    if (type === 'rect') {
+      return (
+        temp.width >= DRAW_MIN_DISTANCE &&
+        temp.height >= DRAW_MIN_DISTANCE
+      );
+    }
+    if (type === 'arrow') {
+      const dx =
+        (temp.points?.[2] ?? 0) -
+        (temp.points?.[0] ?? 0);
+      const dy =
+        (temp.points?.[3] ?? 0) -
+        (temp.points?.[1] ?? 0);
+      return (
+        Math.sqrt(dx * dx + dy * dy) >=
+        DRAW_MIN_DISTANCE
+      );
+    }
+    return true;
+  }
+
+  /** 单击创建文字 */
+  private createTextAtCoord(
+    coord: { x: number; y: number }
+  ): void {
+    if (!this.callbacks) return;
+
+    this.callbacks.onShapeCreated('text', {
+      x: coord.x,
+      y: coord.y,
+      text: 'Text',
+      color: DEFAULT_TEXT_STYLE.color,
+      fontSize: DEFAULT_TEXT_STYLE.fontSize,
+      fontWeight: DEFAULT_TEXT_STYLE.fontWeight,
+      fontStyle: DEFAULT_TEXT_STYLE.fontStyle,
+    });
+  }
+
+  /** 从绘制结果构建 Store 数据 */
+  private buildShapeData(
+    type: ShapeType,
+    _start: { x: number; y: number },
+    temp: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      points: number[];
+    }
+  ): Record<string, unknown> {
+    if (type === 'rect') {
+      return {
+        x: temp.x,
+        y: temp.y,
+        width: temp.width,
+        height: temp.height,
+        color: DEFAULT_RECT_STYLE.color,
+        strokeWidth:
+          DEFAULT_RECT_STYLE.strokeWidth,
+        fillOpacity:
+          DEFAULT_RECT_STYLE.fillOpacity,
+        borderStyle:
+          DEFAULT_RECT_STYLE.borderStyle,
+      };
+    }
+
+    if (type === 'arrow') {
+      return {
+        startX: temp.points?.[0] ?? 0,
+        startY: temp.points?.[1] ?? 0,
+        endX: temp.points?.[2] ?? 0,
+        endY: temp.points?.[3] ?? 0,
+        color: DEFAULT_ARROW_STYLE.color,
+        strokeWidth:
+          DEFAULT_ARROW_STYLE.strokeWidth,
+        headSize: DEFAULT_ARROW_STYLE.headSize,
+        style: DEFAULT_ARROW_STYLE.style,
+      };
+    }
+
+    return {};
   }
 }

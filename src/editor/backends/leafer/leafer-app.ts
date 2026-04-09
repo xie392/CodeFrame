@@ -6,6 +6,7 @@
 import { App, Box } from 'leafer-ui';
 import '@leafer-in/editor';
 import '@leafer-in/viewport';
+import '@leafer-in/arrow';
 
 export interface LeaferAppResult {
   app: App;

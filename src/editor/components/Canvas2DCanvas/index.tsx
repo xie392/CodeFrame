@@ -794,10 +794,9 @@ export function Canvas2DCanvas({
   void canRedo;
 
   return (
-    <>
+    <div ref={canvasRef} className="absolute inset-0">
       <div
         ref={imageContainerRef}
-        className="absolute inset-0"
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           transformOrigin: '0 0',
@@ -842,6 +841,6 @@ export function Canvas2DCanvas({
         onReset={resetView}
         onSliderChange={handleSlider}
       />
-    </>
+    </div>
   );
 }

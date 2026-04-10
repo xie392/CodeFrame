@@ -1,18 +1,17 @@
 /**
  * LeaferCanvas 组件
- * LeaferJS 渲染路径入口
- * 使用 useBackendSync + useRendererBackend
+ * 纯 Leafer 渲染路径：图片+帧+标注全部在 Leafer 内渲染
  */
 
 import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from 'react';
 import { useEditorStore } from '../../store/editor-store';
 import { useRendererBackend } from '../../backends/hooks/useRendererBackend';
 import { useBackendSync } from '../../backends/hooks/useBackendSync';
-import { FrameContainer } from '../FrameContainer';
 import { ZoomControls } from '../ZoomControls';
 import { useCrop } from '../../hooks/useCrop';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -21,12 +20,15 @@ import { CropHint } from '../CropHint';
 import { useLeaferExport } from '../../backends/leafer/hooks/useLeaferExport';
 import { useLeaferHistory } from '../../backends/leafer/hooks/useLeaferHistory';
 import type { EditorState } from '../../types';
+import { MAX_IMG_W, MAX_IMG_H } from '../../constants';
+import { useTextEditing } from '../../hooks/useTextEditing';
+import { TextEditorInput } from '../TextEditorInput';
 
 export interface LeaferCanvasProps {
   onHistoryActions?: (
     actions: ReturnType<
       typeof useLeaferHistory
-    >,
+    >
   ) => void;
   onExportHandlers?: (handlers: {
     isExporting: boolean;
@@ -105,6 +107,12 @@ export function LeaferCanvas({
   const selectedMosaicIds = useEditorStore(
     (s) => s.selectedMosaicIds,
   );
+  const editingTextId = useEditorStore(
+    (s) => s.editingTextId,
+  );
+  const editingTextValue = useEditorStore(
+    (s) => s.editingTextValue,
+  );
 
   const setImageDisplaySize =
     useEditorStore((s) => s.setImageDisplaySize);
@@ -127,14 +135,57 @@ export function LeaferCanvas({
   const scaleRef = useSyncedRef(scale);
   const offsetRef = useSyncedRef(offset);
 
+  // 文字编辑
+  const {
+    textInputRef,
+    startEditing,
+    stopEditing,
+    handleTextChange,
+  } = useTextEditing(
+    { editingTextId, editingTextValue },
+    {
+      setEditingTextId: useEditorStore.getState().setEditingTextId,
+      setEditingTextValue: useEditorStore.getState().setEditingTextValue,
+      setTexts: useEditorStore.getState().setTexts,
+      setSelectedTextIds: useEditorStore.getState().setSelectedTextIds,
+    },
+  );
+
+  const editingText = useMemo(
+    () =>
+      editingTextId
+        ? texts.find((t) => t.id === editingTextId) ?? null
+        : null,
+    [texts, editingTextId],
+  );
+
   // Leafer 后端
   const { backend } = useRendererBackend({
     containerRef: leaferContainerRef,
     imageDisplaySize,
+    frameSettings,
+    imageUrl: imageData ?? '',
   });
 
   // Store ↔ Backend 同步
   useBackendSync(backend);
+
+  // 注册双击文字编辑回调
+  useEffect(() => {
+    if (!backend) return;
+    const b = backend as {
+      setTextDoubleClickCallback?: (cb: ((id: string) => void) | null) => void;
+    };
+    b.setTextDoubleClickCallback?.((id: string) => {
+      const text = useEditorStore.getState().texts.find((t) => t.id === id);
+      if (text) {
+        startEditing(text);
+      }
+    });
+    return () => {
+      b.setTextDoubleClickCallback?.(null);
+    };
+  }, [backend, startEditing]);
 
   // Leafer 历史记录
   const historyActions =
@@ -285,18 +336,37 @@ export function LeaferCanvas({
     onUndoRedo,
   ]);
 
-  // 图片尺寸回调
-  const handleImageSizeChange = (
-    w: number,
-    h: number,
-  ) => {
-    setImageDisplaySize({
-      width: w,
-      height: h,
-    });
-  };
+  // ---- 图片尺寸计算（无 DOM，直接用 Image 对象） ----
+  useEffect(() => {
+    if (!imageData) return;
+    const img = new window.Image();
+    img.onload = () => {
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      setImageNaturalSize({
+        width: nw,
+        height: nh,
+      });
 
-  // 导出容器 ref
+      if (!imageDisplaySize) {
+        const maxW = Math.min(MAX_IMG_W, nw);
+        const maxH = Math.min(MAX_IMG_H, nh);
+        const ratio = Math.min(
+          maxW / nw,
+          maxH / nh,
+        );
+        const displayW = nw * ratio;
+        const displayH = nh * ratio;
+        setImageDisplaySize({
+          width: displayW,
+          height: displayH,
+        });
+      }
+    };
+    img.src = imageData;
+  }, [imageData, imageDisplaySize, setImageDisplaySize, setImageNaturalSize]);
+
+  // 导出容器 ref（纯 Leafer 不再需要 DOM 层导出）
   const exportContainerRef =
     useRef<HTMLDivElement>(null);
 
@@ -313,7 +383,7 @@ export function LeaferCanvas({
     onExportHandlers?.(exportResult);
   }, [exportResult, onExportHandlers]);
 
-  // Leafer 容器 resize
+  // Leafer 容器 resize + 初始居中
   useEffect(() => {
     const container =
       leaferContainerRef.current;
@@ -329,6 +399,20 @@ export function LeaferCanvas({
     );
     observer.observe(container);
     return () => observer.disconnect();
+  }, [backend]);
+
+  // 初始化后居中视口
+  useEffect(() => {
+    if (!backend) return;
+    // 延迟一帧确保 Leafer 布局完成
+    const id = requestAnimationFrame(() => {
+      (
+        backend as {
+          centerViewport?: () => void;
+        }
+      ).centerViewport?.();
+    });
+    return () => cancelAnimationFrame(id);
   }, [backend]);
 
   // ---- Crop ----
@@ -539,47 +623,43 @@ export function LeaferCanvas({
 
   if (!imageData) return null;
 
+  // 计算 TextEditorInput 定位偏移
+  // Leafer 渲染时 annotationBox 有帧 padding 偏移，
+  // 需要将其加到文字的屏幕坐标上
+  const framePadding = frameSettings?.padding;
+  const annotationOffsetX = framePadding
+    ? (framePadding.linked ? framePadding.top : framePadding.left)
+    : 0;
+  const annotationOffsetY = framePadding?.top ?? 0;
+
+  // 文字屏幕坐标 = (文字图像坐标 + annotation偏移) * scale + viewport偏移
+  const textInputOffset = {
+    x: offset.x + annotationOffsetX * scale,
+    y: offset.y + annotationOffsetY * scale,
+  };
+
   return (
     <>
-      {/* 帧容器（CSS 渲染，底层）
-          pointerEvents: none 确保事件
-          穿透到 Leafer Canvas 覆盖层 */}
-      <div
-        className="absolute inset-0"
-        style={{
-          transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
-          transformOrigin: '0 0',
-          pointerEvents: 'none',
-        }}
-      >
-        <FrameContainer
-          imageData={imageData}
-          imageDisplaySize={imageDisplaySize}
-          frameSettings={frameSettings}
-          onImageSizeChange={
-            handleImageSizeChange
-          }
-          onNaturalSizeChange={(
-            w: number,
-            h: number,
-          ) =>
-            setImageNaturalSize({
-              width: w,
-              height: h,
-            })
-          }
-          exportContainerRef={
-            exportContainerRef
-          }
-        />
-      </div>
-
-      {/* Leafer Canvas 覆盖层 */}
+      {/* 纯 Leafer Canvas 层 — 图片+帧+标注全部在此渲染 */}
       <div
         ref={leaferContainerRef}
         className="absolute inset-0"
         style={{ pointerEvents: 'auto' }}
       />
+
+      {/* 文字编辑输入框 */}
+      {editingText && (
+        <TextEditorInput
+          text={editingText}
+          value={editingTextValue}
+          scale={scale}
+          offset={textInputOffset}
+          inputRef={textInputRef}
+          onChange={handleTextChange}
+          onSave={() => stopEditing(true)}
+          onCancel={() => stopEditing(false)}
+        />
+      )}
 
       {/* 裁剪提示 */}
       {activeTool === 'crop' && (
@@ -608,9 +688,11 @@ export function LeaferCanvas({
           useEditorStore
             .getState()
             .setScale(1);
-          useEditorStore
-            .getState()
-            .setOffset({ x: 0, y: 0 });
+          (
+            backend as {
+              centerViewport?: () => void;
+            }
+          ).centerViewport?.();
         }}
         onSliderChange={(newScale: number) =>
           useEditorStore

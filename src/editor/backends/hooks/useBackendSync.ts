@@ -212,40 +212,70 @@ export function useBackendSync(
           useEditorStore.getState();
 
         switch (type) {
-          case 'arrow':
-            store.addArrow({
+          case 'arrow': {
+            const shape = {
               id: generateArrowId(),
               ...(data as Partial<
                 import('../../types').ArrowShape
               >),
-            } as import('../../types').ArrowShape);
+            } as import('../../types').ArrowShape;
+            store.addArrow(shape);
+            store.updateLastUsedStyles('arrow', {
+              color: shape.color,
+              strokeWidth: shape.strokeWidth,
+              headSize: shape.headSize,
+              style: shape.style,
+            });
             break;
-          case 'rect':
-            store.addRect({
+          }
+          case 'rect': {
+            const shape = {
               id: generateRectId(),
               ...(data as Partial<
                 import('../../types').RectShape
               >),
-            } as import('../../types').RectShape);
+            } as import('../../types').RectShape;
+            store.addRect(shape);
+            store.updateLastUsedStyles('rect', {
+              color: shape.color,
+              strokeWidth: shape.strokeWidth,
+              fillOpacity: shape.fillOpacity,
+              borderStyle: shape.borderStyle,
+            });
             break;
-          case 'text':
-            store.addText({
+          }
+          case 'text': {
+            const shape = {
               id: generateTextId(),
               ...(data as Partial<
                 import('../../types').TextShape
               >),
-            } as import('../../types').TextShape);
+            } as import('../../types').TextShape;
+            store.addText(shape);
+            store.updateLastUsedStyles('text', {
+              color: shape.color,
+              fontSize: shape.fontSize,
+              fontWeight: shape.fontWeight,
+              fontStyle: shape.fontStyle,
+            });
             // 文字创建后切换到选择工具
             store.setActiveTool('select');
             break;
-          case 'mosaic':
-            store.addMosaic({
+          }
+          case 'mosaic': {
+            const shape = {
               id: generateMosaicId(),
               ...(data as Partial<
                 import('../../types').MosaicShape
               >),
-            } as import('../../types').MosaicShape);
+            } as import('../../types').MosaicShape;
+            store.addMosaic(shape);
+            store.updateLastUsedStyles('mosaic', {
+              blockSize: shape.blockSize,
+              opacity: shape.opacity,
+            });
             break;
+          }
         }
       },
       onCropAreaChange: (area) => {

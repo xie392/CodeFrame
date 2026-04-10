@@ -1,6 +1,9 @@
 /**
  * 坐标转换器
- * 使用 Leafer zoomLayer 的 scale/x/y 进行坐标转换
+ * 纯 Leafer 渲染下，annotationBox 在
+ * frameGroup 内偏移了 (imageOffsetX,
+ * imageOffsetY)，screenToImage 需减去
+ * 该偏移才能得到正确的图像空间坐标
  */
 
 import type { ICoordTransformer } from '../../types';
@@ -17,6 +20,10 @@ export class CoordTransformer
     x: number;
     y: number;
   };
+  private getImageOffset: () => {
+    x: number;
+    y: number;
+  };
 
   constructor(
     getImageSize: () => {
@@ -27,10 +34,15 @@ export class CoordTransformer
       scale: number;
       x: number;
       y: number;
+    },
+    getImageOffset: () => {
+      x: number;
+      y: number;
     }
   ) {
     this.getImageSize = getImageSize;
     this.getZoomState = getZoomState;
+    this.getImageOffset = getImageOffset;
   }
 
   /** 屏幕坐标 → 图像坐标 */
@@ -39,10 +51,13 @@ export class CoordTransformer
     clientY: number
   ): { x: number; y: number } {
     const zoom = this.getZoomState();
+    const offset = this.getImageOffset();
     const imgX =
-      (clientX - zoom.x) / zoom.scale;
+      (clientX - zoom.x) / zoom.scale -
+      offset.x;
     const imgY =
-      (clientY - zoom.y) / zoom.scale;
+      (clientY - zoom.y) / zoom.scale -
+      offset.y;
     return this.clampToImage(imgX, imgY);
   }
 
@@ -52,9 +67,14 @@ export class CoordTransformer
     imgY: number
   ): { x: number; y: number } {
     const zoom = this.getZoomState();
+    const offset = this.getImageOffset();
     return {
-      x: imgX * zoom.scale + zoom.x,
-      y: imgY * zoom.scale + zoom.y,
+      x:
+        (imgX + offset.x) * zoom.scale +
+        zoom.x,
+      y:
+        (imgY + offset.y) * zoom.scale +
+        zoom.y,
     };
   }
 

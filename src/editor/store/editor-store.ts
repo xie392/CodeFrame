@@ -13,8 +13,15 @@ import type {
   ToolId,
   ImageFrameSettings,
   EditorSource,
+  LastUsedStyles,
 } from '../types';
-import { DEFAULT_FRAME_SETTINGS } from '../constants';
+import {
+  DEFAULT_FRAME_SETTINGS,
+  DEFAULT_ARROW_STYLE,
+  DEFAULT_RECT_STYLE,
+  DEFAULT_TEXT_STYLE,
+  DEFAULT_MOSAIC_STYLE,
+} from '../constants';
 
 // ---------------------------------------------------------------------------
 // Store 状态接口
@@ -63,6 +70,9 @@ interface EditorStore {
 
   // 裁剪状态
   cropArea: CropArea | null;
+
+  // 属性记忆
+  lastUsedStyles: LastUsedStyles;
 
   // 历史记录状态
   canUndo: boolean;
@@ -137,6 +147,12 @@ interface EditorActions {
   // 裁剪操作
   setCropArea: (area: SetStateAction<CropArea | null>) => void;
 
+  // 属性记忆操作
+  updateLastUsedStyles: (
+    tool: 'arrow' | 'rect' | 'text' | 'mosaic',
+    styles: Partial<LastUsedStyles[typeof tool]>,
+  ) => void;
+
   // 历史记录操作
   setCanUndo: (canUndo: SetStateAction<boolean>) => void;
   setCanRedo: (canRedo: SetStateAction<boolean>) => void;
@@ -197,6 +213,14 @@ const initialState: EditorStore = {
 
   // 裁剪状态
   cropArea: null,
+
+  // 属性记忆
+  lastUsedStyles: {
+    arrow: { ...DEFAULT_ARROW_STYLE },
+    rect: { ...DEFAULT_RECT_STYLE },
+    text: { ...DEFAULT_TEXT_STYLE },
+    mosaic: { ...DEFAULT_MOSAIC_STYLE },
+  },
 
   // 历史记录状态
   canUndo: false,
@@ -340,6 +364,18 @@ export const useEditorStore = create<EditorStore & EditorActions>((set, get) => 
 
   // 裁剪操作
   setCropArea: (cropArea) => set((state) => ({ cropArea: resolveSetter(cropArea, state.cropArea) })),
+
+  // 属性记忆操作
+  updateLastUsedStyles: (tool, styles) =>
+    set((state) => ({
+      lastUsedStyles: {
+        ...state.lastUsedStyles,
+        [tool]: {
+          ...state.lastUsedStyles[tool],
+          ...styles,
+        },
+      },
+    })),
 
   // 历史记录操作
   setCanUndo: (canUndo) => set((state) => ({ canUndo: resolveSetter(canUndo, state.canUndo) })),

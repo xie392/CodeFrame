@@ -25,6 +25,7 @@ export class TextAdapter
       italic: shape.fontStyle === 'italic',
       dragBounds: 'parent',
       editable: true,
+      editInner: '',
     };
   }
 

@@ -18,10 +18,13 @@ import {
 import { LeaferBackend } from '../leafer/leafer-backend';
 import type { IRendererBackend } from '../types';
 import { isLeaferEnabled } from '../feature-flag';
+import type { ImageFrameSettings } from '../../types';
 
 interface UseRendererBackendOptions {
   containerRef: React.RefObject<HTMLElement | null>;
   imageDisplaySize: { width: number; height: number } | null;
+  frameSettings: ImageFrameSettings;
+  imageUrl: string;
 }
 
 interface UseRendererBackendReturn {
@@ -32,12 +35,11 @@ interface UseRendererBackendReturn {
 export function useRendererBackend({
   containerRef,
   imageDisplaySize,
+  frameSettings,
+  imageUrl,
 }: UseRendererBackendOptions): UseRendererBackendReturn {
   const isLeafer = isLeaferEnabled();
 
-  // 用 module 级变量存储 backend 实例
-  // （每个组件实例独立，因为 Hook 每次调用
-  //   都有自己的闭包）
   const store = useRef<{
     backend: IRendererBackend | null;
     listeners: Set<() => void>;
@@ -61,7 +63,6 @@ export function useRendererBackend({
     []
   );
 
-  // 通过 useSyncExternalStore 获取
   const backend =
     useSyncExternalStore(
       subscribe,
@@ -80,16 +81,21 @@ export function useRendererBackend({
       imageDisplaySize;
   });
 
+  const frameSettingsRef = useRef(frameSettings);
+  useEffect(() => {
+    frameSettingsRef.current = frameSettings;
+  });
+
+  const imageUrlRef = useRef(imageUrl);
+  useEffect(() => {
+    imageUrlRef.current = imageUrl;
+  });
+
   // sizeReady 仅在 imageDisplaySize
-  // 非null时为 true，
-  // 不随尺寸值变化而改变，
-  // 避免 backend 重建
+  // 非null时为 true
   const sizeReady = imageDisplaySize !== null;
 
   // 初始化 / 销毁 backend
-  // 仅依赖 isLeafer、containerRef
-  // 和 sizeReady，
-  // 不依赖 imageDisplaySize 值变化
   useEffect(() => {
     if (!isLeafer || !sizeReady) return;
 
@@ -100,10 +106,17 @@ export function useRendererBackend({
       imageDisplaySizeRef.current;
     if (!currentSize) return;
 
+    const currentFrameSettings =
+      frameSettingsRef.current;
+    const currentImageUrl =
+      imageUrlRef.current;
+
     const instance = new LeaferBackend();
     instance.init({
       container,
       imageDisplaySize: currentSize,
+      frameSettings: currentFrameSettings,
+      imageUrl: currentImageUrl,
     });
     store.current.backend = instance;
 
@@ -112,7 +125,6 @@ export function useRendererBackend({
       (l) => l()
     );
 
-    // 捕获当前 store 引用用于 cleanup
     const currentStore = store.current;
 
     return () => {
@@ -125,8 +137,6 @@ export function useRendererBackend({
   }, [isLeafer, containerRef, sizeReady]);
 
   // 更新图片尺寸（不重建 backend）
-  // 用稳定 key 防止相同尺寸不同引用
-  // 导致无效 effect 重触发
   const imageSizeKey = imageDisplaySize
     ? `${imageDisplaySize.width},${imageDisplaySize.height}`
     : null;
@@ -136,6 +146,28 @@ export function useRendererBackend({
       return;
     backend.setImageDisplaySize(imageDisplaySize);
   }, [isLeafer, backend, imageSizeKey]);
+
+  // 更新帧设置
+  const frameSettingsKey = JSON.stringify(frameSettings);
+
+  useEffect(() => {
+    if (!isLeafer || !backend) return;
+    const b = backend as {
+      setFrameSettings?: (
+        s: ImageFrameSettings
+      ) => void;
+    };
+    b.setFrameSettings?.(frameSettings);
+  }, [isLeafer, backend, frameSettingsKey]);
+
+  // 更新图片 URL
+  useEffect(() => {
+    if (!isLeafer || !backend || !imageUrl) return;
+    const b = backend as {
+      setImageUrl?: (url: string) => void;
+    };
+    b.setImageUrl?.(imageUrl);
+  }, [isLeafer, backend, imageUrl]);
 
   return { backend, isLeafer };
 }

@@ -70,7 +70,7 @@ export const DEFAULT_ARROW_STYLE: {
   style: ArrowStyle;
 } = {
   color: '#EF4444',
-  strokeWidth: 2,
+  strokeWidth: 4,
   headSize: 12,
   style: 'single',
 };
@@ -82,7 +82,7 @@ export const DEFAULT_RECT_STYLE: {
   borderStyle: RectBorderStyle;
 } = {
   color: '#EF4444',
-  strokeWidth: 2,
+  strokeWidth: 4,
   fillOpacity: 0,
   borderStyle: 'solid',
 };
@@ -94,7 +94,7 @@ export const DEFAULT_TEXT_STYLE: {
   fontStyle: 'normal' | 'italic';
 } = {
   color: '#EF4444',
-  fontSize: 24,
+  fontSize: 30,
   fontWeight: 'normal',
   fontStyle: 'normal',
 };
@@ -103,7 +103,7 @@ export const DEFAULT_MOSAIC_STYLE: {
   blockSize: number;
   opacity: number;
 } = {
-  blockSize: 10,
+  blockSize: 30,
   opacity: 100,
 };
 

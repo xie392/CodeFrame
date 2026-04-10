@@ -33,6 +33,8 @@ export interface ViewportState {
 export interface BackendConfig {
   container: HTMLElement;
   imageDisplaySize: { width: number; height: number };
+  frameSettings: import('../types').ImageFrameSettings;
+  imageUrl: string;
 }
 
 // ---------------------------------------------------------------------------

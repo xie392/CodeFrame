@@ -166,6 +166,31 @@ export interface OperationHistory {
         imageSize: number;
       };
     };
+    // 工具属性记忆
+    lastUsedStyles?: {
+      arrow?: {
+        color?: string;
+        strokeWidth?: number;
+        headSize?: number;
+        style?: 'single' | 'double';
+      };
+      rect?: {
+        color?: string;
+        strokeWidth?: number;
+        fillOpacity?: number;
+        borderStyle?: 'solid' | 'dashed';
+      };
+      text?: {
+        color?: string;
+        fontSize?: number;
+        fontWeight?: 'normal' | 'bold';
+        fontStyle?: 'normal' | 'italic';
+      };
+      mosaic?: {
+        blockSize?: number;
+        opacity?: number;
+      };
+    };
   };
   // 代码生成设置
   codegen?: {

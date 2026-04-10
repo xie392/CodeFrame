@@ -197,6 +197,34 @@ export const App: React.FC = () => {
         ...saved.frameSettings,
       }));
     }
+    if (saved.lastUsedStyles) {
+      const store = useEditorStore.getState();
+      // 合并：仅覆盖有值的字段
+      if (saved.lastUsedStyles.arrow) {
+        store.updateLastUsedStyles(
+          'arrow',
+          saved.lastUsedStyles.arrow
+        );
+      }
+      if (saved.lastUsedStyles.rect) {
+        store.updateLastUsedStyles(
+          'rect',
+          saved.lastUsedStyles.rect
+        );
+      }
+      if (saved.lastUsedStyles.text) {
+        store.updateLastUsedStyles(
+          'text',
+          saved.lastUsedStyles.text
+        );
+      }
+      if (saved.lastUsedStyles.mosaic) {
+        store.updateLastUsedStyles(
+          'mosaic',
+          saved.lastUsedStyles.mosaic
+        );
+      }
+    }
   }, [
     settings.saveOperationHistory,
     operationHistory.editor,
@@ -212,10 +240,13 @@ export const App: React.FC = () => {
     if (!historyRestoredRef.current) return;
     if (!settings.saveOperationHistory) return;
 
+    const { lastUsedStyles } =
+      useEditorStore.getState();
     updateOperationHistory('editor', {
       activeTool,
       collapsedSections,
       frameSettings,
+      lastUsedStyles,
     });
   }, [
     activeTool,

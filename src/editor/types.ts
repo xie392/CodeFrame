@@ -213,6 +213,36 @@ export interface HistoryActions {
 }
 
 // ---------------------------------------------------------------------------
+// 工具属性记忆
+// ---------------------------------------------------------------------------
+
+/** 各工具上次使用的样式值 */
+export interface LastUsedStyles {
+  arrow: {
+    color: string;
+    strokeWidth: number;
+    headSize: number;
+    style: ArrowStyle;
+  };
+  rect: {
+    color: string;
+    strokeWidth: number;
+    fillOpacity: number;
+    borderStyle: RectBorderStyle;
+  };
+  text: {
+    color: string;
+    fontSize: number;
+    fontWeight: 'normal' | 'bold';
+    fontStyle: 'normal' | 'italic';
+  };
+  mosaic: {
+    blockSize: number;
+    opacity: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 工具相关类型
 // ---------------------------------------------------------------------------
 

@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { ArrowShape, RectShape, TextShape, MosaicShape, CropArea, ToolId } from '../types';
+import { useEditorStore } from '../store/editor-store';
 import {
   isPointNearArrow,
   isPointInRect,
@@ -188,15 +189,16 @@ export function useEditorEvents(
       // 文字工具
       if (activeTool === 'text') {
         callbacks.pushHistory();
+        const ts = useEditorStore.getState().lastUsedStyles.text;
         const newText: TextShape = {
           id: generateTextId(),
           x: coord.x,
           y: coord.y,
           text: 'Text',
-          color: '#000000',
-          fontSize: 16,
-          fontWeight: 'normal',
-          fontStyle: 'normal',
+          color: ts.color,
+          fontSize: ts.fontSize,
+          fontWeight: ts.fontWeight,
+          fontStyle: ts.fontStyle,
         };
         callbacks.setTexts((prev) => [...prev, newText]);
         callbacks.setSelectedTextIds([newText.id]);
@@ -696,7 +698,10 @@ export function useEditorEvents(
             const newShape: ArrowShape = {
               id: generator(),
               startX: shape.startX, startY: shape.startY, endX: shape.endX, endY: shape.endY,
-              color: frameSettings.background.color, strokeWidth: 2, headSize: 10, style: 'single',
+              color: useEditorStore.getState().lastUsedStyles.arrow.color,
+              strokeWidth: useEditorStore.getState().lastUsedStyles.arrow.strokeWidth,
+              headSize: useEditorStore.getState().lastUsedStyles.arrow.headSize,
+              style: useEditorStore.getState().lastUsedStyles.arrow.style,
             };
             callbacks.setArrows((prev) => [...prev, newShape]);
             callbacks.setSelectedArrowIds([newShape.id]);
@@ -711,7 +716,11 @@ export function useEditorEvents(
               const newShape: RectShape = {
                 id: generator(),
                 x: Math.min(shape.startX, shape.endX), y: Math.min(shape.startY, shape.endY),
-                width, height, color: frameSettings.background.color, strokeWidth: 2, fillOpacity: 0, borderStyle: 'solid',
+                width, height,
+                color: useEditorStore.getState().lastUsedStyles.rect.color,
+                strokeWidth: useEditorStore.getState().lastUsedStyles.rect.strokeWidth,
+                fillOpacity: useEditorStore.getState().lastUsedStyles.rect.fillOpacity,
+                borderStyle: useEditorStore.getState().lastUsedStyles.rect.borderStyle,
               };
               callbacks.setRects((prev) => [...prev, newShape]);
               callbacks.setSelectedRectIds([newShape.id]);
@@ -719,7 +728,9 @@ export function useEditorEvents(
               const newShape: MosaicShape = {
                 id: generator(),
                 x: Math.min(shape.startX, shape.endX), y: Math.min(shape.startY, shape.endY),
-                width, height, blockSize: 10, opacity: 1,
+                width, height,
+                blockSize: useEditorStore.getState().lastUsedStyles.mosaic.blockSize,
+                opacity: useEditorStore.getState().lastUsedStyles.mosaic.opacity,
               };
               callbacks.setMosaics((prev) => [...prev, newShape]);
               callbacks.setSelectedMosaicIds([newShape.id]);

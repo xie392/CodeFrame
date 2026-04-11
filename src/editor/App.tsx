@@ -57,12 +57,14 @@ export const App: React.FC = () => {
     canRedo, setCanRedo,
     collapsedSections, setCollapsedSections,
     frameSettings, setFrameSettings,
+    lastUsedStyles,
     error,
     source,
   } = useEditorStore();
 
   const setError = useEditorStore((s) => s.setError);
   const setSource = useEditorStore((s) => s.setSource);
+  const updateLastUsedStyles = useEditorStore((s) => s.updateLastUsedStyles);
 
   // 用户设置
   const {
@@ -240,8 +242,6 @@ export const App: React.FC = () => {
     if (!historyRestoredRef.current) return;
     if (!settings.saveOperationHistory) return;
 
-    const { lastUsedStyles } =
-      useEditorStore.getState();
     updateOperationHistory('editor', {
       activeTool,
       collapsedSections,
@@ -252,6 +252,7 @@ export const App: React.FC = () => {
     activeTool,
     collapsedSections,
     frameSettings,
+    lastUsedStyles,
     settings.saveOperationHistory,
     updateOperationHistory,
   ]);
@@ -270,8 +271,9 @@ export const App: React.FC = () => {
             : a
         )
       );
+      updateLastUsedStyles('arrow', updates);
     },
-    [selectedArrowIds, pushHistory, setArrows]
+    [selectedArrowIds, pushHistory, setArrows, updateLastUsedStyles]
   );
 
   const updateRect = useCallback(
@@ -285,8 +287,9 @@ export const App: React.FC = () => {
             : r
         )
       );
+      updateLastUsedStyles('rect', updates);
     },
-    [selectedRectIds, pushHistory, setRects]
+    [selectedRectIds, pushHistory, setRects, updateLastUsedStyles]
   );
 
   const updateText = useCallback(
@@ -300,8 +303,9 @@ export const App: React.FC = () => {
             : t
         )
       );
+      updateLastUsedStyles('text', updates);
     },
-    [selectedTextIds, pushHistory, setTexts]
+    [selectedTextIds, pushHistory, setTexts, updateLastUsedStyles]
   );
 
   const updateMosaic = useCallback(
@@ -315,8 +319,9 @@ export const App: React.FC = () => {
             : m
         )
       );
+      updateLastUsedStyles('mosaic', updates);
     },
-    [selectedMosaicIds, pushHistory, setMosaics]
+    [selectedMosaicIds, pushHistory, setMosaics, updateLastUsedStyles]
   );
 
   // ---------------------------------------------------------------------------

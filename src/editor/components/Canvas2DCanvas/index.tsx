@@ -383,16 +383,17 @@ export function Canvas2DCanvas({
       const arrowDrawing = drawingState.arrow;
       if (arrowDrawing.isDrawing && arrowDrawing.shape) {
         const s = arrowDrawing.shape;
+        const ls = useEditorStore.getState().lastUsedStyles.arrow;
         renderer.drawArrow({
           id: '__drawing__',
           startX: s.startX,
           startY: s.startY,
           endX: s.endX,
           endY: s.endY,
-          color: frameSettings.background.color,
-          strokeWidth: 2,
-          headSize: 10,
-          style: 'single',
+          color: ls.color,
+          strokeWidth: ls.strokeWidth,
+          headSize: ls.headSize,
+          style: ls.style,
         }, false);
       }
 
@@ -400,16 +401,17 @@ export function Canvas2DCanvas({
       const rectDrawing = drawingState.rect;
       if (rectDrawing.isDrawing && rectDrawing.shape) {
         const s = rectDrawing.shape;
+        const ls = useEditorStore.getState().lastUsedStyles.rect;
         renderer.drawRect({
           id: '__drawing__',
           x: Math.min(s.startX, s.endX),
           y: Math.min(s.startY, s.endY),
           width: Math.abs(s.endX - s.startX),
           height: Math.abs(s.endY - s.startY),
-          color: frameSettings.background.color,
-          strokeWidth: 2,
-          fillOpacity: 0,
-          borderStyle: 'solid',
+          color: ls.color,
+          strokeWidth: ls.strokeWidth,
+          fillOpacity: ls.fillOpacity,
+          borderStyle: ls.borderStyle,
         }, false);
       }
 

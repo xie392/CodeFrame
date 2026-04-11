@@ -93,6 +93,20 @@ export function Canvas2DCanvas({
     useRef<HTMLCanvasElement | null>(null);
   const initializedRef = useRef(false);
 
+  // 绘制预览桥接 ref：useEditorEvents 返回值赋给这些 ref，
+  // renderShapes 通过它们读取正在绘制中的临时图形
+  const drawingStateBridgeRef = useRef<React.MutableRefObject<{
+    arrow: { isDrawing: boolean; shape: { startX: number; startY: number; endX: number; endY: number } | null };
+    rect: { isDrawing: boolean; shape: { startX: number; startY: number; endX: number; endY: number } | null };
+    mosaic: { isDrawing: boolean; shape: { startX: number; startY: number; endX: number; endY: number } | null };
+    crop: { isDrawing: boolean; shape: { startX: number; startY: number; endX: number; endY: number } | null };
+  }> | null>(null);
+  const marqueeStateBridgeRef = useRef<React.MutableRefObject<{
+    isSelecting: boolean;
+    start: { x: number; y: number } | null;
+    end: { x: number; y: number } | null;
+  }> | null>(null);
+
   // ---- ZoomPan ----
   const {
     scale, offset, scaleRef, offsetRef,
@@ -360,6 +374,95 @@ export function Canvas2DCanvas({
       );
     }
 
+    // 绘制正在拖动中的临时图形（实时预览）
+    const drawingState = drawingStateBridgeRef.current?.current;
+    const marqueeState = marqueeStateBridgeRef.current?.current;
+
+    if (drawingState) {
+      // 箭头预览
+      const arrowDrawing = drawingState.arrow;
+      if (arrowDrawing.isDrawing && arrowDrawing.shape) {
+        const s = arrowDrawing.shape;
+        renderer.drawArrow({
+          id: '__drawing__',
+          startX: s.startX,
+          startY: s.startY,
+          endX: s.endX,
+          endY: s.endY,
+          color: frameSettings.background.color,
+          strokeWidth: 2,
+          headSize: 10,
+          style: 'single',
+        }, false);
+      }
+
+      // 矩形预览
+      const rectDrawing = drawingState.rect;
+      if (rectDrawing.isDrawing && rectDrawing.shape) {
+        const s = rectDrawing.shape;
+        renderer.drawRect({
+          id: '__drawing__',
+          x: Math.min(s.startX, s.endX),
+          y: Math.min(s.startY, s.endY),
+          width: Math.abs(s.endX - s.startX),
+          height: Math.abs(s.endY - s.startY),
+          color: frameSettings.background.color,
+          strokeWidth: 2,
+          fillOpacity: 0,
+          borderStyle: 'solid',
+        }, false);
+      }
+
+      // 马赛克预览（用半透明矩形占位）
+      const mosaicDrawing = drawingState.mosaic;
+      if (mosaicDrawing.isDrawing && mosaicDrawing.shape) {
+        const s = mosaicDrawing.shape;
+        ctx.save();
+        ctx.fillStyle = 'rgba(128, 128, 128, 0.4)';
+        ctx.fillRect(
+          Math.min(s.startX, s.endX),
+          Math.min(s.startY, s.endY),
+          Math.abs(s.endX - s.startX),
+          Math.abs(s.endY - s.startY)
+        );
+        ctx.strokeStyle = 'rgba(128, 128, 128, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(
+          Math.min(s.startX, s.endX),
+          Math.min(s.startY, s.endY),
+          Math.abs(s.endX - s.startX),
+          Math.abs(s.endY - s.startY)
+        );
+        ctx.restore();
+      }
+
+      // 裁剪框绘制预览
+      const cropDrawing = drawingState.crop;
+      if (cropDrawing.isDrawing && cropDrawing.shape && imageDisplaySize) {
+        const s = cropDrawing.shape;
+        renderer.drawCropBox(
+          {
+            x: Math.min(s.startX, s.endX),
+            y: Math.min(s.startY, s.endY),
+            width: Math.abs(s.endX - s.startX),
+            height: Math.abs(s.endY - s.startY),
+          },
+          imageDisplaySize.width,
+          imageDisplaySize.height
+        );
+      }
+    }
+
+    // 框选预览
+    if (marqueeState?.isSelecting && marqueeState.start && marqueeState.end) {
+      renderer.drawMarquee(
+        marqueeState.start.x,
+        marqueeState.start.y,
+        marqueeState.end.x,
+        marqueeState.end.y
+      );
+    }
+
     ctx.restore();
   }, [
     arrows, rects, texts, mosaics,
@@ -367,7 +470,7 @@ export function Canvas2DCanvas({
     selectedTextIds, selectedMosaicIds,
     editingTextId, cropArea,
     imageDisplaySize, activeTool,
-    offsetRef, scaleRef,
+    offsetRef, scaleRef, frameSettings,
   ]);
 
   // ---- Crop ----
@@ -519,7 +622,7 @@ export function Canvas2DCanvas({
   });
 
   // ---- Editor Events ----
-  useEditorEvents(
+  const { drawingStateRef, marqueeStateRef } = useEditorEvents(
     {
       canvasRef, annotationCanvasRef,
       activeTool, imageData,
@@ -546,6 +649,11 @@ export function Canvas2DCanvas({
       startEditing, applyCrop,
     }
   );
+
+  // 桥接绘制状态到 renderShapes 可访问的 ref
+  // 存 ref 对象本身，renderShapes 运行时通过 .current.current 读取最新值
+  drawingStateBridgeRef.current = drawingStateRef;
+  marqueeStateBridgeRef.current = marqueeStateRef;
 
   // ---- Export ----
   const exportResult = useExport({

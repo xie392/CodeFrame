@@ -239,8 +239,9 @@ describe('CanvasRenderer', () => {
       const arrow = createTestArrow();
       renderer.drawArrow(arrow, false);
       
-      // 箭头头部使用 fill
-      expect(mockContext.mockCalls.fill.length).toBeGreaterThan(0);
+      // V 形箭头头部使用 stroke 绘制两条斜线
+      // 单箭头：1 条主线 + 2 条 V 形线 = 3 次 stroke
+      expect(mockContext.mockCalls.stroke.length).toBeGreaterThanOrEqual(3);
     });
 
     it('箭头长度为 0 时不应该绘制', () => {
@@ -271,8 +272,10 @@ describe('CanvasRenderer', () => {
       const arrow = createTestArrow({ style: 'double' });
       renderer.drawArrow(arrow, false);
       
-      // 双箭头会有两个 fill 调用
-      expect(mockContext.mockCalls.fill.length).toBe(2);
+      // 双箭头：1 条主线 + 2 条终点 V 形 + 1 条起点延伸线 + 2 条起点 V 形 = 6 次 stroke
+      // 不再有 fill 调用（之前是填充三角形）
+      expect(mockContext.mockCalls.fill.length).toBe(0);
+      expect(mockContext.mockCalls.stroke.length).toBeGreaterThanOrEqual(5);
     });
 
     it('足够长的箭头应该显示中点控制点', () => {

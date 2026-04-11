@@ -1644,20 +1644,10 @@ export class LeaferBackend
         ],
         stroke: s.color,
         strokeWidth: s.strokeWidth,
-        endArrow: {
-          connect: { x: 0.7 },
-          offset: { x: -0.71 },
-          path: [1, -3, -3, 2, 0, 0, 1, -3, 3, 2, 0, 0],
-          scale,
-        },
+        endArrow: { type: 'angle', scale },
         startArrow:
           s.style === 'double'
-            ? {
-                connect: { x: -0.5 },
-                offset: { x: -0.71 },
-                path: [1, 3, -3, 2, 0, 0, 1, 3, 3, 2, 0, 0],
-                scale,
-              }
+            ? { type: 'angle', scale }
             : undefined,
         hitStroke: 'all',
         opacity: 0.6,

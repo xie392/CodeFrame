@@ -45,7 +45,6 @@ export class CanvasRenderer {
     const angle = Math.PI / 6;
 
     this.ctx.save();
-
     // 先绘制选中状态高亮（在箭头下方）
     if (isSelected) {
       this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
@@ -59,52 +58,60 @@ export class CanvasRenderer {
 
     // 设置箭头样式
     this.ctx.strokeStyle = color;
-    this.ctx.fillStyle = color;
     this.ctx.lineWidth = strokeWidth;
     this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
 
-    // 绘制箭头线条
+    // 主线：直接画到终点，V 形翼覆盖在主线上方，零空隙
+    const arrowLength = headSize;
+
+    if (style === 'double') {
+      // 双箭头：主线连接两端箭头尖端
+      this.ctx.beginPath();
+      this.ctx.moveTo(startX, startY);
+      this.ctx.lineTo(endX, endY);
+      this.ctx.stroke();
+
+      // 起点 V 形箭头
+      this.ctx.beginPath();
+      this.ctx.moveTo(
+        startX + Math.cos(angle) * arrowLength * unitX + Math.sin(angle) * arrowLength * unitY,
+        startY + Math.cos(angle) * arrowLength * unitY - Math.sin(angle) * arrowLength * unitX
+      );
+      this.ctx.lineTo(startX, startY);
+      this.ctx.stroke();
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(
+        startX + Math.cos(angle) * arrowLength * unitX - Math.sin(angle) * arrowLength * unitY,
+        startY + Math.cos(angle) * arrowLength * unitY + Math.sin(angle) * arrowLength * unitX
+      );
+      this.ctx.lineTo(startX, startY);
+      this.ctx.stroke();
+    } else {
+      // 单箭头：主线到终点
+      this.ctx.beginPath();
+      this.ctx.moveTo(startX, startY);
+      this.ctx.lineTo(endX, endY);
+      this.ctx.stroke();
+    }
+
+    // 终点 V 形箭头头部—— 两条开放斜线，不填充
     this.ctx.beginPath();
-    this.ctx.moveTo(startX, startY);
+    this.ctx.moveTo(
+      endX - Math.cos(angle) * arrowLength * unitX + Math.sin(angle) * arrowLength * unitY,
+      endY - Math.cos(angle) * arrowLength * unitY - Math.sin(angle) * arrowLength * unitX
+    );
     this.ctx.lineTo(endX, endY);
     this.ctx.stroke();
 
-    // 绘制箭头头部（终点）
-    const arrowLength = headSize;
-    const arrowX = endX - unitX * arrowLength;
-    const arrowY = endY - unitY * arrowLength;
-
     this.ctx.beginPath();
-    this.ctx.moveTo(endX, endY);
-    this.ctx.lineTo(
-      arrowX + Math.sin(angle) * arrowLength * Math.cos(angle),
-      arrowY - Math.cos(angle) * arrowLength * Math.sin(angle)
+    this.ctx.moveTo(
+      endX - Math.cos(angle) * arrowLength * unitX - Math.sin(angle) * arrowLength * unitY,
+      endY - Math.cos(angle) * arrowLength * unitY + Math.sin(angle) * arrowLength * unitX
     );
-    this.ctx.lineTo(
-      arrowX - Math.sin(angle) * arrowLength * Math.cos(angle),
-      arrowY + Math.cos(angle) * arrowLength * Math.sin(angle)
-    );
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    // 双箭头：绘制起点箭头
-    if (style === 'double') {
-      const startArrowX = startX + unitX * arrowLength;
-      const startArrowY = startY + unitY * arrowLength;
-
-      this.ctx.beginPath();
-      this.ctx.moveTo(startX, startY);
-      this.ctx.lineTo(
-        startArrowX + Math.sin(angle) * arrowLength * Math.cos(angle),
-        startArrowY - Math.cos(angle) * arrowLength * Math.sin(angle)
-      );
-      this.ctx.lineTo(
-        startArrowX - Math.sin(angle) * arrowLength * Math.cos(angle),
-        startArrowY + Math.cos(angle) * arrowLength * Math.sin(angle)
-      );
-      this.ctx.closePath();
-      this.ctx.fill();
-    }
+    this.ctx.lineTo(endX, endY);
+    this.ctx.stroke();
 
     this.ctx.restore();
 

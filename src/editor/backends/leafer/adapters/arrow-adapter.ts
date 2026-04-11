@@ -12,30 +12,6 @@ import type { ArrowShape } from '../../../types';
 /** headSize 基准值，用于换算 Leafer arrow scale */
 const HEAD_SIZE_BASE = 12;
 
-/**
- * 开放 V 形箭头路径数据（——> 效果）
- * 两条独立斜线从箭头底部延伸到箭尖，主线在底部截止
- * 使用两条独立的 moveTo-lineTo 避免尖角处 miter join 产生三角形
- * 路径: moveTo(-3,-3).lineTo(0,0) moveTo(-3,3).lineTo(0,0)
- * connect: { x: 0.7 } 让主线在箭头底部提前截止，避免重叠
- */
-const OPEN_ARROW_PATH: Record<string, unknown> = {
-  connect: { x: 0.7 },
-  offset: { x: -0.71 },
-  path: [1, -3, -3, 2, 0, 0, 1, -3, 3, 2, 0, 0],
-};
-
-/**
- * 开放 V 形箭头路径（反向，用于 startArrow）
- * 两条独立斜线，路径旋转 180 度
- * 路径: moveTo(3,-3).lineTo(0,0) moveTo(3,3).lineTo(0,0)
- */
-const OPEN_ARROW_PATH_FLIP: Record<string, unknown> = {
-  connect: { x: -0.5 },
-  offset: { x: -0.71 },
-  path: [1, 3, -3, 2, 0, 0, 1, 3, 3, 2, 0, 0],
-};
-
 /** 根据 ArrowShape 生成箭头标记参数 */
 function toArrowMarker(
   shape: ArrowShape
@@ -43,11 +19,11 @@ function toArrowMarker(
   const scale = shape.headSize / HEAD_SIZE_BASE;
   if (shape.style === 'double') {
     return {
-      startArrow: { ...OPEN_ARROW_PATH_FLIP, scale },
-      endArrow: { ...OPEN_ARROW_PATH, scale },
+      startArrow: { type: 'angle', scale },
+      endArrow: { type: 'angle', scale },
     };
   }
-  return { endArrow: { ...OPEN_ARROW_PATH, scale } };
+  return { endArrow: { type: 'angle', scale } };
 }
 
 export class ArrowAdapter
@@ -95,20 +71,11 @@ export class ArrowAdapter
       const scale =
         merged.headSize / HEAD_SIZE_BASE;
       if (merged.style === 'double') {
-        params.startArrow = {
-          ...OPEN_ARROW_PATH_FLIP,
-          scale,
-        };
-        params.endArrow = {
-          ...OPEN_ARROW_PATH,
-          scale,
-        };
+        params.startArrow = { type: 'angle', scale };
+        params.endArrow = { type: 'angle', scale };
       } else {
         params.startArrow = undefined;
-        params.endArrow = {
-          ...OPEN_ARROW_PATH,
-          scale,
-        };
+        params.endArrow = { type: 'angle', scale };
       }
     }
 

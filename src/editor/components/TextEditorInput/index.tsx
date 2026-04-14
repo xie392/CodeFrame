@@ -2,7 +2,6 @@
  * TextEditorInput - 文字编辑输入组件
  *
  * 负责渲染文字编辑时的输入框，包括：
- * - 位置计算
  * - 样式同步
  * - 键盘事件处理
  * - 失焦保存
@@ -15,6 +14,8 @@ export interface TextEditorInputProps {
   text: TextShape;
   value: string;
   scale: number;
+  /** 直接传入预计算的位置（屏幕坐标），优先于 scale+offset 计算 */
+  position?: { left: number; top: number };
   offset: { x: number; y: number };
   inputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
@@ -29,14 +30,15 @@ export function TextEditorInput({
   text,
   value,
   scale,
+  position,
   offset,
   inputRef,
   onChange,
   onSave,
   onCancel,
 }: TextEditorInputProps): React.ReactElement | null {
-  const containerX = text.x * scale + offset.x;
-  const containerY = text.y * scale + offset.y;
+  const containerX = position?.left ?? text.x * scale + offset.x;
+  const containerY = position?.top ?? text.y * scale + offset.y;
 
   useEffect(() => {
     // 自动聚焦并选中文字

@@ -8,6 +8,8 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useState,
+  useLayoutEffect,
 } from 'react';
 import { useEditorStore } from '../../store/editor-store';
 import { useRendererBackend } from '../../backends/hooks/useRendererBackend';
@@ -623,20 +625,57 @@ export function LeaferCanvas({
 
   if (!imageData) return null;
 
-  // 计算 TextEditorInput 定位偏移
-  // Leafer 渲染时 annotationBox 有帧 padding 偏移，
-  // 需要将其加到文字的屏幕坐标上
-  const framePadding = frameSettings?.padding;
-  const annotationOffsetX = framePadding
-    ? (framePadding.linked ? framePadding.top : framePadding.left)
-    : 0;
-  const annotationOffsetY = framePadding?.top ?? 0;
+  // 通过 Leafer CoordTransformer 精确计算文字屏幕坐标
+  // imageToScreen 返回相对于 Leafer app.view 元素的坐标
+  // 需要在 DOM 更新后用 useLayoutEffect 计算 view 相对于 <main> 的偏移
+  const [textEditorPosition, setTextEditorPosition] =
+    useState<{ left: number; top: number } | undefined>(undefined);
 
-  // 文字屏幕坐标 = (文字图像坐标 + annotation偏移) * scale + viewport偏移
-  const textInputOffset = {
-    x: offset.x + annotationOffsetX * scale,
-    y: offset.y + annotationOffsetY * scale,
-  };
+  useLayoutEffect(() => {
+    if (!editingText || !backend) {
+      setTextEditorPosition(undefined);
+      return;
+    }
+    const b = backend as {
+      getCoordTransformer?: () => {
+        imageToScreen: (
+          x: number,
+          y: number,
+        ) => { x: number; y: number };
+      };
+      getAppResult?: () => {
+        app: { view: unknown };
+      } | null;
+    };
+    const transformer = b.getCoordTransformer?.();
+    const appResult = b.getAppResult?.();
+    if (!transformer || !appResult) {
+      setTextEditorPosition(undefined);
+      return;
+    }
+    const screen = transformer.imageToScreen(
+      editingText.x,
+      editingText.y,
+    );
+
+    // imageToScreen 返回相对于 Leafer app.view 的坐标
+    // 需要加上 app.view 相对于 <main> 的偏移
+    const container = leaferContainerRef.current;
+    const viewEl = appResult.app.view as HTMLElement | null;
+    let viewOffsetX = 0;
+    let viewOffsetY = 0;
+    if (container && viewEl) {
+      const containerRect = container.getBoundingClientRect();
+      const viewRect = viewEl.getBoundingClientRect();
+      viewOffsetX = viewRect.left - containerRect.left;
+      viewOffsetY = viewRect.top - containerRect.top;
+    }
+
+    setTextEditorPosition({
+      left: screen.x + viewOffsetX,
+      top: screen.y + viewOffsetY,
+    });
+  }, [editingText, backend, scale, offset]);
 
   return (
     <>
@@ -653,7 +692,8 @@ export function LeaferCanvas({
           text={editingText}
           value={editingTextValue}
           scale={scale}
-          offset={textInputOffset}
+          position={textEditorPosition}
+          offset={offset}
           inputRef={textInputRef}
           onChange={handleTextChange}
           onSave={() => stopEditing(true)}

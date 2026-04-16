@@ -40,18 +40,15 @@ export class SelectionBridge
     this.syncing = false;
   }
 
-  /** Store → Leafer 选中同步 */
+  /** Store → Leafer 选中同步
+   * 实际同步逻辑在 LeaferBackend.setSelection() 中处理，
+   * 此方法仅提供 syncing 守卫。
+   */
   syncSelectionToBackend(
-    ids: Record<ShapeType, string[]>
+    _ids: Record<ShapeType, string[]>
   ): void {
-    this.syncing = true;
-    try {
-      // syncing 守卫在 setSelection 中
-      // 通过 startSync/endSync 管理
-      void ids;
-    } finally {
-      this.syncing = false;
-    }
+    // syncing 守卫由 LeaferBackend.setSelection() 中的
+    // selectionBridge.startSync/endSync 管理
   }
 
   /** 注册 Leafer → Store 选中回调 */

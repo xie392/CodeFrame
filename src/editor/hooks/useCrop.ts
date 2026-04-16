@@ -91,6 +91,18 @@ export function useCrop(
     const cropWidth = Math.round(currentCropArea.width * scaleX);
     const cropHeight = Math.round(currentCropArea.height * scaleY);
 
+    // 裁剪区域在 displaySize 坐标系中的偏移和缩放比例
+    const cropOffX = currentCropArea.x;
+    const cropOffY = currentCropArea.y;
+    const cropDispW = currentCropArea.width;
+    const cropDispH = currentCropArea.height;
+
+    // 裁剪后新图片的 displaySize 与标注坐标的比例
+    // 标注坐标在旧 displaySize 系中，需要变换到新 displaySize 系
+    // 新 displaySize 会在图片加载后重新计算，标注按比例缩放即可
+    const ratioX = cropDispW > 0 ? 1 : 1; // 标注相对于裁剪区域的坐标不变
+    const ratioY = cropDispH > 0 ? 1 : 1;
+
     const img = new window.Image();
     img.onload = () => {
       const tempCanvas = document.createElement('canvas');
@@ -102,16 +114,75 @@ export function useCrop(
       tempCtx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
       const croppedImageData = tempCanvas.toDataURL('image/png');
 
-      callbacks.setImageData(croppedImageData);
-      callbacks.setArrows(() => []);
-      callbacks.setRects(() => []);
-      callbacks.setTexts(() => []);
-      callbacks.setMosaics(() => []);
+      // 按裁剪区域调整标注坐标：减去裁剪偏移，保留在裁剪区域内的标注
+      callbacks.setArrows((prev) =>
+        prev
+          .map((a) => ({
+            ...a,
+            startX: (a.startX - cropOffX) * ratioX,
+            startY: (a.startY - cropOffY) * ratioY,
+            endX: (a.endX - cropOffX) * ratioX,
+            endY: (a.endY - cropOffY) * ratioY,
+          }))
+          .filter(
+            (a) =>
+              a.startX >= -10 && a.startY >= -10 &&
+              a.endX >= -10 && a.endY >= -10 &&
+              a.startX <= cropDispW + 10 && a.startY <= cropDispH + 10 &&
+              a.endX <= cropDispW + 10 && a.endY <= cropDispH + 10
+          )
+      );
+      callbacks.setRects((prev) =>
+        prev
+          .map((r) => ({
+            ...r,
+            x: (r.x - cropOffX) * ratioX,
+            y: (r.y - cropOffY) * ratioY,
+          }))
+          .filter(
+            (r) =>
+              r.x + r.width > -10 &&
+              r.y + r.height > -10 &&
+              r.x < cropDispW + 10 &&
+              r.y < cropDispH + 10
+          )
+      );
+      callbacks.setTexts((prev) =>
+        prev
+          .map((t) => ({
+            ...t,
+            x: (t.x - cropOffX) * ratioX,
+            y: (t.y - cropOffY) * ratioY,
+          }))
+          .filter(
+            (t) =>
+              t.x > -10 &&
+              t.y > -10 &&
+              t.x < cropDispW + 10 &&
+              t.y < cropDispH + 10
+          )
+      );
+      callbacks.setMosaics((prev) =>
+        prev
+          .map((m) => ({
+            ...m,
+            x: (m.x - cropOffX) * ratioX,
+            y: (m.y - cropOffY) * ratioY,
+          }))
+          .filter(
+            (m) =>
+              m.x + m.width > -10 &&
+              m.y + m.height > -10 &&
+              m.x < cropDispW + 10 &&
+              m.y < cropDispH + 10
+          )
+      );
       callbacks.setSelectedArrowIds([]);
       callbacks.setSelectedRectIds([]);
       callbacks.setSelectedTextIds([]);
       callbacks.setSelectedMosaicIds([]);
       callbacks.setCropArea(null);
+      callbacks.setImageData(croppedImageData);
       callbacks.setImageNaturalSize({ width: cropWidth, height: cropHeight });
       callbacks.setImageDisplaySize(null);
       callbacks.setActiveTool('select');

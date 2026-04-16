@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Undo2, Redo2 } from 'lucide-react';
 import {
   MousePointer2,
-  Move,
   MoveRight,
   Square,
   Type,
@@ -20,7 +19,6 @@ interface ToolConfig {
 
 const TOOLS: ToolConfig[] = [
   { id: 'select', icon: <MousePointer2 size={18} /> },
-  { id: 'move', icon: <Move size={18} /> },
   { id: 'arrow', icon: <MoveRight size={18} /> },
   { id: 'rect', icon: <Square size={18} /> },
   { id: 'text', icon: <Type size={18} /> },

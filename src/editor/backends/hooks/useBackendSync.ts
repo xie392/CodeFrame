@@ -98,7 +98,6 @@ export function useBackendSync(
   // 注册 Backend → Store 回调
   useEffect(() => {
     if (!backend) return;
-    console.count('[LOOP_DEBUG] callbacks-effect');
 
     backend.setCallbacks({
       onShapeChange: (
@@ -106,9 +105,6 @@ export function useBackendSync(
         id,
         updates
       ) => {
-        console.count(
-          '[LOOP_DEBUG] onShapeChange'
-        );
         const store =
           useEditorStore.getState();
         switch (type) {
@@ -147,9 +143,6 @@ export function useBackendSync(
         }
       },
       onSelectionChange: (ids) => {
-        console.count(
-          '[LOOP_DEBUG] onSelectionChange'
-        );
         const store =
           useEditorStore.getState();
         // 值比对：相同选中不更新 store，
@@ -183,9 +176,6 @@ export function useBackendSync(
         );
       },
       onViewportChange: (state) => {
-        console.count(
-          '[LOOP_DEBUG] onViewportChange'
-        );
         const store =
           useEditorStore.getState();
         // 浮点容差比较：相同视口
@@ -226,6 +216,11 @@ export function useBackendSync(
               headSize: shape.headSize,
               style: shape.style,
             });
+            store.setSelectedArrowIds([shape.id]);
+            store.setSelectedRectIds([]);
+            store.setSelectedTextIds([]);
+            store.setSelectedMosaicIds([]);
+            store.setActiveTool('select');
             break;
           }
           case 'rect': {
@@ -242,6 +237,11 @@ export function useBackendSync(
               fillOpacity: shape.fillOpacity,
               borderStyle: shape.borderStyle,
             });
+            store.setSelectedArrowIds([]);
+            store.setSelectedRectIds([shape.id]);
+            store.setSelectedTextIds([]);
+            store.setSelectedMosaicIds([]);
+            store.setActiveTool('select');
             break;
           }
           case 'text': {
@@ -258,7 +258,10 @@ export function useBackendSync(
               fontWeight: shape.fontWeight,
               fontStyle: shape.fontStyle,
             });
-            // 文字创建后切换到选择工具
+            store.setSelectedArrowIds([]);
+            store.setSelectedRectIds([]);
+            store.setSelectedTextIds([shape.id]);
+            store.setSelectedMosaicIds([]);
             store.setActiveTool('select');
             break;
           }
@@ -274,6 +277,11 @@ export function useBackendSync(
               blockSize: shape.blockSize,
               opacity: shape.opacity,
             });
+            store.setSelectedArrowIds([]);
+            store.setSelectedRectIds([]);
+            store.setSelectedTextIds([]);
+            store.setSelectedMosaicIds([shape.id]);
+            store.setActiveTool('select');
             break;
           }
         }
@@ -354,7 +362,6 @@ export function useBackendSync(
 
   useEffect(() => {
     if (!backend) return;
-    console.count('[LOOP_DEBUG] shapes-effect');
     const syncable = backend as Syncable;
     const collections = getShapeCollections();
     const currentIds = new Set<string>();
@@ -389,7 +396,6 @@ export function useBackendSync(
 
   useEffect(() => {
     if (!backend) return;
-    console.count('[LOOP_DEBUG] selection-effect');
     const syncable = backend as Syncable;
     const collections = getShapeCollections();
     const ids = {} as Record<
@@ -414,7 +420,6 @@ export function useBackendSync(
 
   useEffect(() => {
     if (!backend) return;
-    console.count('[LOOP_DEBUG] viewport-effect');
     const syncable = backend as Syncable;
     const { scale, offset } =
       useEditorStore.getState();
@@ -434,7 +439,6 @@ export function useBackendSync(
 
   useEffect(() => {
     if (!backend) return;
-    console.count('[LOOP_DEBUG] tool-effect');
     const b = backend as {
       setToolMode?: (tool: string) => void;
     };
@@ -448,7 +452,6 @@ export function useBackendSync(
 
   useEffect(() => {
     if (!backend || !imageData) return;
-    console.count('[LOOP_DEBUG] imageData-effect');
     const syncable = backend as Syncable;
     const b = backend as {
       setImageData?: (url: string) => void;

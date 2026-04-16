@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useZoomPan } from '../useZoomPan';
+import { useEditorStore } from '../../store/editor-store';
 
 // Mock DOM 元素
 const createMockContainer = () => {
@@ -29,6 +30,9 @@ describe('useZoomPan', () => {
     mockContainer = createMockContainer();
     mockContainerRef.current = mockContainer;
     vi.useFakeTimers();
+    // 重置 Store 中的视口状态
+    useEditorStore.getState().setScale(1);
+    useEditorStore.getState().setOffset({ x: 0, y: 0 });
   });
 
   afterEach(() => {

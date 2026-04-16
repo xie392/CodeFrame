@@ -21,7 +21,9 @@ export class MosaicAdapter
       y: shape.y,
       width: shape.width,
       height: shape.height,
-      // url 由 Backend 生成后设置
+      // 1x1 透明占位，防止无 url 时渲染黑色背景
+      // 真实 url 由 Backend 通过 setMosaicImageUrl 设置
+      url: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
       filter: {
         type: 'mosaic',
         blockSize: shape.blockSize,

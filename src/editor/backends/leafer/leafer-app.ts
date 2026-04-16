@@ -348,7 +348,8 @@ export function createLeaferApp(
 ): LeaferAppResult {
   const app = new App({
     view: container,
-    type: 'design',
+    tree: { type: 'design' },
+    sky: {},
   });
 
   const layout = calculateFrameLayout(

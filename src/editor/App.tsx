@@ -1,8 +1,6 @@
 /**
  * Editor 主组件
- * 渲染路径选择层：
- * - Canvas2DCanvas（默认）
- * - LeaferCanvas（?leafer=true）
+ * 统一使用 Leafer 渲染路径
  */
 
 import React, {
@@ -24,7 +22,6 @@ import type {
 } from './types';
 
 import { useEditorStore } from './store/editor-store';
-import { isLeaferEnabled } from './backends/feature-flag';
 
 import { useEditorHistory } from './hooks/useEditorHistory';
 import { useEditorInit } from './hooks/useEditorInit';
@@ -32,7 +29,6 @@ import { useEditorInit } from './hooks/useEditorInit';
 import { Toolbar } from './components/Toolbar';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { UploadPlaceholder } from './components/UploadPlaceholder';
-import { Canvas2DCanvas } from './components/Canvas2DCanvas';
 import { LeaferCanvas } from './components/LeaferCanvas';
 
 // ---------------------------------------------------------------------------
@@ -63,7 +59,6 @@ export const App: React.FC = () => {
   } = useEditorStore();
 
   const setError = useEditorStore((s) => s.setError);
-  const setSource = useEditorStore((s) => s.setSource);
   const updateLastUsedStyles = useEditorStore((s) => s.updateLastUsedStyles);
 
   // 用户设置
@@ -75,12 +70,7 @@ export const App: React.FC = () => {
   const historyRestoredRef = useRef(false);
 
   // ---------------------------------------------------------------------------
-  // 渲染路径选择
-  // ---------------------------------------------------------------------------
-  const isLeafer = isLeaferEnabled();
-
-  // ---------------------------------------------------------------------------
-  // 历史记录（由 Canvas2DCanvas 内部驱动）
+  // 历史记录（由 LeaferCanvas 通过回调驱动）
   // ---------------------------------------------------------------------------
   const historyActionsRef = useRef(
     useEditorHistory()
@@ -124,7 +114,30 @@ export const App: React.FC = () => {
     updateHistoryButtons();
   }, [updateHistoryButtons]);
 
-  // Undo/Redo（由 Canvas2DCanvas 通过回调驱动）
+  // ---------------------------------------------------------------------------
+  // 初始化 Hook（解析 source，显示上传入口等）
+  // ---------------------------------------------------------------------------
+  const initializedRef = useRef(false);
+
+  useEditorInit(
+    {
+      source,
+      imageData,
+      initializedRef,
+    },
+    {
+      setSource: useEditorStore.getState().setSource,
+      setImageData,
+      setError,
+      resetHistory: (state) =>
+        historyActionsRef.current.resetToState(
+          state as EditorState
+        ),
+      updateHistoryButtons,
+    }
+  );
+
+  // Undo/Redo（由 LeaferCanvas 通过回调驱动）
   const undoRedoRef = useRef({
     handleUndo: () => {},
     handleRedo: () => {},
@@ -138,7 +151,7 @@ export const App: React.FC = () => {
     undoRedoRef.current.handleRedo();
   }, []);
 
-  // 导出状态（由 Canvas2DCanvas 通过回调更新）
+  // 导出状态（由 LeaferCanvas 通过回调更新）
   const [exportState, setExportState] =
     useState({
       isExporting: false,
@@ -149,29 +162,6 @@ export const App: React.FC = () => {
       handleCopyToClipboard:
         async () => {},
     });
-
-  // ---------------------------------------------------------------------------
-  // 初始化 Hook
-  // ---------------------------------------------------------------------------
-  const initializedRef = useRef(false);
-
-  useEditorInit(
-    {
-      source,
-      imageData,
-      initializedRef,
-    },
-    {
-      setSource,
-      setImageData,
-      setError,
-      resetHistory: (state) =>
-        historyActionsRef.current.resetToState(
-          state as EditorState
-        ),
-      updateHistoryButtons,
-    }
-  );
 
   // ---------------------------------------------------------------------------
   // 操作历史恢复
@@ -201,7 +191,6 @@ export const App: React.FC = () => {
     }
     if (saved.lastUsedStyles) {
       const store = useEditorStore.getState();
-      // 合并：仅覆盖有值的字段
       if (saved.lastUsedStyles.arrow) {
         store.updateLastUsedStyles(
           'arrow',
@@ -383,7 +372,7 @@ export const App: React.FC = () => {
     !imageData &&
     !error;
 
-  // Canvas2DCanvas 回调
+  // LeaferCanvas 回调
   const handleHistoryActions = useCallback(
     (
       actions: ReturnType<
@@ -457,27 +446,15 @@ export const App: React.FC = () => {
             </div>
           </div>
         ) : imageData ? (
-          isLeafer ? (
-            <LeaferCanvas
-              onHistoryActions={
-                handleHistoryActions
-              }
-              onExportHandlers={
-                handleExportHandlers
-              }
-              onUndoRedo={handleUndoRedo}
-            />
-          ) : (
-            <Canvas2DCanvas
-              onHistoryActions={
-                handleHistoryActions
-              }
-              onExportHandlers={
-                handleExportHandlers
-              }
-              onUndoRedo={handleUndoRedo}
-            />
-          )
+          <LeaferCanvas
+            onHistoryActions={
+              handleHistoryActions
+            }
+            onExportHandlers={
+              handleExportHandlers
+            }
+            onUndoRedo={handleUndoRedo}
+          />
         ) : showPlaceholder ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <UploadPlaceholder

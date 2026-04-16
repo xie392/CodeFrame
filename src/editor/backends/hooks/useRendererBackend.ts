@@ -1,6 +1,6 @@
 /**
  * 渲染后端实例管理 Hook
- * 根据 Feature Flag 创建 LeaferBackend 实例
+ * 始终创建 LeaferBackend 实例
  *
  * 关键设计：imageDisplaySize 不作为
  * backend 创建 effect 的依赖，
@@ -17,7 +17,6 @@ import {
 } from 'react';
 import { LeaferBackend } from '../leafer/leafer-backend';
 import type { IRendererBackend } from '../types';
-import { isLeaferEnabled } from '../feature-flag';
 import type { ImageFrameSettings } from '../../types';
 
 interface UseRendererBackendOptions {
@@ -29,7 +28,6 @@ interface UseRendererBackendOptions {
 
 interface UseRendererBackendReturn {
   backend: IRendererBackend | null;
-  isLeafer: boolean;
 }
 
 export function useRendererBackend({
@@ -38,8 +36,6 @@ export function useRendererBackend({
   frameSettings,
   imageUrl,
 }: UseRendererBackendOptions): UseRendererBackendReturn {
-  const isLeafer = isLeaferEnabled();
-
   const store = useRef<{
     backend: IRendererBackend | null;
     listeners: Set<() => void>;
@@ -97,7 +93,7 @@ export function useRendererBackend({
 
   // 初始化 / 销毁 backend
   useEffect(() => {
-    if (!isLeafer || !sizeReady) return;
+    if (!sizeReady) return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -134,7 +130,7 @@ export function useRendererBackend({
         (l) => l()
       );
     };
-  }, [isLeafer, containerRef, sizeReady]);
+  }, [containerRef, sizeReady]);
 
   // 更新图片尺寸（不重建 backend）
   const imageSizeKey = imageDisplaySize
@@ -142,32 +138,32 @@ export function useRendererBackend({
     : null;
 
   useEffect(() => {
-    if (!isLeafer || !backend || !imageDisplaySize)
+    if (!backend || !imageDisplaySize)
       return;
     backend.setImageDisplaySize(imageDisplaySize);
-  }, [isLeafer, backend, imageSizeKey]);
+  }, [backend, imageSizeKey]);
 
   // 更新帧设置
   const frameSettingsKey = JSON.stringify(frameSettings);
 
   useEffect(() => {
-    if (!isLeafer || !backend) return;
+    if (!backend) return;
     const b = backend as {
       setFrameSettings?: (
         s: ImageFrameSettings
       ) => void;
     };
     b.setFrameSettings?.(frameSettings);
-  }, [isLeafer, backend, frameSettingsKey]);
+  }, [backend, frameSettingsKey]);
 
   // 更新图片 URL
   useEffect(() => {
-    if (!isLeafer || !backend || !imageUrl) return;
+    if (!backend || !imageUrl) return;
     const b = backend as {
       setImageUrl?: (url: string) => void;
     };
     b.setImageUrl?.(imageUrl);
-  }, [isLeafer, backend, imageUrl]);
+  }, [backend, imageUrl]);
 
-  return { backend, isLeafer };
+  return { backend };
 }

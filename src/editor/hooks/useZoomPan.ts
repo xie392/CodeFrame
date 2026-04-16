@@ -1,10 +1,12 @@
 /**
  * 缩放和平移 Hook
  * 处理画布的缩放、平移逻辑
+ * 使用 Store 作为视口状态的单一真相源
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { MIN_SCALE, MAX_SCALE } from '../constants';
+import { useEditorStore } from '../store/editor-store';
 
 interface UseZoomPanOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -32,8 +34,10 @@ export function useZoomPan({
   activeTool,
   imageData,
 }: UseZoomPanOptions): UseZoomPanReturn {
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const scale = useEditorStore((s) => s.scale);
+  const offset = useEditorStore((s) => s.offset);
+  const storeSetScale = useEditorStore((s) => s.setScale);
+  const storeSetOffset = useEditorStore((s) => s.setOffset);
 
   const scaleRef = useRef(scale);
   const offsetRef = useRef(offset);
@@ -47,6 +51,16 @@ export function useZoomPan({
     offsetRef.current = offset;
   }, [offset]);
 
+  const setScale = useCallback((newScale: number) => {
+    scaleRef.current = newScale;
+    storeSetScale(newScale);
+  }, [storeSetScale]);
+
+  const setOffset = useCallback((newOffset: { x: number; y: number }) => {
+    offsetRef.current = newOffset;
+    storeSetOffset(newOffset);
+  }, [storeSetOffset]);
+
   // 锚点缩放
   const zoomAt = useCallback((newScale: number, anchorX: number, anchorY: number) => {
     const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
@@ -59,9 +73,9 @@ export function useZoomPan({
     };
     scaleRef.current = clamped;
     offsetRef.current = newOffset;
-    setScale(clamped);
-    setOffset(newOffset);
-  }, []);
+    storeSetScale(clamped);
+    storeSetOffset(newOffset);
+  }, [storeSetScale, storeSetOffset]);
 
   // 鼠标滚轮缩放
   useEffect(() => {
@@ -105,7 +119,7 @@ export function useZoomPan({
         y: panOffsetStart.current.y + dy,
       };
       offsetRef.current = newOffset;
-      setOffset(newOffset);
+      storeSetOffset(newOffset);
     };
 
     const onUp = () => {
@@ -124,7 +138,7 @@ export function useZoomPan({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [containerRef, activeTool, imageData]);
+  }, [containerRef, activeTool, imageData, storeSetOffset]);
 
   // 缩放控制
   const zoomIn = useCallback(() => {
@@ -144,9 +158,9 @@ export function useZoomPan({
   const resetView = useCallback(() => {
     scaleRef.current = 1;
     offsetRef.current = { x: 0, y: 0 };
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-  }, []);
+    storeSetScale(1);
+    storeSetOffset({ x: 0, y: 0 });
+  }, [storeSetScale, storeSetOffset]);
 
   const handleSlider = useCallback(
     (newScale: number) => {

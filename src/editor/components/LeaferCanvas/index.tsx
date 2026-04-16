@@ -20,16 +20,17 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useSyncedRef } from '../../hooks/useSyncedRef';
 import { CropHint } from '../CropHint';
 import { useLeaferExport } from '../../backends/leafer/hooks/useLeaferExport';
-import { useLeaferHistory } from '../../backends/leafer/hooks/useLeaferHistory';
+import { useEditorHistory } from '../../hooks/useEditorHistory';
 import type { EditorState } from '../../types';
 import { MAX_IMG_W, MAX_IMG_H } from '../../constants';
 import { useTextEditing } from '../../hooks/useTextEditing';
 import { TextEditorInput } from '../TextEditorInput';
+import { useShortcutListener } from '@shared/hooks/useShortcutListener';
 
 export interface LeaferCanvasProps {
   onHistoryActions?: (
     actions: ReturnType<
-      typeof useLeaferHistory
+      typeof useEditorHistory
     >
   ) => void;
   onExportHandlers?: (handlers: {
@@ -50,15 +51,6 @@ export function LeaferCanvas({
   onExportHandlers,
   onUndoRedo,
 }: LeaferCanvasProps): React.ReactElement | null {
-  const renderCount = React.useRef(0);
-  renderCount.current += 1;
-  if (renderCount.current > 5) {
-    console.error(
-      '[LOOP_DEBUG] LeaferCanvas render #' +
-        renderCount.current,
-    );
-  }
-
   const leaferContainerRef =
     useRef<HTMLDivElement>(null);
 
@@ -161,7 +153,42 @@ export function LeaferCanvas({
     [texts, editingTextId],
   );
 
-  // Leafer 后端
+  // ---- Chrome Extension Shortcuts ----
+  useShortcutListener({
+    captureVisible: () => {
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_REQUEST',
+        payload: { mode: 'visible' },
+      });
+    },
+    captureRegion: () => {
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_REQUEST',
+        payload: { mode: 'region' },
+      });
+    },
+    captureFullpage: () => {
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_REQUEST',
+        payload: { mode: 'fullpage' },
+      });
+    },
+    captureDesktop: () => {
+      chrome.runtime.sendMessage({
+        type: 'CAPTURE_REQUEST',
+        payload: { mode: 'desktop' },
+      });
+    },
+  });
+
+  // ---- Crop tool switch cleanup ----
+  useEffect(() => {
+    if (activeTool !== 'crop' && cropArea) {
+      useEditorStore.getState().setCropArea(null);
+    }
+  }, [activeTool, cropArea]);
+
+  // ---- Leafer 后端 ----
   const { backend } = useRendererBackend({
     containerRef: leaferContainerRef,
     imageDisplaySize,
@@ -172,26 +199,18 @@ export function LeaferCanvas({
   // Store ↔ Backend 同步
   useBackendSync(backend);
 
-  // 注册双击文字编辑回调
+  // 同步 editingTextId 到 Backend（隐藏/显示文字元素）
   useEffect(() => {
     if (!backend) return;
     const b = backend as {
-      setTextDoubleClickCallback?: (cb: ((id: string) => void) | null) => void;
+      setEditingTextId?: (id: string | null) => void;
     };
-    b.setTextDoubleClickCallback?.((id: string) => {
-      const text = useEditorStore.getState().texts.find((t) => t.id === id);
-      if (text) {
-        startEditing(text);
-      }
-    });
-    return () => {
-      b.setTextDoubleClickCallback?.(null);
-    };
-  }, [backend, startEditing]);
+    b.setEditingTextId?.(editingTextId);
+  }, [backend, editingTextId]);
 
   // Leafer 历史记录
   const historyActions =
-    useLeaferHistory(backend);
+    useEditorHistory();
 
   const updateHistoryButtons =
     useCallback(() => {
@@ -468,6 +487,28 @@ export function LeaferCanvas({
         useEditorStore.getState().setOffset,
     },
   );
+
+  // 注册双击回调（文字编辑 + 裁剪应用）
+  useEffect(() => {
+    if (!backend) return;
+    const b = backend as {
+      setTextDoubleClickCallback?: (cb: ((id: string) => void) | null) => void;
+      setCropDoubleClickCallback?: (cb: (() => void) | null) => void;
+    };
+    b.setTextDoubleClickCallback?.((id: string) => {
+      const text = useEditorStore.getState().texts.find((t) => t.id === id);
+      if (text) {
+        startEditing(text);
+      }
+    });
+    b.setCropDoubleClickCallback?.(() => {
+      applyCrop();
+    });
+    return () => {
+      b.setTextDoubleClickCallback?.(null);
+      b.setCropDoubleClickCallback?.(null);
+    };
+  }, [backend, startEditing, applyCrop]);
 
   // ---- Keyboard Shortcuts ----
   const isMarqueeRef = useRef(false);

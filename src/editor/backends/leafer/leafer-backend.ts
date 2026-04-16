@@ -220,6 +220,12 @@ export class LeaferBackend
   // 文字双击编辑回调
   private textDoubleClickCallback: ((id: string) => void) | null = null;
 
+  // 裁剪双击应用回调
+  private cropDoubleClickCallback: (() => void) | null = null;
+
+  // 正在编辑的文字 id（需要隐藏对应元素）
+  private _hiddenEditingTextId: string | null = null;
+
   startSync(): void {
     this._syncDepth++;
   }
@@ -791,6 +797,28 @@ export class LeaferBackend
     callback: ((id: string) => void) | null
   ): void {
     this.textDoubleClickCallback = callback;
+  }
+
+  /** 设置裁剪双击应用回调 */
+  setCropDoubleClickCallback(
+    callback: (() => void) | null
+  ): void {
+    this.cropDoubleClickCallback = callback;
+  }
+
+  /** 设置正在编辑的文字 id，隐藏/显示对应元素 */
+  setEditingTextId(id: string | null): void {
+    // 恢复之前隐藏的文字
+    if (this._hiddenEditingTextId) {
+      const prev = this.elementMap.get(this._hiddenEditingTextId);
+      if (prev) (prev as { visible: boolean }).visible = true;
+    }
+    // 隐藏当前编辑的文字
+    if (id) {
+      const el = this.elementMap.get(id);
+      if (el) (el as { visible: boolean }).visible = false;
+    }
+    this._hiddenEditingTextId = id;
   }
 
   // ================================================================
@@ -1436,8 +1464,29 @@ export class LeaferBackend
     if (!view) return;
 
     const handler = (e: MouseEvent) => {
-      // 仅在 select 工具下触发
-      if (this.toolBridge.getTool() !== 'select') return;
+      const currentTool = this.toolBridge.getTool();
+
+      // 裁剪模式下：双击裁剪框内部 → 应用裁剪
+      if (currentTool === 'crop' && this.cropDoubleClickCallback) {
+        const cropArea = this.cropOverlay?.getCropArea();
+        if (cropArea) {
+          const coord = this.getImageCoordFromEvent(e);
+          if (
+            coord.x >= cropArea.x &&
+            coord.x <= cropArea.x + cropArea.width &&
+            coord.y >= cropArea.y &&
+            coord.y <= cropArea.y + cropArea.height
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.cropDoubleClickCallback();
+            return;
+          }
+        }
+      }
+
+      // 选择模式下：双击文字 → 进入编辑
+      if (currentTool !== 'select') return;
       if (!this.textDoubleClickCallback) return;
 
       // 查找双击位置下的文字元素
@@ -1933,12 +1982,12 @@ export class LeaferBackend
         bounds,
       );
       this.setCropArea(newCrop);
-      this.notifyCropChange(newCrop);
+      // 拖拽中只更新视觉，不通知 Store（避免卡顿）
       return;
     }
 
     if (this.cropDrawing.isDrawing) {
-      // 绘制中 → 实时更新裁剪区域
+      // 绘制中 → 实时更新裁剪区域（只更新视觉）
       const { startX, startY } =
         this.cropDrawing;
       const area: CropArea = {
@@ -1948,7 +1997,6 @@ export class LeaferBackend
         height: Math.abs(clamped.y - startY),
       };
       this.setCropArea(area);
-      this.notifyCropChange(area);
     }
   }
 

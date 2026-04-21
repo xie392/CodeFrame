@@ -624,6 +624,12 @@ export class LeaferBackend
       const editor = this.getEditor();
       if (!editor) return;
 
+      const ed = editor as {
+        select: (v: unknown) => void;
+        cancel: () => void;
+        editable: boolean;
+      };
+
       const elements: unknown[] = [];
       for (const type of [
         'arrow',
@@ -638,15 +644,12 @@ export class LeaferBackend
       }
 
       if (elements.length > 0) {
-        (
-          editor as {
-            select: (v: unknown) => void;
-          }
-        ).select(elements);
+        // 确保 Editor 可编辑，否则
+        // select() 不会显示选中框
+        ed.editable = true;
+        ed.select(elements);
       } else {
-        (
-          editor as { cancel: () => void }
-        ).cancel();
+        ed.cancel();
       }
     } finally {
       this.selectionBridge.endSync();
@@ -1262,12 +1265,16 @@ export class LeaferBackend
     const ph = placeholder as {
       x: number;
       y: number;
+      width: number;
+      height: number;
       remove: () => void;
     };
 
-    // 从占位读取最终位置
+    // 从占位读取最终位置和尺寸
     el.x = ph.x;
     el.y = ph.y;
+    el.width = ph.width;
+    el.height = ph.height;
 
     // 恢复原始元素可见性
     (element as { visible: boolean }).visible =
@@ -1283,6 +1290,8 @@ export class LeaferBackend
     if (cached) {
       cached.x = el.x;
       cached.y = el.y;
+      cached.width = el.width;
+      cached.height = el.height;
       this.setMosaicImageUrl(element, cached);
     }
   }
@@ -1326,9 +1335,6 @@ export class LeaferBackend
     const handler = () => {
       if (this.selectionBridge.isSyncing())
         return;
-      console.count(
-        '[LOOP_DEBUG] SELECT-event'
-      );
       const selectedIds =
         SelectionBridge.emptySelection();
       const list = ed.list ?? [];
@@ -1435,9 +1441,6 @@ export class LeaferBackend
 
     const handler = () => {
       if (this.viewportBridge.isSyncing()) return;
-      console.count(
-        '[LOOP_DEBUG] viewport-event'
-      );
       this.viewportBridge
         .handleLeaferViewportChange(
           this.getViewport()
@@ -1572,9 +1575,16 @@ export class LeaferBackend
       return;
     }
 
-    // select 工具：启动框选
+    // select 工具：记录起始坐标，
+    // 由 PointerMove 检测拖拽后决定是否启动框选
     if (tool === 'select') {
-      this.handleMarqueeDown(e);
+      const coord =
+        this.getImageCoordFromEvent(e);
+      this.marquee = {
+        isDrawing: false,
+        startCoord: coord,
+        rect: null,
+      };
       return;
     }
 
@@ -1613,8 +1623,48 @@ export class LeaferBackend
       return;
     }
 
-    // select 框选拖拽
-    if (this.marquee.isDrawing) {
+    // select 模式：检测空白区域拖拽启动框选
+    if (this.marquee.startCoord.x !== 0 || this.marquee.startCoord.y !== 0) {
+      if (!this.marquee.isDrawing) {
+        // Editor 正在拖拽元素时，不启动框选
+        const editor = this.getEditor();
+        const ed = editor as { dragging?: boolean } | null;
+        if (ed?.dragging) {
+          this.marquee = {
+            isDrawing: false,
+            startCoord: { x: 0, y: 0 },
+            rect: null,
+          };
+          return;
+        }
+
+        const coord =
+          this.getImageCoordFromEvent(e);
+        const dx = coord.x - this.marquee.startCoord.x;
+        const dy = coord.y - this.marquee.startCoord.y;
+        if (dx * dx + dy * dy >= 16) {
+          this.marquee.isDrawing = true;
+          if (this.appResult) {
+            const rect = new Rect({
+              x: Math.min(this.marquee.startCoord.x, coord.x),
+              y: Math.min(this.marquee.startCoord.y, coord.y),
+              width: Math.abs(dx),
+              height: Math.abs(dy),
+              stroke: '#3B82F6',
+              strokeWidth: 1,
+              dashPattern: [6, 3],
+              fill: 'rgba(59,130,246,0.08)',
+              editable: false,
+              hittable: false,
+            });
+            this.appResult.annotationBox.add(
+              rect as { remove: () => void }
+            );
+            this.marquee.rect = rect;
+          }
+        }
+        return;
+      }
       this.handleMarqueeMove(e);
       return;
     }
@@ -1641,6 +1691,22 @@ export class LeaferBackend
     // 框选结束
     if (this.marquee.isDrawing) {
       this.handleMarqueeUp();
+      return;
+    }
+
+    // select 模式下单击空白区域（未启动框选）：
+    // 重置 marquee 状态，并取消选中
+    if (this.marquee.startCoord.x !== 0 || this.marquee.startCoord.y !== 0) {
+      if (!this.isSyncing() && this.callbacks) {
+        this.callbacks.onSelectionChange(
+          SelectionBridge.emptySelection()
+        );
+      }
+      this.marquee = {
+        isDrawing: false,
+        startCoord: { x: 0, y: 0 },
+        rect: null,
+      };
       return;
     }
 
@@ -2044,40 +2110,6 @@ export class LeaferBackend
   }
 
   // ---- 框选交互 ----
-
-  /** 框选开始 */
-  private handleMarqueeDown(
-    e: unknown
-  ): void {
-    const coord =
-      this.getImageCoordFromEvent(e);
-
-    this.marquee = {
-      isDrawing: true,
-      startCoord: coord,
-      rect: null,
-    };
-
-    // 创建蓝色虚线选取框
-    if (this.appResult) {
-      const rect = new Rect({
-        x: coord.x,
-        y: coord.y,
-        width: 0,
-        height: 0,
-        stroke: '#3B82F6',
-        strokeWidth: 1,
-        dashPattern: [6, 3],
-        fill: 'rgba(59,130,246,0.08)',
-        editable: false,
-        hittable: false,
-      });
-      this.appResult.annotationBox.add(
-        rect as { remove: () => void }
-      );
-      this.marquee.rect = rect;
-    }
-  }
 
   /** 框选拖拽更新 */
   private handleMarqueeMove(

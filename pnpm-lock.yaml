@@ -38,6 +38,9 @@ importers:
       '@leafer-in/filter':
         specifier: ^2.0.8
         version: 2.0.8(@leafer-in/interface@2.0.8(@leafer-ui/interface@2.0.8)(@leafer/interface@2.0.8))(@leafer-ui/draw@2.0.8)(@leafer-ui/interface@2.0.8)
+      '@leafer-in/resize':
+        specifier: ^2.0.8
+        version: 2.0.8(@leafer-in/interface@2.0.8(@leafer-ui/interface@2.0.8)(@leafer/interface@2.0.8))(@leafer-ui/draw@2.0.8)(@leafer-ui/interface@2.0.8)
       '@leafer-in/viewport':
         specifier: ^2.0.8
         version: 2.0.8(@leafer-in/interface@2.0.8(@leafer-ui/interface@2.0.8)(@leafer/interface@2.0.8))(@leafer-ui/core@2.0.8)(@leafer-ui/interface@2.0.8)

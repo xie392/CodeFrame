@@ -68,6 +68,7 @@ Filter.register('mosaic', {
         let r = 0;
         let g = 0;
         let b = 0;
+        let a = 0;
         let count = 0;
 
         for (let dy = 0; dy < bh; dy++) {
@@ -76,11 +77,12 @@ Filter.register('mosaic', {
               ((py + dy) * w + (px + dx)) * 4;
             if (
               idx >= 0 &&
-              idx + 2 < data.length
+              idx + 3 < data.length
             ) {
               r += data[idx];
               g += data[idx + 1];
               b += data[idx + 2];
+              a += data[idx + 3];
               count++;
             }
           }
@@ -90,7 +92,8 @@ Filter.register('mosaic', {
           r = Math.floor(r / count);
           g = Math.floor(g / count);
           b = Math.floor(b / count);
-          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          a = Math.floor(a / count);
+          ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
           ctx.fillRect(px, py, bw, bh);
         }
       }

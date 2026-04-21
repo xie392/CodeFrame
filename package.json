@@ -47,6 +47,7 @@
     "@leafer-in/editor": "^2.0.8",
     "@leafer-in/export": "^2.0.8",
     "@leafer-in/filter": "^2.0.8",
+    "@leafer-in/resize": "^2.0.8",
     "@leafer-in/viewport": "^2.0.8",
     "@lezer/highlight": "^1.2.3",
     "@radix-ui/react-popover": "^1.1.15",

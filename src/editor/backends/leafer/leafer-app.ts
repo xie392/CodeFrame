@@ -11,6 +11,7 @@ import {
   Image as LeaferImage,
 } from 'leafer-ui';
 import '@leafer-in/editor';
+import '@leafer-in/resize';
 import '@leafer-in/viewport';
 import '@leafer-in/arrow';
 import type { ImageFrameSettings } from '../../types';
@@ -348,8 +349,7 @@ export function createLeaferApp(
 ): LeaferAppResult {
   const app = new App({
     view: container,
-    tree: { type: 'design' },
-    sky: {},
+    editor: {},
   });
 
   const layout = calculateFrameLayout(

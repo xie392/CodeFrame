@@ -156,11 +156,11 @@ pnpm build
 
 | 类别 | 技术 |
 |------|------|
-| 框架 | React 18 + TypeScript |
+| 框架 | React 19 + TypeScript |
 | 构建 | Vite + CRXJS |
 | 样式 | TailwindCSS |
 | 代码高亮 | Shiki |
-| Canvas | Konva.js |
+| Canvas | LeaferJS |
 | 状态管理 | Zustand |
 | 扩展规范 | Manifest V3 |
 

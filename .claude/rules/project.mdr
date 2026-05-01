@@ -14,7 +14,7 @@ alwaysApply: false
 
 **CodeFrame** 是一款 Chrome 浏览器扩展插件，核心功能：截图捕获 + 图片标注 + 代码美化。
 
-**技术栈**: React 18 + TypeScript + Vite + Zustand + TailwindCSS + Shiki
+**技术栈**: React 19 + TypeScript + Vite + Zustand + TailwindCSS + Shiki + LeaferJS
 
 ---
 

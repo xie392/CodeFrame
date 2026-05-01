@@ -16,7 +16,7 @@ CodeFrame 是一款对标 ShotEasy 的 Chrome 浏览器插件，核心新增"代
 ## 技术栈
 
 ### 前端框架
-- **React 18** - UI 组件开发
+- **React 19** - UI 组件开发
 - **TypeScript** - 类型安全
 
 ### 构建工具
@@ -32,7 +32,7 @@ CodeFrame 是一款对标 ShotEasy 的 Chrome 浏览器插件，核心新增"代
 |------|------|------|
 | 代码高亮 | Shiki | VS Code 同款引擎，支持 180+ 语言 |
 | DOM 转图片 | html-to-image | SVG/CORS 支持完善 |
-| Canvas 操作 | Konva.js | 高性能 Canvas 框架 |
+| Canvas 操作 | LeaferJS | 高性能 Canvas 框架（已从 Konva.js 迁移） |
 | 状态管理 | Zustand | 轻量级，适合 Chrome 扩展 |
 
 ### 存储方案
@@ -233,7 +233,7 @@ src/
 | 库 | 版本 | 用途 |
 |----|------|------|
 | Shiki | latest | 代码语法高亮 |
-| Konva.js | latest | Canvas 操作 |
+| LeaferJS | ^2.0.8 | Canvas 操作 |
 | html-to-image | latest | DOM 转图片 |
 | Lucide Icons | latest | 图标库 |
 

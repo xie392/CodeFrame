@@ -69,7 +69,7 @@
 | **样式方案** | TailwindCSS4 + CSS Variables | 快速开发 + 主题切换 |
 | **代码高亮** | Shiki | VS Code 同款引擎，高亮精准 |
 | **DOM 转图片** | snapdom | 现代实现，SVG/CORS 支持完善 |
-| **Canvas 操作** | Konva.js | 高性能 Canvas 框架 |
+| **Canvas 操作** | LeaferJS | 高性能 Canvas 框架（已从 Konva.js 迁移） |
 | **状态管理** | Zustand | 轻量级，适合 Chrome 扩展 |
 | **存储方案** | chrome.storage + IndexedDB（找一个好用的库） | 小数据用 Storage，大文件用 IndexedDB |
 

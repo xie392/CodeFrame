@@ -1,6 +1,6 @@
 ## 上下文
 
-CodeFrame 是一个基于 React 18 + TypeScript + TailwindCSS 3.4 + Vite 的 Chrome 扩展项目，采用多入口构建（popup、editor、codegen、options）。当前样式系统基于 CSS Variables + TailwindCSS 自定义配置，使用手写组件类。
+CodeFrame 是一个基于 React 19 + TypeScript + TailwindCSS 4 + Vite 的 Chrome 扩展项目，采用多入口构建（popup、editor、codegen、options）。当前样式系统基于 CSS Variables + TailwindCSS 自定义配置，使用手写组件类。
 
 ## 目标 / 非目标
 

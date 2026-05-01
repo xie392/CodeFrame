@@ -157,11 +157,11 @@ pnpm build
 
 | Category | Technology |
 |----------|------------|
-| Framework | React 18 + TypeScript |
+| Framework | React 19 + TypeScript |
 | Build | Vite + CRXJS |
 | Styling | TailwindCSS |
 | Code Highlighting | Shiki |
-| Canvas | Konva.js |
+| Canvas | LeaferJS |
 | State Management | Zustand |
 | Extension Spec | Manifest V3 |
 

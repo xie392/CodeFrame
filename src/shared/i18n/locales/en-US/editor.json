@@ -17,7 +17,11 @@
     "export": "Export Image",
     "exporting": "Exporting...",
     "copyToClipboard": "Copy to Clipboard",
-    "delete": "Delete"
+    "delete": "Delete",
+    "moveUp": "Move Up",
+    "moveDown": "Move Down",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "label": {
     "strokeWidth": "Stroke Width",
@@ -52,7 +56,8 @@
     "arrowSize": "Arrow Size",
     "rectStyle": "Rectangle Style",
     "textStyle": "Text Style",
-    "fill": "Fill"
+    "fill": "Fill",
+    "layer": "Layer"
   },
   "hint": {
     "dropImage": "Drop image here",

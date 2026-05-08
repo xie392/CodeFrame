@@ -11,24 +11,25 @@ import {
 } from 'lucide-react';
 import type { ToolId } from '../../types';
 
-// 工具配置（内部定义，因为 icon 是 ReactNode 类型）
+// 绘制工具配置（互斥活跃工具）
 interface ToolConfig {
   id: ToolId;
   icon: React.ReactNode;
 }
 
-const TOOLS: ToolConfig[] = [
+const DRAWING_TOOLS: ToolConfig[] = [
   { id: 'select', icon: <MousePointer2 size={18} /> },
   { id: 'arrow', icon: <MoveRight size={18} /> },
   { id: 'rect', icon: <Square size={18} /> },
   { id: 'text', icon: <Type size={18} /> },
   { id: 'mosaic', icon: <Scan size={18} /> },
-  { id: 'crop', icon: <Crop size={18} /> },
 ];
 
 interface ToolbarProps {
   activeTool: ToolId;
   onSelectTool: (tool: ToolId) => void;
+  isCropMode: boolean;
+  onEnterCropMode: () => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -38,6 +39,8 @@ interface ToolbarProps {
 export const Toolbar: React.FC<ToolbarProps> = ({
   activeTool,
   onSelectTool,
+  isCropMode,
+  onEnterCropMode,
   canUndo,
   canRedo,
   onUndo,
@@ -46,14 +49,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const { t } = useTranslation('editor');
 
   return (
-    <aside className="toolbar w-[56px] h-full flex flex-col items-center py-3 gap-1 shrink-0">
-      {TOOLS.map((tool) => {
+    <aside className="toolbar w-14 h-full flex flex-col items-center py-3 gap-1 shrink-0">
+      {DRAWING_TOOLS.map((tool) => {
         const isActive = activeTool === tool.id;
         return (
           <button
             key={tool.id}
             onClick={() => onSelectTool(tool.id)}
-            className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center cursor-pointer transition-colors duration-200 ${
+            className={`w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-colors duration-200 ${
               isActive
                 ? 'tool-btn-active'
                 : 'tool-btn'
@@ -63,6 +66,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
         );
       })}
+
+      {/* 分隔线 */}
+      <div className="w-[24px] h-[1px] my-1 bg-[var(--color-editor-separator)]" />
+
+      {/* 裁剪按钮（模式入口，非工具切换） */}
+      <button
+        onClick={onEnterCropMode}
+        className={`w-[40px] h-[40px] rounded-[12px] flex items-center justify-center cursor-pointer transition-colors duration-200 ${
+          isCropMode
+            ? 'tool-btn-active'
+            : 'tool-btn'
+        }`}
+        title={t('tool.crop')}
+      >
+        <Crop size={18} />
+      </button>
 
       {/* 分隔线 */}
       <div className="w-[24px] h-[1px] my-1 bg-[var(--color-editor-separator)]" />

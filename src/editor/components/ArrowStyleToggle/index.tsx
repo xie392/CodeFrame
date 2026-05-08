@@ -12,7 +12,7 @@ export const ArrowStyleToggle: React.FC<ArrowStyleToggleProps> = ({
   onChange,
 }) => (
   <div className="flex items-center gap-2">
-    <span className="text-[11px] text-[var(--color-editor-hint)] font-body leading-none">
+    <span className="text-[11px] text-(--color-editor-hint) font-body leading-none">
       arrow:
     </span>
     <div className="flex gap-1">

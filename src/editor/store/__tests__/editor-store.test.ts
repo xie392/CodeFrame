@@ -18,6 +18,7 @@ const createTestArrow = (id: string): ArrowShape => ({
   strokeWidth: 2,
   headSize: 12,
   style: 'single',
+  zIndex: 0,
 });
 
 const createTestRect = (id: string): RectShape => ({
@@ -30,6 +31,7 @@ const createTestRect = (id: string): RectShape => ({
   strokeWidth: 2,
   fillOpacity: 0,
   borderStyle: 'solid',
+  zIndex: 0,
 });
 
 const createTestText = (id: string): TextShape => ({
@@ -41,6 +43,7 @@ const createTestText = (id: string): TextShape => ({
   fontSize: 16,
   fontWeight: 'normal',
   fontStyle: 'normal',
+  zIndex: 0,
 });
 
 const createTestMosaic = (id: string): MosaicShape => ({
@@ -51,6 +54,7 @@ const createTestMosaic = (id: string): MosaicShape => ({
   height: 60,
   blockSize: 10,
   opacity: 100,
+  zIndex: 0,
 });
 
 const createTestCropArea = (): CropArea => ({
@@ -158,8 +162,8 @@ describe('Editor Store', () => {
     it('setActiveTool 应该支持函数式更新', () => {
       const { setActiveTool } = useEditorStore.getState();
       setActiveTool('select');
-      setActiveTool((prev) => prev === 'select' ? 'move' : prev);
-      expect(useEditorStore.getState().activeTool).toBe('move');
+      setActiveTool((prev) => prev === 'select' ? 'arrow' : prev);
+      expect(useEditorStore.getState().activeTool).toBe('arrow');
     });
   });
 

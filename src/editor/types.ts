@@ -8,8 +8,11 @@ export type ArrowStyle = 'single' | 'double';
 // 矩形边框样式类型
 export type RectBorderStyle = 'solid' | 'dashed';
 
-// 工具 ID 类型
-export type ToolId = 'select' | 'move' | 'arrow' | 'rect' | 'text' | 'mosaic' | 'crop';
+// 图形类型联合
+export type ShapeType = 'arrow' | 'rect' | 'text' | 'mosaic';
+
+// 工具 ID 类型（裁剪独立为模式，不再是工具）
+export type ToolId = 'select' | 'arrow' | 'rect' | 'text' | 'mosaic';
 
 // 箭头数据结构
 export interface ArrowShape {
@@ -22,6 +25,7 @@ export interface ArrowShape {
   strokeWidth: number;
   headSize: number;
   style: ArrowStyle;
+  zIndex: number;
 }
 
 // 矩形数据结构
@@ -35,6 +39,7 @@ export interface RectShape {
   strokeWidth: number;
   fillOpacity: number; // 0-100
   borderStyle: RectBorderStyle;
+  zIndex: number;
 }
 
 // 文字数据结构
@@ -47,6 +52,7 @@ export interface TextShape {
   fontSize: number;
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
+  zIndex: number;
 }
 
 // 马赛克数据结构
@@ -58,6 +64,7 @@ export interface MosaicShape {
   height: number;
   blockSize: number;
   opacity: number; // 0-100
+  zIndex: number;
 }
 
 // 裁剪区域数据结构
@@ -280,9 +287,6 @@ export type TextDragType =
 
 // 马赛克拖拽类型（与矩形相同）
 export type MosaicDragType = RectDragType;
-
-// 裁剪框拖拽类型（与矩形相同）
-export type CropDragType = RectDragType;
 
 // ---------------------------------------------------------------------------
 // 水印位置类型

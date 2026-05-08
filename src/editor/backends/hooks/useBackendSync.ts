@@ -201,90 +201,115 @@ export function useBackendSync(
         const store =
           useEditorStore.getState();
 
-        switch (type) {
-          case 'arrow': {
-            const shape = {
-              id: generateArrowId(),
-              ...(data as Partial<
-                import('../../types').ArrowShape
-              >),
-            } as import('../../types').ArrowShape;
-            store.addArrow(shape);
-            store.updateLastUsedStyles('arrow', {
-              color: shape.color,
-              strokeWidth: shape.strokeWidth,
-              headSize: shape.headSize,
-              style: shape.style,
-            });
-            store.setSelectedArrowIds([shape.id]);
-            store.setSelectedRectIds([]);
-            store.setSelectedTextIds([]);
-            store.setSelectedMosaicIds([]);
-            store.setActiveTool('select');
-            break;
+        // 在 withSync 守卫内同步创建 Leafer 元素并选中，
+        // 确保元素在 endDrawing()→setEditable(true) 之前已存在，
+        // 并防止 Leafer 异步 SELECT 事件清空 store 选中状态
+        withSync(backend as Syncable, () => {
+          let shapeId = '';
+          let shapeData: unknown = null;
+
+          switch (type) {
+            case 'arrow': {
+              const shape = {
+                id: generateArrowId(),
+                ...(data as Partial<
+                  import('../../types').ArrowShape
+                >),
+              } as import('../../types').ArrowShape;
+              shapeId = shape.id;
+              shapeData = shape;
+              store.addArrow(shape);
+              store.updateLastUsedStyles('arrow', {
+                color: shape.color,
+                strokeWidth: shape.strokeWidth,
+                headSize: shape.headSize,
+                style: shape.style,
+              });
+              store.setSelectedArrowIds([shape.id]);
+              store.setSelectedRectIds([]);
+              store.setSelectedTextIds([]);
+              store.setSelectedMosaicIds([]);
+              break;
+            }
+            case 'rect': {
+              const shape = {
+                id: generateRectId(),
+                ...(data as Partial<
+                  import('../../types').RectShape
+                >),
+              } as import('../../types').RectShape;
+              shapeId = shape.id;
+              shapeData = shape;
+              store.addRect(shape);
+              store.updateLastUsedStyles('rect', {
+                color: shape.color,
+                strokeWidth: shape.strokeWidth,
+                fillOpacity: shape.fillOpacity,
+                borderStyle: shape.borderStyle,
+              });
+              store.setSelectedArrowIds([]);
+              store.setSelectedRectIds([shape.id]);
+              store.setSelectedTextIds([]);
+              store.setSelectedMosaicIds([]);
+              break;
+            }
+            case 'text': {
+              const shape = {
+                id: generateTextId(),
+                ...(data as Partial<
+                  import('../../types').TextShape
+                >),
+              } as import('../../types').TextShape;
+              shapeId = shape.id;
+              shapeData = shape;
+              store.addText(shape);
+              store.updateLastUsedStyles('text', {
+                color: shape.color,
+                fontSize: shape.fontSize,
+                fontWeight: shape.fontWeight,
+                fontStyle: shape.fontStyle,
+              });
+              store.setSelectedArrowIds([]);
+              store.setSelectedRectIds([]);
+              store.setSelectedTextIds([shape.id]);
+              store.setSelectedMosaicIds([]);
+              break;
+            }
+            case 'mosaic': {
+              const shape = {
+                id: generateMosaicId(),
+                ...(data as Partial<
+                  import('../../types').MosaicShape
+                >),
+              } as import('../../types').MosaicShape;
+              shapeId = shape.id;
+              shapeData = shape;
+              store.addMosaic(shape);
+              store.updateLastUsedStyles('mosaic', {
+                blockSize: shape.blockSize,
+                opacity: shape.opacity,
+              });
+              store.setSelectedArrowIds([]);
+              store.setSelectedRectIds([]);
+              store.setSelectedTextIds([]);
+              store.setSelectedMosaicIds([shape.id]);
+              break;
+            }
           }
-          case 'rect': {
-            const shape = {
-              id: generateRectId(),
-              ...(data as Partial<
-                import('../../types').RectShape
-              >),
-            } as import('../../types').RectShape;
-            store.addRect(shape);
-            store.updateLastUsedStyles('rect', {
-              color: shape.color,
-              strokeWidth: shape.strokeWidth,
-              fillOpacity: shape.fillOpacity,
-              borderStyle: shape.borderStyle,
-            });
-            store.setSelectedArrowIds([]);
-            store.setSelectedRectIds([shape.id]);
-            store.setSelectedTextIds([]);
-            store.setSelectedMosaicIds([]);
-            store.setActiveTool('select');
-            break;
+
+          // 同步创建 Leafer 元素并选中，避免 React effect 延迟
+          if (shapeId && shapeData) {
+            backend.addShape(type, shapeId, shapeData);
+            const ids = {
+              arrow: [] as string[],
+              rect: [] as string[],
+              text: [] as string[],
+              mosaic: [] as string[],
+            };
+            ids[type] = [shapeId];
+            backend.setSelection(ids);
           }
-          case 'text': {
-            const shape = {
-              id: generateTextId(),
-              ...(data as Partial<
-                import('../../types').TextShape
-              >),
-            } as import('../../types').TextShape;
-            store.addText(shape);
-            store.updateLastUsedStyles('text', {
-              color: shape.color,
-              fontSize: shape.fontSize,
-              fontWeight: shape.fontWeight,
-              fontStyle: shape.fontStyle,
-            });
-            store.setSelectedArrowIds([]);
-            store.setSelectedRectIds([]);
-            store.setSelectedTextIds([shape.id]);
-            store.setSelectedMosaicIds([]);
-            store.setActiveTool('select');
-            break;
-          }
-          case 'mosaic': {
-            const shape = {
-              id: generateMosaicId(),
-              ...(data as Partial<
-                import('../../types').MosaicShape
-              >),
-            } as import('../../types').MosaicShape;
-            store.addMosaic(shape);
-            store.updateLastUsedStyles('mosaic', {
-              blockSize: shape.blockSize,
-              opacity: shape.opacity,
-            });
-            store.setSelectedArrowIds([]);
-            store.setSelectedRectIds([]);
-            store.setSelectedTextIds([]);
-            store.setSelectedMosaicIds([shape.id]);
-            store.setActiveTool('select');
-            break;
-          }
-        }
+        });
       },
       onCropAreaChange: (area) => {
         const store =
@@ -336,25 +361,25 @@ export function useBackendSync(
         s.arrows
           .map(
             (a) =>
-              `${a.id}:${a.startX}:${a.startY}:${a.endX}:${a.endY}:${a.color}:${a.strokeWidth}:${a.headSize}:${a.style}`
+              `${a.id}:${a.startX}:${a.startY}:${a.endX}:${a.endY}:${a.color}:${a.strokeWidth}:${a.headSize}:${a.style}:${a.zIndex}`
           )
           .join('|'),
         s.rects
           .map(
             (r) =>
-              `${r.id}:${r.x}:${r.y}:${r.width}:${r.height}:${r.color}:${r.strokeWidth}:${r.fillOpacity}:${r.borderStyle}`
+              `${r.id}:${r.x}:${r.y}:${r.width}:${r.height}:${r.color}:${r.strokeWidth}:${r.fillOpacity}:${r.borderStyle}:${r.zIndex}`
           )
           .join('|'),
         s.texts
           .map(
             (t) =>
-              `${t.id}:${t.x}:${t.y}:${t.text}:${t.color}:${t.fontSize}:${t.fontWeight}:${t.fontStyle}`
+              `${t.id}:${t.x}:${t.y}:${t.text}:${t.color}:${t.fontSize}:${t.fontWeight}:${t.fontStyle}:${t.zIndex}`
           )
           .join('|'),
         s.mosaics
           .map(
             (m) =>
-              `${m.id}:${m.x}:${m.y}:${m.width}:${m.height}:${m.blockSize}:${m.opacity}`
+              `${m.id}:${m.x}:${m.y}:${m.width}:${m.height}:${m.blockSize}:${m.opacity}:${m.zIndex}`
           )
           .join('|'),
       ].join('%%')
@@ -444,6 +469,19 @@ export function useBackendSync(
     };
     b.setToolMode?.(activeTool);
   }, [backend, activeTool]);
+
+  // 同步裁剪模式 → Backend
+  const isCropMode = useEditorStore(
+    (s) => s.isCropMode
+  );
+
+  useEffect(() => {
+    if (!backend) return;
+    const b = backend as {
+      setCropMode?: (active: boolean) => void;
+    };
+    b.setCropMode?.(isCropMode);
+  }, [backend, isCropMode]);
 
   // 同步图片数据 → Backend（马赛克需要）
   const imageData = useEditorStore(

@@ -44,7 +44,6 @@ export class ArrowAdapter
       strokeWidth: shape.strokeWidth,
       hitStroke: 'all',
       dragBounds: 'parent',
-      editable: true,
       ...toArrowMarker(shape),
     };
   }

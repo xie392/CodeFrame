@@ -5,7 +5,7 @@
  * 消除重复代码，提供统一的拖拽处理接口。
  */
 
-import type { RectDragType, MosaicDragType, CropDragType } from '../utils/shape-helpers';
+import type { RectDragType, MosaicDragType } from '../utils/shape-helpers';
 
 /**
  * 矩形类图形的通用类型
@@ -20,7 +20,7 @@ export interface RectLike {
 /**
  * 拖拽类型联合
  */
-export type ResizeDragType = RectDragType | MosaicDragType | CropDragType;
+export type ResizeDragType = RectDragType | MosaicDragType;
 
 /**
  * 边界约束选项

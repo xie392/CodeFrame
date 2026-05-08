@@ -44,6 +44,7 @@ const createTestArrow = (overrides?: Partial<ArrowShape>): ArrowShape => ({
   strokeWidth: 2,
   headSize: 12,
   style: 'single',
+  zIndex: 0,
   ...overrides,
 });
 
@@ -57,6 +58,7 @@ const createTestRect = (overrides?: Partial<RectShape>): RectShape => ({
   strokeWidth: 2,
   fillOpacity: 0,
   borderStyle: 'solid',
+  zIndex: 0,
   ...overrides,
 });
 
@@ -69,6 +71,7 @@ const createTestText = (overrides?: Partial<TextShape>): TextShape => ({
   fontSize: 16,
   fontWeight: 'normal',
   fontStyle: 'normal',
+  zIndex: 0,
   ...overrides,
 });
 
@@ -80,6 +83,7 @@ const createTestMosaic = (overrides?: Partial<MosaicShape>): MosaicShape => ({
   height: 60,
   blockSize: 10,
   opacity: 100,
+  zIndex: 0,
   ...overrides,
 });
 

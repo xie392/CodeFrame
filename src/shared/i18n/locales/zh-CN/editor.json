@@ -17,7 +17,11 @@
     "export": "导出图片",
     "exporting": "导出中...",
     "copyToClipboard": "复制到剪贴板",
-    "delete": "删除"
+    "delete": "删除",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "confirm": "确认",
+    "cancel": "取消"
   },
   "label": {
     "strokeWidth": "线宽",
@@ -52,7 +56,8 @@
     "arrowSize": "箭头大小",
     "rectStyle": "矩形样式",
     "textStyle": "文字样式",
-    "fill": "填充"
+    "fill": "填充",
+    "layer": "图层"
   },
   "hint": {
     "dropImage": "拖拽图片到此处",

@@ -30,6 +30,7 @@ import { Toolbar } from './components/Toolbar';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { UploadPlaceholder } from './components/UploadPlaceholder';
 import { LeaferCanvas } from './components/LeaferCanvas';
+import { CropToolbar } from './components/CropToolbar';
 
 // ---------------------------------------------------------------------------
 // App 组件
@@ -56,6 +57,7 @@ export const App: React.FC = () => {
     lastUsedStyles,
     error,
     source,
+    isCropMode, enterCropMode, exitCropMode,
   } = useEditorStore();
 
   const setError = useEditorStore((s) => s.setError);
@@ -412,6 +414,8 @@ export const App: React.FC = () => {
       <Toolbar
         activeTool={activeTool}
         onSelectTool={setActiveTool}
+        isCropMode={isCropMode}
+        onEnterCropMode={enterCropMode}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={handleUndo}
@@ -420,41 +424,46 @@ export const App: React.FC = () => {
       <main
         className="editor-canvas flex-1 h-full relative overflow-hidden"
         style={{
-          cursor:
-            activeTool === 'move'
-              ? 'grab'
-              : [
-                  'arrow',
-                  'rect',
-                  'text',
-                  'mosaic',
-                  'crop',
-                ].includes(activeTool)
-                ? 'crosshair'
-                : 'default',
+          cursor: isCropMode
+            ? 'crosshair'
+            : ['arrow', 'rect', 'text', 'mosaic'].includes(activeTool)
+              ? 'crosshair'
+              : 'default',
         }}
       >
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <p className="text-[13px] text-[var(--color-editor-error)] font-body mb-1">
+              <p className="text-[13px] text-(--color-editor-error) font-body mb-1">
                 // capture error
               </p>
-              <p className="text-[11px] text-[var(--color-editor-hint)] font-body">
+              <p className="text-[11px] text-(--color-editor-hint) font-body">
                 {error}
               </p>
             </div>
           </div>
         ) : imageData ? (
-          <LeaferCanvas
-            onHistoryActions={
-              handleHistoryActions
-            }
-            onExportHandlers={
-              handleExportHandlers
-            }
-            onUndoRedo={handleUndoRedo}
-          />
+          <>
+            <LeaferCanvas
+              onHistoryActions={
+                handleHistoryActions
+              }
+              onExportHandlers={
+                handleExportHandlers
+              }
+              onUndoRedo={handleUndoRedo}
+            />
+            {isCropMode && (
+              <CropToolbar
+                onConfirm={() => {
+                  // 裁剪确认由 LeaferCanvas 内部处理
+                  // 这里只触发退出（实际裁剪逻辑在 backend 中）
+                  exitCropMode();
+                }}
+                onCancel={exitCropMode}
+              />
+            )}
+          </>
         ) : showPlaceholder ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <UploadPlaceholder
@@ -463,7 +472,7 @@ export const App: React.FC = () => {
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-[13px] text-[var(--color-editor-comment)] font-body">
+            <p className="text-[13px] text-(--color-editor-comment) font-body">
               // editor_canvas
             </p>
           </div>
@@ -478,6 +487,8 @@ export const App: React.FC = () => {
         onUpdateText={updateText}
         selectedMosaic={selectedMosaic}
         onUpdateMosaic={updateMosaic}
+        onMoveLayerUp={useEditorStore.getState().moveLayerUp}
+        onMoveLayerDown={useEditorStore.getState().moveLayerDown}
         frameSettings={frameSettings}
         onUpdateFrameSettings={(updates) =>
           setFrameSettings((prev) => ({

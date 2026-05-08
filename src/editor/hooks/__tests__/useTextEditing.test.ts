@@ -15,6 +15,7 @@ describe('useTextEditing', () => {
     fontSize: 24,
     fontWeight: 'normal',
     fontStyle: 'normal',
+    zIndex: 0,
   };
 
   const mockState = {

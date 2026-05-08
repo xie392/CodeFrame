@@ -347,9 +347,20 @@ export function createLeaferApp(
   settings: ImageFrameSettings,
   imageUrl: string
 ): LeaferAppResult {
+  // tree: { type: 'draw' } 不注册 LeaferTypeCreator，
+  // 避免内置 viewport（wheel zoom / space+drag pan）
+  // 与 useZoomPan + viewportBridge 冲突
   const app = new App({
     view: container,
-    editor: {},
+    tree: { type: 'draw' },
+    editor: {
+      beforeEditOuter({ target }) {
+        // Arrow 使用 points 定位，editBox（8控制点矩形）对其无意义
+        if (target?.data?.shapeType === 'arrow') return false;
+        // 只有带 shapeType 的图形才可选中，容器（如 annotationBox）不可选中
+        if (!target?.data?.shapeType) return false;
+      },
+    },
   });
 
   const layout = calculateFrameLayout(
@@ -421,6 +432,7 @@ export function createLeaferApp(
     height: imageHeight,
     overflow: 'hide',
     hitFill: 'all',
+    editable: false,
   });
 
   // ---- 水印 ----

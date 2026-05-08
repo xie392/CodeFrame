@@ -5,8 +5,13 @@
  * - Ctrl/Cmd + Z: 撤销
  * - Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y: 重做
  * - Ctrl/Cmd + A: 全选
- * - Escape: 取消选择/框选
+ * - Escape: 取消选择/框选/退出裁剪模式
  * - Delete/Backspace: 删除选中
+ * - V: 选择工具
+ * - A: 箭头工具
+ * - R: 矩形工具
+ * - T: 文字工具
+ * - M: 马赛克工具
  * - Enter (裁剪模式): 应用裁剪
  */
 
@@ -35,6 +40,7 @@ interface KeyboardShortcutsCallbacks {
   onApplyCrop?: () => void;
   onCancelCrop?: () => void;
   onCancelMarquee?: () => void;
+  onSwitchTool?: (tool: string) => void;
   pushHistory: () => void;
 }
 
@@ -43,6 +49,7 @@ interface KeyboardShortcutsCallbacks {
  */
 interface KeyboardShortcutsConfig {
   activeTool: string;
+  isCropMode: boolean;
   cropArea: unknown;
   selection: SelectionState;
   isMarqueeSelecting: React.MutableRefObject<boolean>;
@@ -55,7 +62,7 @@ export function useKeyboardShortcuts(
   config: KeyboardShortcutsConfig,
   callbacks: KeyboardShortcutsCallbacks
 ): void {
-  const { activeTool, cropArea, selection, isMarqueeSelecting } = config;
+  const { activeTool, isCropMode, cropArea, selection, isMarqueeSelecting } = config;
   const callbacksRef = useSyncedRef(callbacks);
   const selectionRef = useSyncedRef(selection);
 
@@ -90,9 +97,9 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // Escape: 取消选择/框选/裁剪
+      // Escape: 取消选择/框选/裁剪模式
       if (e.key === 'Escape') {
-        if (activeTool === 'crop' && cb.onCancelCrop) {
+        if (isCropMode && cb.onCancelCrop) {
           e.preventDefault();
           cb.onCancelCrop();
           return;
@@ -106,7 +113,7 @@ export function useKeyboardShortcuts(
       }
 
       // 裁剪模式下的 Enter
-      if (activeTool === 'crop' && e.key === 'Enter' && cropArea && cb.onApplyCrop) {
+      if (isCropMode && e.key === 'Enter' && cropArea && cb.onApplyCrop) {
         e.preventDefault();
         cb.onApplyCrop();
         return;
@@ -127,11 +134,33 @@ export function useKeyboardShortcuts(
         }
         return;
       }
+
+      // 工具快捷键（非组合键，非裁剪模式）
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !isCropMode) {
+        switch (e.key.toLowerCase()) {
+          case 'v':
+          case 'escape':
+            cb.onSwitchTool?.('select');
+            return;
+          case 'a':
+            cb.onSwitchTool?.('arrow');
+            return;
+          case 'r':
+            cb.onSwitchTool?.('rect');
+            return;
+          case 't':
+            cb.onSwitchTool?.('text');
+            return;
+          case 'm':
+            cb.onSwitchTool?.('mosaic');
+            return;
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTool, cropArea, isMarqueeSelecting]);
+  }, [activeTool, isCropMode, cropArea, isMarqueeSelecting]);
 }
 
 export default useKeyboardShortcuts;

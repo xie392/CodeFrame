@@ -21,7 +21,7 @@ import { useSyncedRef } from '../../hooks/useSyncedRef';
 import { CropHint } from '../CropHint';
 import { useLeaferExport } from '../../backends/leafer/hooks/useLeaferExport';
 import { useEditorHistory } from '../../hooks/useEditorHistory';
-import type { EditorState } from '../../types';
+import type { EditorState, ToolId } from '../../types';
 import { MAX_IMG_W, MAX_IMG_H } from '../../constants';
 import { useTextEditing } from '../../hooks/useTextEditing';
 import { TextEditorInput } from '../TextEditorInput';
@@ -73,6 +73,9 @@ export function LeaferCanvas({
   );
   const activeTool = useEditorStore(
     (s) => s.activeTool,
+  );
+  const isCropMode = useEditorStore(
+    (s) => s.isCropMode,
   );
   const cropArea = useEditorStore(
     (s) => s.cropArea,
@@ -181,12 +184,12 @@ export function LeaferCanvas({
     },
   });
 
-  // ---- Crop tool switch cleanup ----
+  // ---- Crop mode cleanup ----
   useEffect(() => {
-    if (activeTool !== 'crop' && cropArea) {
+    if (!isCropMode && cropArea) {
       useEditorStore.getState().setCropArea(null);
     }
-  }, [activeTool, cropArea]);
+  }, [isCropMode, cropArea]);
 
   // ---- Leafer 后端 ----
   const { backend } = useRendererBackend({
@@ -516,6 +519,7 @@ export function LeaferCanvas({
   useKeyboardShortcuts(
     {
       activeTool,
+      isCropMode,
       cropArea,
       selection: {
         arrowIds: selectedArrowIds,
@@ -660,6 +664,9 @@ export function LeaferCanvas({
       },
       onApplyCrop: applyCrop,
       onCancelCrop: cancelCrop,
+      onSwitchTool: (tool: string) => {
+        useEditorStore.getState().setActiveTool(tool as ToolId);
+      },
       pushHistory,
     },
   );
@@ -743,7 +750,7 @@ export function LeaferCanvas({
       )}
 
       {/* 裁剪提示 */}
-      {activeTool === 'crop' && (
+      {isCropMode && (
         <CropHint cropArea={cropArea} />
       )}
 

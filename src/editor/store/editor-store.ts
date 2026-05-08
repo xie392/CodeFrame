@@ -11,6 +11,7 @@ import type {
   MosaicShape,
   CropArea,
   ToolId,
+  ShapeType,
   ImageFrameSettings,
   EditorSource,
   LastUsedStyles,
@@ -70,6 +71,10 @@ interface EditorStore {
 
   // 裁剪状态
   cropArea: CropArea | null;
+
+  // 裁剪模式（独立于工具）
+  isCropMode: boolean;
+  previousTool: ToolId | null;
 
   // 属性记忆
   lastUsedStyles: LastUsedStyles;
@@ -146,6 +151,12 @@ interface EditorActions {
 
   // 裁剪操作
   setCropArea: (area: SetStateAction<CropArea | null>) => void;
+  enterCropMode: () => void;
+  exitCropMode: () => void;
+
+  // 图层操作
+  moveLayerUp: (type: ShapeType, id: string) => void;
+  moveLayerDown: (type: ShapeType, id: string) => void;
 
   // 属性记忆操作
   updateLastUsedStyles: (
@@ -214,6 +225,10 @@ const initialState: EditorStore = {
   // 裁剪状态
   cropArea: null,
 
+  // 裁剪模式
+  isCropMode: false,
+  previousTool: null,
+
   // 属性记忆
   lastUsedStyles: {
     arrow: { ...DEFAULT_ARROW_STYLE },
@@ -236,6 +251,33 @@ function resolveSetter<T>(value: SetStateAction<T>, prev: T): T {
   return typeof value === 'function' ? (value as (prev: T) => T)(prev) : value;
 }
 
+// 辅助函数：按类型获取图形数组
+function getShapeArray(
+  state: EditorStore,
+  type: ShapeType
+): (ArrowShape | RectShape | TextShape | MosaicShape)[] {
+  switch (type) {
+    case 'arrow': return state.arrows;
+    case 'rect': return state.rects;
+    case 'text': return state.texts;
+    case 'mosaic': return state.mosaics;
+  }
+}
+
+// 辅助函数：按类型设置图形数组
+function setShapeArray(
+  _state: EditorStore,
+  type: ShapeType,
+  shapes: (ArrowShape | RectShape | TextShape | MosaicShape)[]
+): Partial<EditorStore> {
+  switch (type) {
+    case 'arrow': return { arrows: shapes as ArrowShape[] };
+    case 'rect': return { rects: shapes as RectShape[] };
+    case 'text': return { texts: shapes as TextShape[] };
+    case 'mosaic': return { mosaics: shapes as MosaicShape[] };
+  }
+}
+
 export const useEditorStore = create<EditorStore & EditorActions>((set, get) => ({
   ...initialState,
 
@@ -247,7 +289,19 @@ export const useEditorStore = create<EditorStore & EditorActions>((set, get) => 
   setImageDisplaySize: (imageDisplaySize) => set((state) => ({ imageDisplaySize: resolveSetter(imageDisplaySize, state.imageDisplaySize) })),
 
   // 工具操作
-  setActiveTool: (activeTool) => set((state) => ({ activeTool: resolveSetter(activeTool, state.activeTool) })),
+  setActiveTool: (activeTool) =>
+    set((state) => {
+      const resolved = resolveSetter(activeTool, state.activeTool);
+      // 切换到绘制工具时，清空选中状态，避免残留选框
+      const isDrawingTool =
+        resolved === 'arrow' || resolved === 'rect' || resolved === 'text' || resolved === 'mosaic';
+      return {
+        activeTool: resolved,
+        ...(isDrawingTool
+          ? { selectedArrowIds: [], selectedRectIds: [], selectedTextIds: [], selectedMosaicIds: [] }
+          : {}),
+      };
+    }),
 
   // 帧设置操作
   setFrameSettings: (frameSettings) => set((state) => ({ frameSettings: resolveSetter(frameSettings, state.frameSettings) })),
@@ -364,6 +418,50 @@ export const useEditorStore = create<EditorStore & EditorActions>((set, get) => 
 
   // 裁剪操作
   setCropArea: (cropArea) => set((state) => ({ cropArea: resolveSetter(cropArea, state.cropArea) })),
+  enterCropMode: () =>
+    set((state) => ({
+      isCropMode: true,
+      previousTool: state.activeTool,
+    })),
+  exitCropMode: () =>
+    set((state) => ({
+      isCropMode: false,
+      activeTool: state.previousTool ?? 'select',
+      previousTool: null,
+      cropArea: null,
+    })),
+
+  // 图层操作
+  moveLayerUp: (type, id) =>
+    set((state) => {
+      const shapes = getShapeArray(state, type);
+      const idx = shapes.findIndex((s) => s.id === id);
+      if (idx < 0 || idx >= shapes.length - 1) return state;
+      const nextIdx = idx + 1;
+      const zA = shapes[idx].zIndex;
+      const zB = shapes[nextIdx].zIndex;
+      const updated = shapes.map((s, i) => {
+        if (i === idx) return { ...s, zIndex: zB };
+        if (i === nextIdx) return { ...s, zIndex: zA };
+        return s;
+      });
+      return setShapeArray(state, type, updated);
+    }),
+  moveLayerDown: (type, id) =>
+    set((state) => {
+      const shapes = getShapeArray(state, type);
+      const idx = shapes.findIndex((s) => s.id === id);
+      if (idx <= 0) return state;
+      const prevIdx = idx - 1;
+      const zA = shapes[idx].zIndex;
+      const zB = shapes[prevIdx].zIndex;
+      const updated = shapes.map((s, i) => {
+        if (i === idx) return { ...s, zIndex: zB };
+        if (i === prevIdx) return { ...s, zIndex: zA };
+        return s;
+      });
+      return setShapeArray(state, type, updated);
+    }),
 
   // 属性记忆操作
   updateLastUsedStyles: (tool, styles) =>

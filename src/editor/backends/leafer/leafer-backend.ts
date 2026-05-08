@@ -46,22 +46,19 @@ import {
   Image as LeaferImage,
 } from 'leafer-ui';
 import { Arrow } from '@leafer-in/arrow';
-import {
-  PointerEvent,
-  DragEvent,
-} from 'leafer-ui';
+import { DragEvent } from 'leafer-ui';
 import { EditorEvent } from '@leafer-in/editor';
 
 // 注册马赛克自定义滤镜（副作用导入）
 import './custom/mosaic-filter';
 import { CropOverlay } from './custom/crop-overlay';
 
+import { DrawingController } from './drawing';
+import { buildBoundsList, hitTestAtPoint } from '../../utils/hit-test';
+
 import {
-  DRAW_MIN_DISTANCE,
   MIN_CROP_SIZE,
 } from '../../constants';
-import { useEditorStore } from '../../store/editor-store';
-import { hexToRgba } from './utils/color';
 import type { RectDragType } from '../../utils/shape-helpers';
 import { applyDragResize } from '../../utils/drag-resize';
 
@@ -102,24 +99,6 @@ const ALLOWED_PROPS = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// 绘制状态
-// ---------------------------------------------------------------------------
-
-interface DrawingState {
-  isDrawing: boolean;
-  shapeType: ShapeType | null;
-  startCoord: { x: number; y: number };
-  tempElement: unknown | null;
-}
-
-const INITIAL_DRAWING: DrawingState = {
-  isDrawing: false,
-  shapeType: null,
-  startCoord: { x: 0, y: 0 },
-  tempElement: null,
-};
-
-// ---------------------------------------------------------------------------
 // LeaferBackend
 // ---------------------------------------------------------------------------
 
@@ -155,10 +134,8 @@ export class LeaferBackend
   private callbacks: BackendCallbacks | null =
     null;
 
-  // 绘制状态
-  private drawing: DrawingState = {
-    ...INITIAL_DRAWING,
-  };
+  // 绘制控制器
+  private drawingController = new DrawingController();
 
   // 全局事件清理函数
   private globalCleanupFns: (() => void)[] = [];
@@ -196,13 +173,6 @@ export class LeaferBackend
   // 裁剪框覆盖层
   private cropOverlay: CropOverlay | null =
     null;
-
-  // 框选状态
-  private marquee = {
-    isDrawing: false,
-    startCoord: { x: 0, y: 0 },
-    rect: null as unknown | null,
-  };
 
   // 裁剪交互状态
   private cropDrawing = {
@@ -265,6 +235,48 @@ export class LeaferBackend
       () => this.getAnnotationBoxOffset()
     );
 
+    // 初始化绘制控制器
+    this.drawingController.init(this.appResult);
+    this.drawingController.configure({
+      getImageCoord: (e) => this.getImageCoordFromEvent(e),
+      onShapeCreated: (type, data) => {
+        if (!this.isSyncing() && this.callbacks) {
+          this.callbacks.onShapeCreated(type, data);
+        }
+      },
+      onSelectionChange: (ids) => {
+        if (!this.isSyncing() && this.callbacks) {
+          this.callbacks.onSelectionChange(ids);
+        }
+      },
+      onClearSelection: () => {
+        if (!this.isSyncing() && this.callbacks) {
+          this.callbacks.onSelectionChange(
+            SelectionBridge.emptySelection()
+          );
+        }
+      },
+      findElementsInBounds: (bounds) => this.findElementsInBounds(bounds),
+      isEditorDragging: () => {
+        const editor = this.getEditor();
+        return (editor as { dragging?: boolean } | null)?.dragging ?? false;
+      },
+      isEditorEditing: () => {
+        const editor = this.getEditor();
+        return (editor as { editing?: boolean } | null)?.editing ?? false;
+      },
+      isSyncing: () => this.isSyncing(),
+      onDrawingBegin: () => this.toolBridge.beginDrawing(),
+      onDrawingEnd: () => this.toolBridge.endDrawing(),
+      hitTest: (x: number, y: number) => {
+        const bounds = buildBoundsList(this.elementMap, this.typeMap);
+        return hitTestAtPoint(x, y, bounds);
+      },
+      onCropPointerDown: (e) => this.handleCropPointerDown(e),
+      onCropPointerMove: (e) => this.handleCropPointerMove(e),
+      onCropPointerUp: () => this.handleCropPointerUp(),
+    });
+
     this.setupEventListeners();
   }
 
@@ -288,7 +300,9 @@ export class LeaferBackend
       }).remove();
     }
     this.mosaicPlaceholderMap.clear();
-    this.drawing = { ...INITIAL_DRAWING };
+
+    // 清理绘制控制器
+    this.drawingController.destroy();
 
     // 清理裁剪覆盖层
     if (this.cropOverlay) {
@@ -644,8 +658,8 @@ export class LeaferBackend
       }
 
       if (elements.length > 0) {
-        // 确保 Editor 可编辑，否则
-        // select() 不会显示选中框
+        // 先取消旧选框，避免双选框
+        ed.cancel();
         ed.editable = true;
         ed.select(elements);
       } else {
@@ -781,17 +795,7 @@ export class LeaferBackend
 
   /** 切换工具模式（供 useBackendSync 调用）*/
   setToolMode(tool: string): void {
-    const validTools: ToolId[] = [
-      'select',
-      'move',
-      'arrow',
-      'rect',
-      'text',
-      'mosaic',
-      'crop',
-    ];
-    if (!validTools.includes(tool as ToolId))
-      return;
+    this.drawingController.setTool(tool);
     this.toolBridge.setTool(tool as ToolId);
   }
 
@@ -1301,8 +1305,9 @@ export class LeaferBackend
   private setupEventListeners(): void {
     if (!this.appResult) return;
 
+    this.setupSelectionDiagnostic();
     this.setupEditorSelectListener();
-    this.setupDrawingListeners();
+    // 绘制事件由 DrawingController 管理
     this.setupViewportListeners();
     this.setupToolBridge();
     this.setupTextDoubleClickListener();
@@ -1313,6 +1318,96 @@ export class LeaferBackend
       fn();
     }
     this.globalCleanupFns = [];
+  }
+
+  /** [DIAG] 选中流程诊断：在 Tap 事件阶段拦截，检查 EditSelect 所有前置条件 */
+  private setupSelectionDiagnostic(): void {
+    const app = this.appResult?.app;
+    if (!app) return;
+
+    const handler = (e: unknown) => {
+      const ev = e as {
+        path?: { list?: unknown[] };
+        target?: unknown;
+      };
+
+      const appAny = app as unknown as Record<string, unknown>;
+      const editor = this.getEditor();
+      const ed = editor as unknown as Record<string, unknown> | null;
+      const tree = app.tree as unknown as Record<string, unknown> | null;
+      const annotationBox = this.appResult?.annotationBox as unknown as Record<string, unknown> | null;
+
+      console.group('[DIAG] TapEvent — 选中流程诊断');
+
+      // 1. App/Tree mode
+      console.log('1. app.mode:', appAny.mode);
+      console.log('   tree.mode:', tree?.mode);
+
+      // 2. Editor 状态
+      console.log('2. editor.editable:', ed?.editable);
+      console.log('   editor.hittable:', ed?.hittable);
+      console.log('   editor.visible:', ed?.visible);
+      console.log('   editor.mergeConfig:', JSON.stringify(ed?.mergeConfig));
+
+      // 3. EditSelect.running 等价条件
+      const mergeConfig = ed?.mergeConfig as Record<string, unknown> | null | undefined;
+      const selector = mergeConfig?.selector;
+      const running =
+        !!ed?.hittable &&
+        !!ed?.visible &&
+        !!selector &&
+        appAny.mode === 'normal';
+      console.log('3. EditSelect.running ≈', running, {
+        hittable: !!ed?.hittable,
+        visible: !!ed?.visible,
+        selector: !!selector,
+        appModeNormal: appAny.mode === 'normal',
+      });
+
+      // 4. 命中路径
+      const pathList = ev.path?.list ?? [];
+      console.log('4. e.path.list length:', pathList.length);
+      for (let i = 0; i < pathList.length; i++) {
+        const leaf = pathList[i] as Record<string, unknown>;
+        const leafInner = leaf?.__ as Record<string, unknown> | null;
+        console.log(`   path[${i}]:`, {
+          tag: leafInner?.tag,
+          id: leaf?.id,
+          editable: leaf?.editable,
+          data: leaf?.data,
+        });
+      }
+
+      // 5. annotationBox 状态
+      console.log('5. annotationBox:', {
+        editable: annotationBox?.editable,
+        hitFill: annotationBox?.hitFill,
+        hitChildren: annotationBox?.hitChildren,
+        overflow: annotationBox?.overflow,
+        childrenCount: (annotationBox?.children as unknown[])?.length,
+      });
+
+      // 6. annotationBox 子元素 editable 检查
+      const children = (annotationBox?.children as unknown[]) ?? [];
+      for (const child of children) {
+        const c = child as Record<string, unknown>;
+        const cInner = c?.__ as Record<string, unknown> | null;
+        console.log('   child:', {
+          tag: cInner?.tag,
+          id: c?.id,
+          editable: c?.editable,
+          data: c?.data,
+        });
+      }
+
+      console.groupEnd();
+    };
+
+    // PointerEvent.TAP = 'tap' (LeaferJS)
+    (app as { on: (e: string, h: (e: unknown) => void) => void }).on('tap', handler);
+    this.globalCleanupFns.push(() => {
+      (app as { off: (e: string, h: (e: unknown) => void) => void }).off('tap', handler);
+    });
   }
 
   /** Editor 选中事件 → Store */
@@ -1361,62 +1456,6 @@ export class LeaferBackend
     ed.on(EditorEvent.SELECT, handler);
     this.globalCleanupFns.push(() => {
       ed.off(EditorEvent.SELECT, handler);
-    });
-  }
-
-  /** 绘制交互 Pointer 事件 */
-  private setupDrawingListeners(): void {
-    const annotationBox =
-      this.appResult?.annotationBox;
-    const app = this.appResult?.app;
-    if (!annotationBox || !app) return;
-
-    const box = annotationBox as {
-      on: (
-        event: unknown,
-        handler: (e: unknown) => void
-      ) => void;
-      off: (
-        event: unknown,
-        handler: (e: unknown) => void
-      ) => void;
-    };
-
-    // MOVE/UP 注册在 app.tree 上，
-    // 确保拖拽过程中持续收到事件
-    const tree = app.tree as {
-      on: (
-        event: unknown,
-        handler: (e: unknown) => void
-      ) => void;
-      off: (
-        event: unknown,
-        handler: (e: unknown) => void
-      ) => void;
-    };
-
-    const onDown = (e: unknown) => {
-      this.handleDrawPointerDown(e);
-    };
-    const onMove = (e: unknown) => {
-      this.handleDrawPointerMove(e);
-    };
-    const onUp = () => {
-      this.handleDrawPointerUp();
-    };
-
-    // DOWN 注册在 annotationBox 上，
-    // 只在图片区域内才开始绘制
-    box.on(PointerEvent.DOWN, onDown);
-    // MOVE/UP 注册在 app.tree 上，
-    // 拖拽超出 annotationBox 也能持续
-    tree.on(PointerEvent.MOVE, onMove);
-    tree.on(PointerEvent.UP, onUp);
-
-    this.globalCleanupFns.push(() => {
-      box.off(PointerEvent.DOWN, onDown);
-      tree.off(PointerEvent.MOVE, onMove);
-      tree.off(PointerEvent.UP, onUp);
     });
   }
 
@@ -1562,417 +1601,7 @@ export class LeaferBackend
     return null;
   }
 
-  // ---- 绘制交互 ----
-
-  private handleDrawPointerDown(
-    e: unknown
-  ): void {
-    const tool = this.toolBridge.getTool();
-
-    // 裁剪工具单独处理
-    if (tool === 'crop') {
-      this.handleCropPointerDown(e);
-      return;
-    }
-
-    // select 工具：记录起始坐标，
-    // 由 PointerMove 检测拖拽后决定是否启动框选
-    if (tool === 'select') {
-      const coord =
-        this.getImageCoordFromEvent(e);
-      this.marquee = {
-        isDrawing: false,
-        startCoord: coord,
-        rect: null,
-      };
-      return;
-    }
-
-    if (
-      tool !== 'arrow' &&
-      tool !== 'rect' &&
-      tool !== 'text' &&
-      tool !== 'mosaic'
-    )
-      return;
-
-    const coord =
-      this.getImageCoordFromEvent(e);
-
-    if (tool === 'text') {
-      this.createTextAtCoord(coord);
-      return;
-    }
-
-    this.drawing = {
-      isDrawing: true,
-      shapeType: tool,
-      startCoord: coord,
-      tempElement: null,
-    };
-
-    this.createTempElement(tool, coord);
-  }
-
-  private handleDrawPointerMove(
-    e: unknown
-  ): void {
-    // 裁剪拖拽/绘制
-    if (this.toolBridge.getTool() === 'crop') {
-      this.handleCropPointerMove(e);
-      return;
-    }
-
-    // select 模式：检测空白区域拖拽启动框选
-    if (this.marquee.startCoord.x !== 0 || this.marquee.startCoord.y !== 0) {
-      if (!this.marquee.isDrawing) {
-        // Editor 正在拖拽元素时，不启动框选
-        const editor = this.getEditor();
-        const ed = editor as { dragging?: boolean } | null;
-        if (ed?.dragging) {
-          this.marquee = {
-            isDrawing: false,
-            startCoord: { x: 0, y: 0 },
-            rect: null,
-          };
-          return;
-        }
-
-        const coord =
-          this.getImageCoordFromEvent(e);
-        const dx = coord.x - this.marquee.startCoord.x;
-        const dy = coord.y - this.marquee.startCoord.y;
-        if (dx * dx + dy * dy >= 16) {
-          this.marquee.isDrawing = true;
-          if (this.appResult) {
-            const rect = new Rect({
-              x: Math.min(this.marquee.startCoord.x, coord.x),
-              y: Math.min(this.marquee.startCoord.y, coord.y),
-              width: Math.abs(dx),
-              height: Math.abs(dy),
-              stroke: '#3B82F6',
-              strokeWidth: 1,
-              dashPattern: [6, 3],
-              fill: 'rgba(59,130,246,0.08)',
-              editable: false,
-              hittable: false,
-            });
-            this.appResult.annotationBox.add(
-              rect as { remove: () => void }
-            );
-            this.marquee.rect = rect;
-          }
-        }
-        return;
-      }
-      this.handleMarqueeMove(e);
-      return;
-    }
-
-    if (!this.drawing.isDrawing) return;
-
-    const coord =
-      this.getImageCoordFromEvent(e);
-
-    this.updateTempElement(
-      this.drawing.shapeType!,
-      this.drawing.startCoord,
-      coord
-    );
-  }
-
-  private handleDrawPointerUp(): void {
-    // 裁剪结束
-    if (this.toolBridge.getTool() === 'crop') {
-      this.handleCropPointerUp();
-      return;
-    }
-
-    // 框选结束
-    if (this.marquee.isDrawing) {
-      this.handleMarqueeUp();
-      return;
-    }
-
-    // select 模式下单击空白区域（未启动框选）：
-    // 重置 marquee 状态，并取消选中
-    if (this.marquee.startCoord.x !== 0 || this.marquee.startCoord.y !== 0) {
-      if (!this.isSyncing() && this.callbacks) {
-        this.callbacks.onSelectionChange(
-          SelectionBridge.emptySelection()
-        );
-      }
-      this.marquee = {
-        isDrawing: false,
-        startCoord: { x: 0, y: 0 },
-        rect: null,
-      };
-      return;
-    }
-
-    if (!this.drawing.isDrawing) return;
-    this.finalizeDrawing();
-  }
-
-  /** 创建临时绘制图形 */
-  private createTempElement(
-    tool: ShapeType,
-    coord: { x: number; y: number }
-  ): void {
-    if (!this.appResult) return;
-
-    const styles =
-      useEditorStore.getState().lastUsedStyles;
-    let element: unknown;
-
-    if (tool === 'rect') {
-      const s = styles.rect;
-      element = new Rect({
-        x: coord.x,
-        y: coord.y,
-        width: 0,
-        height: 0,
-        stroke: s.color,
-        strokeWidth: s.strokeWidth,
-        dashPattern:
-          s.borderStyle === 'dashed'
-            ? [8, 4]
-            : undefined,
-        fill:
-          s.fillOpacity > 0
-            ? hexToRgba(
-                s.color,
-                s.fillOpacity / 100
-              )
-            : undefined,
-        opacity: 0.6,
-      });
-    } else if (tool === 'arrow') {
-      const s = styles.arrow;
-      const scale = s.headSize / 12;
-      element = new Arrow({
-        points: [
-          coord.x,
-          coord.y,
-          coord.x,
-          coord.y,
-        ],
-        stroke: s.color,
-        strokeWidth: s.strokeWidth,
-        endArrow: { type: 'angle', scale },
-        startArrow:
-          s.style === 'double'
-            ? { type: 'angle', scale }
-            : undefined,
-        hitStroke: 'all',
-        opacity: 0.6,
-      });
-    } else if (tool === 'mosaic') {
-      // 马赛克绘制预览用半透明 Rect
-      element = new Rect({
-        x: coord.x,
-        y: coord.y,
-        width: 0,
-        height: 0,
-        fill: 'rgba(128,128,128,0.4)',
-        stroke: 'rgba(128,128,128,0.8)',
-        strokeWidth: 1,
-        opacity: 0.6,
-      });
-    } else {
-      return;
-    }
-
-    this.drawing.tempElement = element;
-    this.appResult.annotationBox.add(
-      element as { remove: () => void }
-    );
-  }
-
-  /** 更新临时绘制图形 */
-  private updateTempElement(
-    tool: ShapeType,
-    start: { x: number; y: number },
-    current: { x: number; y: number }
-  ): void {
-    const el = this.drawing.tempElement as {
-      set: (props: Record<string, unknown>) => void;
-    } | null;
-    if (!el) return;
-
-    if (tool === 'rect' || tool === 'mosaic') {
-      el.set({
-        x: Math.min(start.x, current.x),
-        y: Math.min(start.y, current.y),
-        width: Math.abs(
-          current.x - start.x
-        ),
-        height: Math.abs(
-          current.y - start.y
-        ),
-      });
-    } else if (tool === 'arrow') {
-      el.set({
-        points: [
-          start.x,
-          start.y,
-          current.x,
-          current.y,
-        ],
-      });
-    }
-  }
-
-  /** 完成绘制，创建 Store 数据 */
-  private finalizeDrawing(): void {
-    const { shapeType, startCoord, tempElement } =
-      this.drawing;
-
-    // 先读取坐标再移除（防竞态）
-    const temp = tempElement as {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      points: number[];
-    } | null;
-
-    // 移除临时元素
-    if (tempElement) {
-      (
-        tempElement as { remove: () => void }
-      ).remove();
-    }
-
-    if (!shapeType || !this.callbacks || !temp) {
-      this.drawing = { ...INITIAL_DRAWING };
-      return;
-    }
-
-    // 验证最小距离
-    if (!this.isDrawingSizeValid(shapeType, temp)) {
-      this.drawing = { ...INITIAL_DRAWING };
-      return;
-    }
-
-    const data = this.buildShapeData(
-      shapeType,
-      startCoord,
-      temp
-    );
-
-    this.callbacks.onShapeCreated(shapeType, data);
-    this.drawing = { ...INITIAL_DRAWING };
-  }
-
-  /** 验证绘制尺寸是否满足最小距离 */
-  private isDrawingSizeValid(
-    type: ShapeType,
-    temp: {
-      width: number;
-      height: number;
-      points: number[];
-    }
-  ): boolean {
-    if (type === 'rect' || type === 'mosaic') {
-      return (
-        temp.width >= DRAW_MIN_DISTANCE &&
-        temp.height >= DRAW_MIN_DISTANCE
-      );
-    }
-    if (type === 'arrow') {
-      const dx =
-        (temp.points?.[2] ?? 0) -
-        (temp.points?.[0] ?? 0);
-      const dy =
-        (temp.points?.[3] ?? 0) -
-        (temp.points?.[1] ?? 0);
-      return (
-        Math.sqrt(dx * dx + dy * dy) >=
-        DRAW_MIN_DISTANCE
-      );
-    }
-    return true;
-  }
-
-  /** 单击创建文字 */
-  private createTextAtCoord(
-    coord: { x: number; y: number }
-  ): void {
-    if (!this.callbacks) return;
-
-    const s =
-      useEditorStore.getState().lastUsedStyles
-        .text;
-    this.callbacks.onShapeCreated('text', {
-      x: coord.x,
-      y: coord.y,
-      text: 'Text',
-      color: s.color,
-      fontSize: s.fontSize,
-      fontWeight: s.fontWeight,
-      fontStyle: s.fontStyle,
-    });
-  }
-
-  /** 从绘制结果构建 Store 数据 */
-  private buildShapeData(
-    type: ShapeType,
-    _start: { x: number; y: number },
-    temp: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      points: number[];
-    }
-  ): Record<string, unknown> {
-    const styles =
-      useEditorStore.getState().lastUsedStyles;
-
-    if (type === 'rect') {
-      const s = styles.rect;
-      return {
-        x: temp.x,
-        y: temp.y,
-        width: temp.width,
-        height: temp.height,
-        color: s.color,
-        strokeWidth: s.strokeWidth,
-        fillOpacity: s.fillOpacity,
-        borderStyle: s.borderStyle,
-      };
-    }
-
-    if (type === 'arrow') {
-      const s = styles.arrow;
-      return {
-        startX: temp.points?.[0] ?? 0,
-        startY: temp.points?.[1] ?? 0,
-        endX: temp.points?.[2] ?? 0,
-        endY: temp.points?.[3] ?? 0,
-        color: s.color,
-        strokeWidth: s.strokeWidth,
-        headSize: s.headSize,
-        style: s.style,
-      };
-    }
-
-    if (type === 'mosaic') {
-      const s = styles.mosaic;
-      return {
-        x: temp.x,
-        y: temp.y,
-        width: temp.width,
-        height: temp.height,
-        blockSize: s.blockSize,
-        opacity: s.opacity,
-      };
-    }
-
-    return {};
-  }
-
+  // ---- 裁剪交互 ----
   // ---- 裁剪交互 ----
 
   private handleCropPointerDown(
@@ -2109,77 +1738,6 @@ export class LeaferBackend
     this.callbacks.onCropAreaChange(area);
   }
 
-  // ---- 框选交互 ----
-
-  /** 框选拖拽更新 */
-  private handleMarqueeMove(
-    e: unknown
-  ): void {
-    if (!this.marquee.isDrawing) return;
-    const coord =
-      this.getImageCoordFromEvent(e);
-
-    const rect = this.marquee.rect as {
-      set: (p: Record<string, unknown>) => void;
-    } | null;
-    if (!rect) return;
-
-    const { startCoord } = this.marquee;
-    rect.set({
-      x: Math.min(startCoord.x, coord.x),
-      y: Math.min(startCoord.y, coord.y),
-      width: Math.abs(coord.x - startCoord.x),
-      height: Math.abs(
-        coord.y - startCoord.y
-      ),
-    });
-  }
-
-  /** 框选结束：命中检测 */
-  private handleMarqueeUp(): void {
-    const rect = this.marquee.rect as {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      remove: () => void;
-    } | null;
-
-    if (rect && rect.width > 2 && rect.height > 2) {
-      // 执行命中检测
-      const marqueeBounds = {
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-      };
-      const hitIds =
-        this.findElementsInBounds(
-          marqueeBounds
-        );
-
-      if (
-        hitIds &&
-        this.callbacks &&
-        !this.isSyncing()
-      ) {
-        this.callbacks.onSelectionChange(
-          hitIds
-        );
-      }
-    }
-
-    // 移除选取框
-    if (rect) {
-      rect.remove();
-    }
-
-    this.marquee = {
-      isDrawing: false,
-      startCoord: { x: 0, y: 0 },
-      rect: null,
-    };
-  }
 
   /** 查找在指定区域内的所有图形 ID */
   private findElementsInBounds(bounds: {

@@ -290,6 +290,3 @@ export const TEXT_CURSOR_MAP: Record<string, string> = {
 
 // 马赛克控制点光标映射（与矩形相同）
 export const MOSAIC_CURSOR_MAP: Record<string, string> = RECT_CURSOR_MAP;
-
-// 裁剪框光标映射（与矩形相同）
-export const CROP_CURSOR_MAP: Record<string, string> = RECT_CURSOR_MAP;

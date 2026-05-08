@@ -24,7 +24,6 @@ export type RectDragType =
   | 'resize-l';
 export type TextDragType = 'none' | 'move' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br';
 export type MosaicDragType = RectDragType;
-export type CropDragType = RectDragType;
 
 // ---------------------------------------------------------------------------
 // 箭头相关函数
@@ -257,7 +256,7 @@ export function isPointInCrop(x: number, y: number, crop: CropArea): boolean {
 }
 
 /** 检测点击位置对应的裁剪框拖拽类型 */
-export function getCropDragTypeAtPoint(x: number, y: number, crop: CropArea): CropDragType {
+export function getCropDragTypeAtPoint(x: number, y: number, crop: CropArea): RectDragType {
   return getRectDragTypeAtPoint(x, y, {
     x: crop.x,
     y: crop.y,

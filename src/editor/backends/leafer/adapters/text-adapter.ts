@@ -26,6 +26,7 @@ export class TextAdapter
       dragBounds: 'parent',
       editable: true,
       editInner: '',
+      editSize: 'font-size',
     };
   }
 

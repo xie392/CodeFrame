@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, Loader2, ClipboardCopy, Check } from 'lucide-react';
+import { Download, Loader2, ClipboardCopy, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   ArrowShape,
   RectShape,
@@ -9,6 +9,7 @@ import type {
   ImageFrameSettings,
   ArrowStyle,
   RectBorderStyle,
+  ShapeType,
 } from '../../types';
 import { ColorPicker } from '../ColorPicker';
 import { SliderControl } from '../SliderControl';
@@ -27,6 +28,8 @@ interface PropertiesPanelProps {
   onUpdateText: (updates: Partial<TextShape>) => void;
   selectedMosaic: MosaicShape | null;
   onUpdateMosaic: (updates: Partial<MosaicShape>) => void;
+  onMoveLayerUp?: (type: ShapeType, id: string) => void;
+  onMoveLayerDown?: (type: ShapeType, id: string) => void;
   frameSettings: ImageFrameSettings;
   onUpdateFrameSettings: (updates: Partial<ImageFrameSettings>) => void;
   collapsedSections?: Record<string, boolean>;
@@ -47,6 +50,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onUpdateText,
   selectedMosaic,
   onUpdateMosaic,
+  onMoveLayerUp,
+  onMoveLayerDown,
   frameSettings,
   onUpdateFrameSettings,
   collapsedSections,
@@ -241,6 +246,54 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             />
           </div>
         ) : null}
+
+        {/* 图层操作 - 选中图形时显示 */}
+        {selectionType !== 'none' && (
+          <div className="flex flex-col gap-[10px]">
+            <span
+              className="text-[11px] font-body font-semibold"
+              style={{ color: 'var(--color-accent-orange)' }}
+            >
+              {t('label.layer')}
+            </span>
+            <div className="flex gap-2">
+              <button
+                className="flex-1 flex items-center justify-center gap-1.5 h-[32px] rounded-lg text-[11px] font-body cursor-pointer"
+                style={{
+                  color: 'var(--color-editor-hint)',
+                  background: 'var(--color-editor-hover)',
+                }}
+                onClick={() => {
+                  const id = selectionType === 'arrow' ? selectedArrow?.id
+                    : selectionType === 'rect' ? selectedRect?.id
+                    : selectionType === 'text' ? selectedText?.id
+                    : selectedMosaic?.id;
+                  if (id && onMoveLayerUp) onMoveLayerUp(selectionType, id);
+                }}
+              >
+                <ChevronUp size={14} />
+                {t('action.moveUp')}
+              </button>
+              <button
+                className="flex-1 flex items-center justify-center gap-1.5 h-[32px] rounded-lg text-[11px] font-body cursor-pointer"
+                style={{
+                  color: 'var(--color-editor-hint)',
+                  background: 'var(--color-editor-hover)',
+                }}
+                onClick={() => {
+                  const id = selectionType === 'arrow' ? selectedArrow?.id
+                    : selectionType === 'rect' ? selectedRect?.id
+                    : selectionType === 'text' ? selectedText?.id
+                    : selectedMosaic?.id;
+                  if (id && onMoveLayerDown) onMoveLayerDown(selectionType, id);
+                }}
+              >
+                <ChevronDown size={14} />
+                {t('action.moveDown')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* [frame] 区域 - 未选中标注时显示 */}
         {selectionType === 'none' && (

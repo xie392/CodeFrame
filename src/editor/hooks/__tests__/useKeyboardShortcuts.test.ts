@@ -27,6 +27,7 @@ describe('useKeyboardShortcuts', () => {
       mosaicIds: [],
     },
     isMarqueeSelecting: { current: false },
+    isCropMode: false,
   };
 
   beforeEach(() => {
@@ -98,7 +99,7 @@ describe('useKeyboardShortcuts', () => {
   });
 
   it('应该在裁剪模式下 Escape 时调用 onCancelCrop', () => {
-    const cropConfig = { ...mockConfig, activeTool: 'crop' };
+    const cropConfig = { ...mockConfig, isCropMode: true };
     renderHook(() => useKeyboardShortcuts(cropConfig, mockCallbacks));
 
     dispatchKeyEvent('Escape');
@@ -122,7 +123,7 @@ describe('useKeyboardShortcuts', () => {
   it('应该在裁剪模式下 Enter 且有裁剪区域时调用 onApplyCrop', () => {
     const cropConfig = {
       ...mockConfig,
-      activeTool: 'crop',
+      isCropMode: true,
       cropArea: { x: 0, y: 0, width: 100, height: 100 },
     };
     renderHook(() => useKeyboardShortcuts(cropConfig, mockCallbacks));
@@ -133,7 +134,7 @@ describe('useKeyboardShortcuts', () => {
   });
 
   it('应该在裁剪模式下 Enter 但无裁剪区域时不调用 onApplyCrop', () => {
-    const cropConfig = { ...mockConfig, activeTool: 'crop', cropArea: null };
+    const cropConfig = { ...mockConfig, isCropMode: true, cropArea: null };
     renderHook(() => useKeyboardShortcuts(cropConfig, mockCallbacks));
 
     dispatchKeyEvent('Enter');
